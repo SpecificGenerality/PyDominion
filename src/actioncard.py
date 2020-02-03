@@ -40,9 +40,6 @@ class Cellar(BaseActionCard):
         return 0
 
 class Chapel(BaseActionCard):
-    def __init__(self):
-        self.effect = ChapelEffect()
-
     def getCoinCost(self) -> int:
         return 2
 
@@ -157,9 +154,6 @@ class Village(BaseActionCard):
         return "Village"
 
 class Workshop(BaseActionCard):
-    def __init__(self):
-        self.effect = WorkshopEffect()
-
     def getCoinCost(self) -> int:
         return 3
 
@@ -179,9 +173,6 @@ class Workshop(BaseActionCard):
         return "Workshop"
 
 class Bureaucrat(BaseActionCard, AttackCard):
-    def __init__(self):
-        self.effect = BureaucratEffect()
-
     def getCoinCost(self) -> int:
         return 4
 

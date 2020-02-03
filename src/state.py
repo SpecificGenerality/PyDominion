@@ -9,6 +9,7 @@ from gamedata import GameData
 from playerstate import PlayerState
 from typing import List, Dict
 from stateutils import *
+from utils import *
 import random
 
 class DecisionResponse():
@@ -16,6 +17,9 @@ class DecisionResponse():
         self.cards = cards
         self.choice = -1
         self.singleCard = None
+
+    def __str__(self) -> str:
+        return f'Choices: {self.cards}\nChoice: {self.choice}\nSingle Card: {self.singleCard}'
 
 class DecisionState():
     def __init__(self):
@@ -41,6 +45,7 @@ class DecisionState():
         self.minCards = minCards
         self.maxCards = maxCards
         self.controllingPlayer = -1
+        self.cardChoices = []
 
     def makeDiscreteChoice(self, card: Card, optionCount: int):
         self.activeCard = card
@@ -96,7 +101,7 @@ class State:
 
     def discardCard(self, player: int, card: Card):
         pState = self.playerStates[player]
-        moveCard(pState.hand, pState.discard, card)
+        moveCard(card, pState.hand, pState.discard)
 
     def discardHand(self, player: int):
         pState= self.playerStates[player]
@@ -104,16 +109,27 @@ class State:
         pState.hand = []
         print(f'Player {player} discards their hand')
 
-    def trashCard(self, zone: Zone, player: int, card: Card) -> None:
+    def updatePlayArea(self, player: int):
+        pState = self.playerStates[player]
+        newPlayArea = []
+        for card in pState.playArea:
+            if card.turns_left > 1:
+                moveCard(card, pState.playArea, newPlayArea)
+        pState.discard += pState.playArea
+        pState.playArea = newPlayArea
+
+    def trashCard(self, card: Card, zone: Zone, player: int) -> None:
         pState = self.playerStates[player]
 
         if zone == Zone.Hand:
             if pState.hand:
-                trashed_card = removeCard(pState.hand, card)
+                trashed_card = removeCard(card, pState.hand)
                 if trashed_card:
                     self.data.trash.append(trashed_card)
                     print(f'Player {player} trashes {card} from hand.')
-                else: print(f'Player {player} fails to trash {card} from hand: card does not exist.')
+                else:
+                    print(f'Player {player} fails to trash {card} from hand: card does not exist.')
+                    exit()
             else:
                 print(f'Player {player} hand is empty, trashing nothing.')
         elif zone == Zone.Deck:
@@ -134,19 +150,25 @@ class State:
 
     def playCard(self, player: int, card: Card) -> None:
         pState = self.playerStates[player]
-        card.turns_left = 0
-        moveCard(pState.deck, pState.playArea, card)
+        moveCard(card, pState.hand, pState.playArea)
 
     def processAction(self, card: Card):
+        import constants
         pState = self.playerStates[self.player]
         pState.actions += card.getPlusActions()
         pState.buys += card.getPlusBuys()
         pState.coins += card.getPlusCoins()
-
-        for i in range(card.getPlusCards):
+        print(f'Actions: {pState.actions}\nBuys: {pState.buys}\nCoins: {pState.coins}')
+        for i in range(card.getPlusCards()):
             self.drawCard(self.player)
 
+        effect = constants.getCardEffect(card)
+        if effect:
+            effect.playAction(self)
+
     def processTreasure(self, card: Card):
+        import constants
+
         assert isinstance(card, TreasureCard), 'Attemped to processTreasure a non-treasure card'
         pState = self.playerStates[self.player]
         treasureValue = card.getTreasure()
@@ -154,8 +176,9 @@ class State:
         pState.coins += treasureValue
         pState.buys += card.getPlusBuys()
 
-        if card.effect:
-            card.effect.playAction(self)
+        effect = constants.getCardEffect(card)
+        if effect:
+            effect.playAction(self)
 
     def processDecision(self, response: DecisionResponse):
         if self.decision.type == DecisionType.DecisionGameOver:
@@ -175,7 +198,7 @@ class State:
         self.decision.type = DecisionType.DecisionNone
         p = self.playerStates[self.player]
 
-        if self.decision.activeCard is None:
+        if not self.decision.activeCard:
             if self.phase == Phase.ActionPhase:
                 if singleCard is None:
                     print(f'Player {self.player} chooses not to play an action')
@@ -186,7 +209,7 @@ class State:
                     self.processAction(singleCard)
             elif self.phase == Phase.TreasurePhase:
                 if singleCard is None:
-                    print(f'Player {self.player} chooses not to play an action')
+                    print(f'Player {self.player} chooses not to play a treasure')
                     self.phase = Phase.BuyPhase
                 else:
                     self.playCard(self.player, singleCard)
@@ -198,7 +221,8 @@ class State:
                 else:
                     self.events.append(GainCard(GainZone.GainToDiscard, self.player, singleCard, True, False))
         else:
-            activeCardEffect = self.decision.activeCard.effect
+            import constants
+            activeCardEffect = constants.getCardEffect(self.decision.activeCard)
             if activeCardEffect and activeCardEffect.canProcessDecisions():
                 activeCardEffect.processDecision(self, response)
             elif len(self.events) > 0 and self.events[-1].canProcessDecisions():
@@ -238,10 +262,14 @@ class State:
 
     def advancePhase(self):
         pState = self.playerStates[self.player]
+        print(f'Play: {pState.playArea}')
         print(f'Hand: {pState.hand}')
+        print(f'Discard: {pState.discard}')
+        print(f'Deck: {pState.deck}')
         if self.phase == Phase.ActionPhase:
+            print(f'====ACTION PHASE====')
             if pState.actions == 0 or pState.getActionCardCount(pState.hand) == 0:
-                print(f'Advancing to treasure phase')
+                print(f'Advancing to treasure phase...')
                 self.phase = Phase.TreasurePhase
             else:
                 self.decision.text = 'Choose an action to play:'
@@ -250,8 +278,9 @@ class State:
                     if isinstance(card, ActionCard):
                         self.decision.addUniqueCard(card)
         if self.phase == Phase.TreasurePhase:
+            print(f'====TREASURE PHASE====')
             if pState.getTreasureCardCount(pState.hand) == 0:
-                print(f'Advancing to buy phase')
+                print(f'Advancing to buy phase...')
                 self.phase = Phase.BuyPhase
             else:
                 self.decision.text = 'Choose a treasure to play'
@@ -261,25 +290,37 @@ class State:
                     if (isinstance(card, TreasureCard)):
                         self.decision.addUniqueCard(card)
         if self.phase == Phase.BuyPhase and len(self.events) == 0:
+            print(f'====BUY PHASE====')
             if pState.buys == 0:
-                print(f'Advancing to buy phase')
+                print(f'Advancing to cleanup phase...')
                 self.phase = Phase.CleanupPhase
             else:
                 self.decision.text = 'Choose a card to buy'
                 self.decision.selectCards(None, 0, 1)
+                # print(f'Buy choices before loop: {self.decision.cardChoices}')
+                i = 0
+                print(f'Player {self.player} has ${pState.coins}')
                 for cardClass, cardCount in self.data.supply.items():
                     card = cardClass()
+                    # print(f'{i}: {card}')
                     if self.getSupplyCost(card) <= pState.coins and cardCount > 0:
                         self.decision.cardChoices.append(card)
+                    i += 1
 
                 if len(self.decision.cardChoices) == 0:
                     self.decision.type = DecisionType.DecisionNone
-                    print(f'Advancing to cleanup phase')
+                    print(f'Advancing to cleanup phase...')
                     self.phase = Phase.CleanupPhase
                     print(f'Player {self.player} cannot afford to buy any cards')
         if self.phase == Phase.CleanupPhase:
+            print(f'====CLEANUP PHASE====')
+            self.updatePlayArea(self.player)
             self.discardHand(self.player)
             self.drawHand(self.player)
+            print(f'Play: {pState.playArea}')
+            print(f'Hand: {pState.hand}')
+            print(f'Discard: {pState.discard}')
+            print(f'Deck: {pState.deck}')
             print(f'Player {self.player} ends their turn')
 
             if self.isGameOver():
@@ -335,9 +376,9 @@ class State:
         for i in range(playerCount):
             self.drawHand(i)
 
-        player = random.randint(0, playerCount-1)
-        print(f'Player {player} starts')
-        self.playerStates[player].turns = 1
+        self.player = random.randint(0, playerCount-1)
+        print(f'Player {self.player} starts')
+        self.playerStates[self.player].turns = 1
 
         self.advanceNextDecision()
 
@@ -381,13 +422,9 @@ class DiscardCard(Event):
 
     def advance(self, s: State):
         if self.zone == DiscardZone.DiscardFromHand:
-            discarded = removeCard(s.playerStates[self.player].hand, self.card)
-            if not discarded:
-                print(f'Player {self.player} fails to discard {self.card}')
-            else:
-                print(f'Player {self.player} discards {self.card}')
+            s.discardCard(self.player, self.card)
         else:
-            s.playerStates[self.player].discard.append(self.card)
+            print(f'DEBUG: Attempted to discard from non-hand zone')
 
 class GainCard(Event):
     def __init__(self, zone: GainZone, player: int, card: Card, bought=False, isAttack=False):
@@ -437,7 +474,7 @@ class GainCard(Event):
                 print(f'Player {self.player} cannot gain {self.card}')
         return True
 
-class DiscardDowntToN(Event):
+class DiscardDownToN(Event):
     def __init__(self, card: Card, player: int, hand_size: int):
         self.card = card
         self.player = player
@@ -452,7 +489,7 @@ class DiscardDowntToN(Event):
 
     def processDecision(self, s: State, response: DecisionResponse):
         for card in response.cards:
-            s.events.append(DiscardCard(s.decision.controllingPlayer))
+            s.events.append(DiscardCard(DiscardZone.DiscardFromHand, s.decision.controllingPlayer, card))
         self.done = True
 
     def attackedPlayer(self) -> int:
@@ -473,18 +510,19 @@ class DiscardDowntToN(Event):
         s.decision.cardChoices = s.playerStates[self.player].hand
         s.decision.controllingPlayer = self.player
 
-        s.decision.text = 'Choose {cards_to_discard} card(s) to discard:'
+        s.decision.text = f'Player {self.player}: choose {cards_to_discard} card(s) to discard:'
         return False
 
 
 class TrashCard(Event):
-    def __init__(self, zone: Zone, playerNum: int, card: Card) -> None:
+    def __init__(self, zone: Zone, player: int, card: Card) -> None:
         self.zone = zone
-        self.eventPlayer = playerNum
+        self.player = player
         self.card = card
 
     def advance(self, s: State):
-        s.trashCard(self.zone, self.eventPlayer, self.card)
+        s.trashCard(self.card, self.zone, self.player)
+        return True
 
 class RemodelExpand(Event):
     def __init__(self, source: Card, gained_value: int):
@@ -646,7 +684,7 @@ class PlayActionNTimes(Event):
         pState = s.playerStates[s.player]
 
         if not self.target:
-            if pState.actions == 0:
+            if pState.getActionCardCount(pState.hand) == 0:
                 print(f'Player {s.player} has no actions to play')
                 return True
 

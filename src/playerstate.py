@@ -5,7 +5,6 @@ from treasurecard import TreasureCard, Copper
 from victorycard import VictoryCard, Estate
 from typing import List
 
-
 import random
 
 class PlayerState:
@@ -25,7 +24,7 @@ class PlayerState:
         elif (gameConfig.startingSplit == StartingSplit.Starting25Split):
         	self.deck = [Copper() for i in range(5)] + [Estate() for i in range(3)] + [Copper() for i in range(2)]
         else:
-        	self.deck = [Copper() for i in range(5)] + [Estate() for i in range(3)]
+        	self.deck = [Copper() for i in range(7)] + [Estate() for i in range(3)]
         	random.shuffle(self.deck)
 
     def getTotalCards(self) -> int:

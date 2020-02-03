@@ -4,14 +4,13 @@ from victorycard import *
 from typing import List
 import random
 
-def removeCard(card_list: List, card: Card) -> Card:
+def removeCard(card: Card, card_list: List) -> Card:
     for i, c in enumerate(card_list):
         if c == card:
             return card_list.pop(i)
-
     return None
 
-def moveCard(src: List, dest: List, card: Card) -> None:
-    x = removeCard(src, card)
-    assert(x is not None)
-    dest.append(card)
+def moveCard(card: Card, src: List, dest: List) -> None:
+    x = removeCard(card, src)
+    assert x is not None, f'Failed to remove {card} from {src}'
+    dest.append(x)

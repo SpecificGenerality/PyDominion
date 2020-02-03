@@ -4,11 +4,6 @@ from state import State, DecisionResponse
 from enums import *
 
 class Player(ABC):
-    def __init__(self, player_id: int, s: PlayerState):
-        self.id = player_id
-        self.pState = s
-        return
-
     @abstractmethod
     def makeDecision(self, s: State, response: DecisionResponse):
         pass
@@ -16,28 +11,49 @@ class Player(ABC):
 class HumanPlayer(Player):
     def makeDecision(self, s: State, response: DecisionResponse):
         d = s.decision
+        print(response)
         if d.type == DecisionType.DecisionSelectCards:
             cardsToPick = -1
             d.printCardChoices()
             while (cardsToPick < d.minCards or cardsToPick > d.maxCards):
-                cardsToPick = int(input(f'Pick between {d.minCards} and {d.maxCards} of the above cards:\n'))
+                text = ''
+                while not text:
+                    text = input(f'Pick between {d.minCards} and {d.maxCards} of the above cards:\n')
+                cardsToPick = int(text)
 
             responseIdxs = []
             for i in range(cardsToPick):
                 cardIdx = -1
-                while (cardIdx == -1 or cardIdx in responseIdxs):
+                while (cardIdx == -1 or cardIdx in responseIdxs or cardIdx >= len(d.cardChoices)):
                     d.printCardChoices()
-                    cardIdx = int(input(f'Choose another card:\n'))
+                    text = ''
+                    while not text:
+                        text = input(f'Choose another card:\n')
+                    cardIdx = int(text)
                 responseIdxs.append(cardIdx)
                 response.cards.append(d.cardChoices[cardIdx])
+                if len(responseIdxs) == 1:
+                    response.singleCard = d.cardChoices[cardIdx]
         elif d.type == DecisionType.DecisionDiscreteChoice:
             choice = -1
             while choice == -1 or choice > d.minCards:
-                choice = int(input(f'Please make a discrete choice from the above cards:\n'))
+                text = ''
+                while not text:
+                    text = input(f'Please make a discrete choice from the above cards:\n')
+                choice = int(text)
                 d.printCardChoices()
             response.choice = choice
         else:
             print(f'Player {self.id} given invalid decision type.')
 
     def __str__(self):
-        return f"Human Player {self.id}"
+        return f"Human Player"
+
+
+class PlayerInfo:
+    def __init__(self, id: int, controller: Player):
+        self.id = id
+        self.controller = controller
+
+    def __str__(self):
+        return f'{self.controller} {self.id}'

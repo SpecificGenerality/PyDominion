@@ -10,7 +10,7 @@ class VictoryCard(Card):
         return 0
 
     def getPlusActions(self):
-        raise 0
+        return 0
 
     def getPlusBuys(self):
         return 0

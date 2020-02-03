@@ -9,7 +9,7 @@ class CardEffect(ABC):
     def playAction(self, s: State):
         pass
 
-    def canProcessDecision(self) -> bool:
+    def canProcessDecisions(self) -> bool:
         return False
 
     def processDecision(self, s: State, response: DecisionResponse):

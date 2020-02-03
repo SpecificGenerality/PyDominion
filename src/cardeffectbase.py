@@ -1,9 +1,9 @@
 from cardeffect import CardEffect
 from cursecard import *
-from event import *
 from enums import *
-from state import State, DecisionResponse
+from state import *
 from treasurecard import Copper, Silver, TreasureCard
+from utils import containsCard
 
 class CellarEffect(CardEffect):
     def playAction(self, s: State):
@@ -14,14 +14,14 @@ class CellarEffect(CardEffect):
         else:
             print(f'Player {s.player} has no cards to discard')
 
-    def canProcessDecision(self):
+    def canProcessDecisions(self):
         return True
 
     def processDecision(self, s: State, response: DecisionResponse):
         for card in response.cards:
             s.events.append(DrawCard(s.player))
         for card in response.cards:
-            s.events.append(DiscardCard(DiscardZone.Hand, s.player, card))
+            s.events.append(DiscardCard(DiscardZone.DiscardFromHand, s.player, card))
 
 class ChapelEffect(CardEffect):
     def playAction(self, s:State):
@@ -32,7 +32,7 @@ class ChapelEffect(CardEffect):
         else:
             print(f'Player {s.player} has no cards to trash')
 
-    def canProcessDecision(self):
+    def canProcessDecisions(self):
         return True
 
     def processDecision(self, s: State, response: DecisionResponse):
@@ -41,20 +41,21 @@ class ChapelEffect(CardEffect):
 
 class MoneylenderEffect(CardEffect):
     def playAction(self, s: State):
-        if Copper() in s.playerStates[s.player].hand:
-            s.events.append(TrashCard(Zone.Hand, s.player, Copper()))
+        trashIdx = getFirstIndex(Copper(), s.playerStates[s.player].hand)
+        if trashIdx >= 0:
+            s.events.append(TrashCard(Zone.Hand, s.player, s.playerStates[s.player].hand[trashIdx]))
             s.playerStates[s.player].coins += 3
         else:
             print(f'Player {s.player} has no coppers to trash')
 
 class WorkshopEffect(CardEffect):
     def playAction(self, s: State):
-        s.decision.gainCardFromSupply(s, self.c, 0, 4)
+        s.decision.gainCardFromSupply(s.data.supply, self.c, 0, 4)
         if not s.decision.cardChoices:
             s.decision.type = DecisionType.DecisionNone
             print(f'Player {s.player} has no cards to gain')
 
-    def canProcessDecision(self):
+    def canProcessDecisions(self):
         return True
 
     def processDecision(self, s: State, response: DecisionResponse):
@@ -64,8 +65,8 @@ class WorkshopEffect(CardEffect):
 class MilitiaEffect(CardEffect):
     def playAction(self, s: State):
         for player in s.data.players:
-            if player == s.player:
-                s.events.append(DiscardDowntToN(self.c, player, 3))
+            if player != s.player:
+                s.events.append(DiscardDownToN(self.c, player, 3))
 
 class RemodelEffect(CardEffect):
     def playAction(self, s: State):
@@ -92,7 +93,7 @@ class MineEffect(CardEffect):
 class LibraryEffect(CardEffect):
     def playAction(self, s: State):
         if len(s.playerStates[s.player].hand) < 7:
-            s.event.append(EventLibrary(self.c))
+            s.events.append(EventLibrary(self.c))
         else:
             print(f'Player {s.player} already has 7 cards in hand')
 
@@ -100,7 +101,7 @@ class WitchEffect(CardEffect):
     def playAction(self, s: State):
         for player in s.data.players:
             if player != s.player:
-                s.event.append(GainCard(GainZone.GainToDiscard, player, Curse(), False, True))
+                s.events.append(GainCard(GainZone.GainToDiscard, player, Curse(), False, True))
 
 class GardensEffect(CardEffect):
     def victoryPoints(self, s: State, player: int):
@@ -114,13 +115,13 @@ class BureaucratEffect(CardEffect):
             if player != s.player:
                 s.events.append(BureaucratAttack(self.c, player))
 
-    def canProcessDecision(self):
+    def canProcessDecisions(self):
         return True
 
     def processDecision(self, s: State, response: DecisionResponse):
         c = response.cards[0]
         pState = s.playerStates[s.decision.controllingPlayer]
-        moveCard(pState.hand, pState.deck)
+        moveCard(c, pState.hand, pState.deck)
         print(f'Player {s.decision.controllingPlayer} puts {c} from their hand onto their deck')
 
 class ThroneRoomEffect(CardEffect):

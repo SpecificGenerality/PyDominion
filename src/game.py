@@ -9,7 +9,7 @@ class Game:
     def __init__(self, config: GameConfig, data: GameData):
         self.gameConfig = config
         self.state = State(config, data)
-        self.players = [HumanPlayer(i, PlayerState(config)) for i in range(config.numPlayers)]
+        self.players = [PlayerInfo(i, HumanPlayer()) for i in range(config.numPlayers)]
 
     def newGame(self):
         self.state.newGame()
@@ -17,7 +17,13 @@ class Game:
     def run(self):
         d = self.state.decision
         while d.type != DecisionType.DecisionGameOver:
-            response = DecisionResponse(d.cardChoices)
-            self.players[self.state.player].makeDecision(self.state, response)
+            if d.text:
+                print(d.text)
+            response = DecisionResponse([])
+            # print(response)
+            player = self.players[self.state.player]
+            print(f'{player} \n')
+            player.controller.makeDecision(self.state, response)
+            # print(response)
             self.state.processDecision(response)
             self.state.advanceNextDecision()

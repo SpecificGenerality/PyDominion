@@ -25,7 +25,7 @@ class Copper(TreasureCard):
         return 1
 
     def getTreasure(self):
-        return 0
+        return 1
 
     def __str__(self):
         return "Copper"
@@ -38,7 +38,7 @@ class Silver(TreasureCard):
         return 2
 
     def getTreasure(self):
-        return 0
+        return 2
 
     def __str__(self):
         return "Silver"
@@ -51,7 +51,7 @@ class Gold(TreasureCard):
         return 3
 
     def getTreasure(self):
-        return 0
+        return 3
 
     def __str__(self):
         return "Gold"
@@ -64,7 +64,7 @@ class Platinum(TreasureCard):
         return 5
 
     def getTreasure(self):
-        return 0
+        return 5
 
     def __str__(self):
         return "Platinum"

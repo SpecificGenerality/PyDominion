@@ -4,7 +4,6 @@ class Card(ABC):
     def __init__(self, copies=1, turns_left=1):
         self.copies = copies
         self.turns_left = turns_left
-        self.effect = None
 
     @abstractmethod
     def getCoinCost(self) -> int:
@@ -37,9 +36,6 @@ class Card(ABC):
     @abstractmethod
     def getTreasure(self) -> int:
         pass
-
-    def __eq__(self, other) -> bool:
-        return str(self) == str(other)
 
     def __hash__(self) -> str:
         return hash(str(self))
