@@ -15,6 +15,7 @@ BASE_EFFECT_MAP = {
     Library: LibraryEffect,
     Mine: MineEffect,
     Witch: WitchEffect,
+    Gardens: GardensEffect
 }
 
 def getCardEffect(card: Card) -> CardEffect:

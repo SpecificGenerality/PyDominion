@@ -4,6 +4,7 @@ from actioncard import ActionCard
 from treasurecard import TreasureCard, Copper
 from victorycard import VictoryCard, Estate
 from typing import List
+from card import Card
 
 import random
 
@@ -41,3 +42,11 @@ class PlayerState:
 
     def getTotalCoinCount(self, cardPile: List) -> int:
         return sum(card.getPlusCoins() for card in cardPile)
+
+    def getAllCards(self) -> List[Card]:
+        allCards = self.hand.copy()
+        allCards[0:0] = self.deck
+        allCards[0:0] = self.discard
+        allCards[0:0] = self.playArea
+        allCards[0:0] = self.island
+        return allCards
