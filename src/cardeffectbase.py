@@ -6,6 +6,13 @@ from state import *
 from treasurecard import Copper, Silver, TreasureCard
 from utils import containsCard
 
+class ArtisanEffect(CardEffect):
+    def __init__(self):
+        self.c = Artisan()
+
+    def playAction(self, s: State):
+        s.events.append(EventArtisan(self.c))
+
 class CellarEffect(CardEffect):
     def __init__(self):
         self.c = Cellar()
@@ -104,7 +111,7 @@ class MineEffect(CardEffect):
         self.c = Mine()
 
     def playAction(self, s: State):
-        pState= s.playerStates[s.player]
+        pState = s.playerStates[s.player]
         if pState.getTreasureCardCount(pState.hand) > 0:
             s.decision.selectCards(self.c, 1, 1)
             s.decision.text = 'Select a treasure to trash:'
@@ -140,6 +147,25 @@ class GardensEffect(CardEffect):
     def victoryPoints(self, s: State, player: int):
         return s.playerStates[player].getTotalCards() // 10
 
+class HarbingerEffect(CardEffect):
+    def __init__(self):
+        self.c = Harbinger()
+
+    def playAction(self, s: State):
+        pState = s.playerStates[s.player]
+        if len(pState.discard) > 0:
+            s.decision.cardChoices = pState.discard
+            s.decision.selectCards(self.c, 0, 1)
+            s.decision.text = 'Choose a card from discard to move'
+        else:
+            print(f'Player {s.player} has empty discard')
+
+    def canProcessDecisions(self):
+        return True
+
+    def processDecision(self, s: State, response: DecisionResponse):
+        pState = s.playerStates[s.player]
+        moveCard(pState.discard[response.choice], pState.discard, pState.deck)
 
 class BureaucratEffect(CardEffect):
     def __init__(self):

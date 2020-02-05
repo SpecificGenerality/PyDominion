@@ -235,8 +235,6 @@ class State:
                     self.events.append(GainCard(GainZone.GainToDiscard, self.player, singleCard, True, False))
         else:
             import constants
-            print(f'Event stack size: {len(self.events)}')
-            # print(f'Event stack: {self.events}')
             activeCardEffect = constants.getCardEffect(self.decision.activeCard)
             if activeCardEffect and activeCardEffect.canProcessDecisions():
                 activeCardEffect.processDecision(self, response)
@@ -341,7 +339,6 @@ class State:
                 print(f'Player {self.player} has ${pState.coins}')
                 for cardClass, cardCount in self.data.supply.items():
                     card = cardClass()
-                    # print(f'{i}: {card}')
                     if self.getSupplyCost(card) <= pState.coins and cardCount > 0:
                         self.decision.cardChoices.append(card)
                     i += 1
@@ -574,7 +571,6 @@ class DiscardDownToN(Event):
     def processDecision(self, s: State, response: DecisionResponse):
         for card in response.cards:
             s.events.append(DiscardCard(DiscardZone.DiscardFromHand, s.decision.controllingPlayer, card))
-        print(f'Done processing discarddown')
         self.done = True
 
     def attackedPlayer(self) -> int:
@@ -646,6 +642,33 @@ class RemodelExpand(Event):
 
     def __str__(self):
         return f'RemodelExpand'
+
+class EventArtisan(Event):
+    def __init__(self, source: Card):
+        self.source = source
+        self.gained_card = None
+        self.done = False
+
+    def advance(self, s: State):
+        if self.done:
+            return True
+        s.decision.gainCardFromSupply(s, self.source, 0, 5)
+        s.decision.text = 'Choose a card to gain'
+        return False
+
+    def canProcessDecisions(self):
+        return True
+
+    def processDecision(self, s: State, response: DecisionResponse):
+        pState = s.playerStates[s.player]
+        if not self.gained_card:
+            self.gained_card = response.cards[0]
+            s.events.append(PutOnDeckDownToN(self.source, s.player, len(pState.hand)))
+            s.events.append(GainCard(GainZone.GainToHand, s.player, response.cards[0]))
+            self.done = True
+
+    def __str__(self):
+        return 'EventArtisan'
 
 class EventMine(Event):
     def __init__(self, source: Card):
@@ -789,6 +812,54 @@ class MoatReveal(Event):
 
     def __str__(self):
         return f'MoatReveal'
+
+class PutOnDeckDownToN(Event):
+    def __init__(self, source: Card, player: int, handSize: int, is_attack = False):
+        self.source = source
+        self.player = player
+        self.handSize = handSize
+        self.done = False
+        self.annotations = AttackAnnotations if is_attack else None
+        self.is_attack = is_attack
+
+    def isAttack(self):
+        return self.is_attack
+
+    def attackedPlayer(self):
+        return self.player if self.is_attack else -1
+
+    def getAttackAnnotations(self):
+        return self.annotations
+
+    def advance(self, s: State):
+        if self.done:
+            return True
+
+        currentHandSize = len(s.playerStates[self.player].hand)
+        cardsToDiscard = currentHandSize - self.handSize
+
+        if cardsToDiscard <= 0:
+            print(f'Player {self.player} has {currentHandSize} cards in hand')
+            return True
+
+        s.decision.selectCards(self.source, cardsToDiscard, cardsToDiscard)
+        s.decision.cardChoices = s.playerStates[self.player].hand
+        s.decision.controllingPlayer = self.player
+        s.decision.text = f'Choose {cardsToDiscard} card(s) to put on top of your deck:'
+        return False
+
+    def canProcessDecisions(self):
+        return True
+
+    def processDecision(self, s: State, response: DecisionResponse):
+        pState = s.playerStates[self.player]
+        for card in response.cards:
+            print(f'Player {self.player} puts {card} on top of their deck')
+            moveCard(card, pState.hand, pState.deck)
+        self.done = True
+
+    def __str__(self):
+        return f'PD{self.handSize}'
 
 class PlayActionNTimes(Event):
     def __init__(self, source: Card, count: int):

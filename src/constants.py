@@ -4,8 +4,10 @@ from cardeffectbase import *
 
 # TODO: Implement Artisan, Sentry, Bandit, Poacher
 BASE_EFFECT_MAP = {
+    Artisan: ArtisanEffect,
     Chapel: ChapelEffect,
     Cellar: CellarEffect,
+    Harbinger: HarbingerEffect,
     Workshop: WorkshopEffect,
     Bureaucrat: BureaucratEffect,
     Militia: MilitiaEffect,

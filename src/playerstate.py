@@ -1,7 +1,7 @@
 from config import GameConfig
 from enums import StartingSplit
 from actioncard import ActionCard
-from treasurecard import TreasureCard, Copper
+from treasurecard import *
 from victorycard import VictoryCard, Estate
 from typing import List
 from card import Card
@@ -21,11 +21,11 @@ class PlayerState:
         self.turns = 0
 
         if (gameConfig.startingSplit == StartingSplit.Starting34Split):
-        	self.deck = [Copper() for i in range(3)] + [Estate() for i in range(2)] + [Copper() for i in range(4)] + [Estate()]
+        	self.deck = [Silver() for i in range(3)] + [Estate() for i in range(2)] + [Copper() for i in range(4)] + [Estate()]
         elif (gameConfig.startingSplit == StartingSplit.Starting25Split):
-        	self.deck = [Copper() for i in range(5)] + [Estate() for i in range(3)] + [Copper() for i in range(2)]
+        	self.deck = [Silver() for i in range(5)] + [Estate() for i in range(3)] + [Copper() for i in range(2)]
         else:
-        	self.deck = [Copper() for i in range(7)] + [Estate() for i in range(3)]
+        	self.deck = [Silver() for i in range(7)] + [Estate() for i in range(3)]
         	random.shuffle(self.deck)
 
     def getTotalCards(self) -> int:

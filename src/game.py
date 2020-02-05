@@ -9,7 +9,7 @@ class Game:
     def __init__(self, config: GameConfig, data: GameData):
         self.gameConfig = config
         self.state = State(config, data)
-        self.players = [PlayerInfo(i, RandomPlayer()) for i in range(config.numPlayers)]
+        self.players = [PlayerInfo(i, HumanPlayer()) for i in range(config.numPlayers)]
 
     def newGame(self):
         self.state.newGame()
@@ -19,7 +19,7 @@ class Game:
             player = playerInfo.id
             score = self.state.getPlayerScore(player)
             counter = self.state.getCardCounts(player)
-            print(f'====Player {player} Stats====\nScore: {score}\nCards: {counter}\nCards:{self.state.playerStates[player].getAllCards()}')
+            print(f'====Player {player} Stats====\nScore: {score}\nCards: {counter}')
 
     def run(self):
         d = self.state.decision

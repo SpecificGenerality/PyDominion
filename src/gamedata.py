@@ -10,10 +10,12 @@ from random import shuffle
 class GameData:
 
     def __init__(self, config: GameConfig):
-        def initKingdomCards(supply: Dict) -> None:
+        def initKingdomCards(supply: Dict, must_include = [Artisan, Harbinger]) -> None:
+            for i in range(min(config.kingdomSize, len(must_include))):
+                supply[must_include[i]] = 10
+
             shuffle(config.randomizerDeck)
-            # for i in range(config.kingdomSize):
-            for i in range(len(config.randomizerDeck)):
+            for i in range(config.kingdomSize - len(must_include)):
                 supply[config.randomizerDeck[i]] = 10
 
         def initSupply(supply: Dict) -> None:
