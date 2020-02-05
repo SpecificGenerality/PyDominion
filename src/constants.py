@@ -2,7 +2,7 @@ from card import Card
 from actioncard import *
 from cardeffectbase import *
 
-# TODO: Implement Artisan, Sentry, Bandit, Poacher
+# TODO: Implement Sentry, Bandit, Poacher
 BASE_EFFECT_MAP = {
     Artisan: ArtisanEffect,
     Chapel: ChapelEffect,
@@ -16,6 +16,7 @@ BASE_EFFECT_MAP = {
     ThroneRoom: ThroneRoomEffect,
     Library: LibraryEffect,
     Mine: MineEffect,
+    Poacher: PoacherEffect,
     Witch: WitchEffect,
     Gardens: GardensEffect
 }

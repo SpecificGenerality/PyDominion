@@ -147,6 +147,28 @@ class GardensEffect(CardEffect):
     def victoryPoints(self, s: State, player: int):
         return s.playerStates[player].getTotalCards() // 10
 
+class PoacherEffect(CardEffect):
+    def __init__(self):
+        self.c = Poacher()
+
+    def playAction(self, s: State):
+        pState = s.playerStates[s.player]
+        numEmptySupply = s.numEmptySupply()
+        if numEmptySupply > 0 and pState.hand:
+            numCards = min(len(pState.hand), numEmptySupply)
+            s.decision.selectCards(self.c, numCards, numCards)
+            s.decision.cardChoices = pState.hand
+            s.decision.text = 'Choose card(s) to discard'
+        else:
+            print(f'No empty supply piles or hand empty')
+
+    def canProcessDecisions(self):
+        return True
+
+    def processDecision(self, s: State, response: DecisionResponse):
+        for card in response.cards:
+            s.events.append(DiscardCard(DiscardZone.DiscardFromHand, s.player, card))
+
 class HarbingerEffect(CardEffect):
     def __init__(self):
         self.c = Harbinger()
