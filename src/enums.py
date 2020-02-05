@@ -29,6 +29,7 @@ class DiscardZone(Enum):
     DiscardFromHand = auto()
     # E.g. Draw k until <condition>, then discard. (library, saboteur)
     DiscardFromSideZone = auto()
+    DiscardFromDeck = auto()
 
 class StartingSplit(Enum):
     Starting25Split = auto()

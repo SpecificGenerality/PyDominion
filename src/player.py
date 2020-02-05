@@ -4,11 +4,13 @@ from state import State, DecisionResponse
 from enums import *
 from actioncard import ActionCard
 import random
+import logging
 
 class Player(ABC):
     @abstractmethod
     def makeDecision(self, s: State, response: DecisionResponse):
         pass
+
 class RandomPlayer(Player):
     def makeDecision(self, s: State, response: DecisionResponse):
         d = s.decision
@@ -26,10 +28,11 @@ class RandomPlayer(Player):
         elif d.type == DecisionType.DecisionDiscreteChoice:
             response.choice = random.randint(0, d.minCards)
         else:
-            print(f'ERROR: Invalid Decision type')
+            logging.error(f'Invalid decision type')
 
     def __str__(self):
         return f'Random Player'
+
 class HumanPlayer(Player):
     def makeDecision(self, s: State, response: DecisionResponse):
         d = s.decision
@@ -65,7 +68,7 @@ class HumanPlayer(Player):
                 d.printCardChoices()
             response.choice = choice
         else:
-            print(f'Player {self.id} given invalid decision type.')
+            logging.error(f'Player {self.id} given invalid decision type.')
 
     def __str__(self):
         return f"Human Player"

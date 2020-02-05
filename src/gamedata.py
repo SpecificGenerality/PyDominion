@@ -10,7 +10,7 @@ from random import shuffle
 class GameData:
 
     def __init__(self, config: GameConfig):
-        def initKingdomCards(supply: Dict, must_include = [Merchant]) -> None:
+        def initKingdomCards(supply: Dict, must_include = []) -> None:
             for i in range(min(config.kingdomSize, len(must_include))):
                 supply[must_include[i]] = 10
 
@@ -43,7 +43,6 @@ class GameData:
         self.supply = {}
         initSupply(self.supply)
         initKingdomCards(self.supply)
-        print(f'Supply: {self.supply}')
         self.players = range(config.numPlayers)
         self.trash = []
 

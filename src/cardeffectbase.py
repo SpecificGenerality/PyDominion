@@ -5,6 +5,7 @@ from enums import *
 from state import *
 from treasurecard import Copper, Silver, TreasureCard
 from utils import containsCard
+import logging
 
 class ArtisanEffect(CardEffect):
     def __init__(self):
@@ -12,6 +13,29 @@ class ArtisanEffect(CardEffect):
 
     def playAction(self, s: State):
         s.events.append(EventArtisan(self.c))
+
+class SentryEffect(CardEffect):
+    def __init__(self):
+        self.c = Sentry()
+
+    def playAction(self, s: State):
+        deck = s.playerStates[s.player].deck
+        if not deck:
+            return
+
+        numCards = min(2, len(deck))
+        s.decision.selectCards(self.c, 0, numCards)
+        s.decision.cardChoices = deck[-numCards:]
+        s.decision.text = 'Select cards to discard'
+
+    def canProcessDecisions(self):
+        return True
+
+    def processDecision(self, s: State, response: DecisionResponse):
+        for card in response.cards:
+            s.events.append(DiscardCard(DiscardZone.DiscardFromDeck, s.player, card))
+        s.events.append(EventSentry(self.c, s.player, response.cards.copy()))
+
 
 class CellarEffect(CardEffect):
     def __init__(self):
@@ -23,7 +47,7 @@ class CellarEffect(CardEffect):
             s.decision.text = "Select cards to discard"
             s.decision.cardChoices = s.playerStates[s.player].hand
         else:
-            print(f'Player {s.player} has no cards to discard')
+            logging.info(f'Player {s.player} has no cards to discard')
 
     def canProcessDecisions(self):
         return True
@@ -44,16 +68,14 @@ class ChapelEffect(CardEffect):
             s.decision.text = "Select up to 4 cards to trash"
             s.decision.cardChoices = s.playerStates[s.player].hand
         else:
-            print(f'Player {s.player} has no cards to trash')
+            logging.info(f'Player {s.player} has no cards to trash')
 
     def canProcessDecisions(self):
         return True
 
     def processDecision(self, s: State, response: DecisionResponse):
-        print(f'processing decision for ChapelEffect')
         for card in response.cards:
             s.events.append(TrashCard(Zone.Hand, s.player, card))
-            print(f'Appended TrashCard to event stack')
 
 class MoneylenderEffect(CardEffect):
     def __init__(self):
@@ -65,7 +87,7 @@ class MoneylenderEffect(CardEffect):
             s.events.append(TrashCard(Zone.Hand, s.player, s.playerStates[s.player].hand[trashIdx]))
             s.playerStates[s.player].coins += 3
         else:
-            print(f'Player {s.player} has no coppers to trash')
+            logging.info(f'Player {s.player} has no coppers to trash')
 
 class WorkshopEffect(CardEffect):
     def __init__(self):
@@ -75,7 +97,7 @@ class WorkshopEffect(CardEffect):
         s.decision.gainCardFromSupply(s, self.c, 0, 4)
         if not s.decision.cardChoices:
             s.decision.type = DecisionType.DecisionNone
-            print(f'Player {s.player} has no cards to gain')
+            logging.info(f'Player {s.player} has no cards to gain')
 
     def canProcessDecisions(self):
         return True
@@ -104,7 +126,7 @@ class RemodelEffect(CardEffect):
             s.decision.cardChoices = s.playerStates[s.player].hand
             s.events.append(RemodelExpand(self.c, 2))
         else:
-            print(f'Player {s.player} has no cards to trash')
+            logging.info(f'Player {s.player} has no cards to trash')
 
 class MineEffect(CardEffect):
     def __init__(self):
@@ -120,7 +142,7 @@ class MineEffect(CardEffect):
                     s.decision.addUniqueCard(card)
             s.events.append(EventMine(self.c))
         else:
-            print(f'Player {s.player} has no treasures to trash')
+            logging.info(f'Player {s.player} has no treasures to trash')
 
 class LibraryEffect(CardEffect):
     def __init__(self):
@@ -130,7 +152,7 @@ class LibraryEffect(CardEffect):
         if len(s.playerStates[s.player].hand) < 7:
             s.events.append(EventLibrary(self.c))
         else:
-            print(f'Player {s.player} already has 7 cards in hand')
+            logging.info(f'Player {s.player} already has 7 cards in hand')
 
 class WitchEffect(CardEffect):
     def __init__(self):
@@ -159,8 +181,6 @@ class PoacherEffect(CardEffect):
             s.decision.selectCards(self.c, numCards, numCards)
             s.decision.cardChoices = pState.hand
             s.decision.text = 'Choose card(s) to discard'
-        else:
-            print(f'No empty supply piles or hand empty')
 
     def canProcessDecisions(self):
         return True
@@ -180,7 +200,7 @@ class HarbingerEffect(CardEffect):
             s.decision.cardChoices = pState.discard
             s.decision.text = 'Choose a card from discard to move'
         else:
-            print(f'Player {s.player} has empty discard')
+            logging.info(f'Harbinger has no effect: player {s.player} has empty discard')
 
     def canProcessDecisions(self):
         return True
