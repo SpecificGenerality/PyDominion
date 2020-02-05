@@ -7,10 +7,10 @@ from typing import List
 from card import Card
 
 def getBaseKingdomCards() -> List:
-    # TODO: Implement Sentry, Bandit, Poacher, Vassal, Merchant
+    # TODO: Implement Sentry, Bandit, Vassal, Merchant
     return [Artisan, Harbinger, Cellar, Chapel, Moat, Harbinger, \
         Village, Bureaucrat, Remodel, Gardens, Workshop, \
-        Militia, Moneylender, Smithy, ThroneRoom, \
+        Militia, Moneylender, Poacher, Smithy, ThroneRoom, \
         CouncilRoom, Festival, Laboratory, \
         Library, Market, Mine, Witch]
 

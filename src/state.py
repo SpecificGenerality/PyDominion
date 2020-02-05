@@ -178,13 +178,22 @@ class State:
             effect.playAction(self)
 
     def processTreasure(self, card: Card):
+        pState = self.playerStates[self.player]
+        def getMerchantCoins() -> int:
+            if isinstance(card, Silver) and sum([1 if isinstance(c, Silver) else 0 for c in pState.playArea]) == 1:
+                return sum([1 if isinstance(card, Merchant) else 0 for card in pState.playArea])
+            else:
+                return 0
+
         import constants
 
         assert isinstance(card, TreasureCard), 'Attemped to processTreasure a non-treasure card'
-        pState = self.playerStates[self.player]
         treasureValue = card.getTreasure()
+        merchantCoins = getMerchantCoins()
         print(f'Player {self.player} gets ${treasureValue}')
         pState.coins += treasureValue
+        pState.coins += getMerchantCoins()
+        print(f'Player {self.player} gets ${merchantCoins} from Merchant')
         pState.buys += card.getPlusBuys()
 
         effect = constants.getCardEffect(card)
@@ -192,7 +201,6 @@ class State:
             effect.playAction(self)
 
     def processDecision(self, response: DecisionResponse):
-        print(f'{response}')
         if self.decision.type == DecisionType.DecisionGameOver:
             return
         assert self.decision.type != DecisionType.DecisionNone, 'No decision active'
