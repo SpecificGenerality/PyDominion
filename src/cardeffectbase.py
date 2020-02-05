@@ -154,8 +154,8 @@ class HarbingerEffect(CardEffect):
     def playAction(self, s: State):
         pState = s.playerStates[s.player]
         if len(pState.discard) > 0:
-            s.decision.cardChoices = pState.discard
             s.decision.selectCards(self.c, 0, 1)
+            s.decision.cardChoices = pState.discard
             s.decision.text = 'Choose a card from discard to move'
         else:
             print(f'Player {s.player} has empty discard')
@@ -184,7 +184,6 @@ class BureaucratEffect(CardEffect):
         c = response.cards[0]
         pState = s.playerStates[s.decision.controllingPlayer]
         moveCard(c, pState.hand, pState.deck)
-        print(f'Player {s.decision.controllingPlayer} puts {c} from their hand onto their deck')
 
 class ThroneRoomEffect(CardEffect):
     def __init__(self):
