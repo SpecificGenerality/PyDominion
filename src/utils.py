@@ -8,11 +8,11 @@ from card import Card
 
 def getBaseKingdomCards() -> List:
     # TODO: Implement Sentry, Bandit, Vassal, Merchant
-    return [Artisan, Harbinger, Cellar, Chapel, Moat, Harbinger, \
-        Village, Bureaucrat, Remodel, Gardens, Workshop, \
-        Militia, Moneylender, Poacher, Smithy, ThroneRoom, \
-        CouncilRoom, Festival, Laboratory, \
-        Library, Market, Mine, Witch]
+    return [Cellar, Chapel, Moat, \
+        Harbinger, Merchant, Village, Workshop, \
+        Bureaucrat, Gardens, Militia, Moneylender, Poacher, Remodel, Smithy, ThroneRoom, \
+        CouncilRoom, Festival, Laboratory, Library, Market, Mine, Witch, \
+        Artisan]
 
 def containsCard(card: Card, cards: List[Card]):
     cardName = str(card)

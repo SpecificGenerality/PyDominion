@@ -1,6 +1,6 @@
 from config import GameConfig
 from enums import StartingSplit
-from actioncard import ActionCard, Sentry
+from actioncard import ActionCard, Merchant
 from treasurecard import *
 from victorycard import VictoryCard, Estate
 from typing import List
@@ -28,6 +28,17 @@ class PlayerState:
         	self.deck = [Copper() for i in range(7)] + [Estate() for i in range(3)]
         	random.shuffle(self.deck)
 
+    def getAllCards(self) -> List[Card]:
+        allCards = self.hand.copy()
+        allCards[0:0] = self.deck
+        allCards[0:0] = self.discard
+        allCards[0:0] = self.playArea
+        allCards[0:0] = self.island
+        return allCards
+
+    def getTotalTreasureValue(self) -> int:
+        return sum(c.getTreasure() for c in self.getAllCards())
+
     def getTotalCards(self) -> int:
         return len(self.deck) + len(self.hand) + len(self.discard) + len(self.playArea) + len(self.island)
 
@@ -42,11 +53,3 @@ class PlayerState:
 
     def getTotalCoinCount(self, cardPile: List) -> int:
         return sum(card.getPlusCoins() for card in cardPile)
-
-    def getAllCards(self) -> List[Card]:
-        allCards = self.hand.copy()
-        allCards[0:0] = self.deck
-        allCards[0:0] = self.discard
-        allCards[0:0] = self.playArea
-        allCards[0:0] = self.island
-        return allCards

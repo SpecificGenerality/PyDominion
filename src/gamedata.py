@@ -10,13 +10,14 @@ from random import shuffle
 class GameData:
 
     def __init__(self, config: GameConfig):
+        # Gardens, Workshop, Laboratory, Village, Witch, Festival, Mine, Chapel, CouncilRoom, Gardens
         def initKingdomCards(supply: Dict, must_include = []) -> None:
             for i in range(min(config.kingdomSize, len(must_include))):
                 supply[must_include[i]] = 10
 
-            shuffle(config.randomizerDeck)
+            shuffle(config.randomizers)
             for i in range(config.kingdomSize - len(must_include)):
-                supply[config.randomizerDeck[i]] = 10
+                supply[config.randomizers[i]] = 10
 
         def initSupply(supply: Dict) -> None:
             if config.numPlayers == 2:
@@ -46,5 +47,10 @@ class GameData:
         self.players = range(config.numPlayers)
         self.trash = []
 
+    def printKingdom(self) -> None:
+        kingdom = []
+        for k, _ in self.supply.items():
+            kingdom.append(k())
+        print(kingdom)
 if __name__=='__main__':
     x = GameData(GameConfig(StartingSplit.Starting34Split, False, 2))

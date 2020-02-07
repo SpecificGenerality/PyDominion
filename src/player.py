@@ -3,6 +3,7 @@ from playerstate import PlayerState
 from state import State, DecisionResponse
 from enums import *
 from actioncard import ActionCard
+from heuristics import *
 import random
 import logging
 
@@ -10,6 +11,49 @@ class Player(ABC):
     @abstractmethod
     def makeDecision(self, s: State, response: DecisionResponse):
         pass
+
+class BigMoneyPlayer(Player):
+    def __init__(self):
+        self.heuristic = PlayerHeuristic(BigMoneyBuyAgenda())
+
+    def makePhaseDecision(self, s: State, response: DecisionResponse):
+        player = s.decision.controllingPlayer
+        d = s.decision
+        if s.phase == Phase.ActionPhase:
+            self.heuristic.makeGreedyActionDecision(s, response)
+        elif s.phase == Phase.TreasurePhase:
+            response.singleCard = d.cardChoices[0]
+        else:
+            response.singleCard = self.heuristic.agenda.buy(s, player, d.cardChoices)
+        return
+
+    def makeDecision(self, s: State, response: DecisionResponse):
+        d = s.decision
+        if d.type != DecisionType.DecisionSelectCards and d.type != DecisionType.DecisionDiscreteChoice:
+            logging.error('Invalid decision type')
+        if not d.activeCard:
+            self.makePhaseDecision(s, response)
+        elif s.events:
+            event = s.events[-1]
+            if isinstance(event, PutOnDeckDownToN):
+                self.heuristic.makePutDownOnDeckDecision(s, response)
+            elif isinstance(event, DiscardDownToN):
+                self.heuristic.makeDiscardDownDecision(s, response)
+            elif isinstance(event, RemodelExpand):
+                if not event.trashed_card:
+                    def scoringFunction(card: Card):
+                        if isinstance(card, Curse):
+                            return 19
+                        elif isinstance(card, Estate):
+                            return 18
+                        elif isinstance(card, VictoryCard):
+                            return -200 + card.getCoinCost()
+                        return -card.getCoinCost()
+                    heuristicSelectCards(s, response, scoringFunction)
+                else:
+                    response.cards.append(self.heuristic.agenda.forceBuy(s, player, d.cardChoices))
+            else:
+                self.heuristic.makeBaseDecision(s, response)
 
 class RandomPlayer(Player):
     def makeDecision(self, s: State, response: DecisionResponse):

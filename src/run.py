@@ -1,4 +1,3 @@
-import pygame
 from game import Game
 from gamedata import GameData
 from config import GameConfig
@@ -8,7 +7,7 @@ from player import *
 def main():
     config = GameConfig(StartingSplit.StartingRandomSplit, prosperity=False, numPlayers=2)
     data = GameData(config)
-    players = [HumanPlayer() for i in range(2)]
+    players = [HumanPlayer(), BigMoneyPlayer()]
     dominion = Game(config, data, players)
 
     dominion.newGame()

@@ -22,7 +22,7 @@ class Curse(Card):
     def getPlusCoins(self) -> int:
         return 0
 
-    def getTreasure(self):
+    def getTreasure(self) -> int:
         return 0
 
     def __str__(self):

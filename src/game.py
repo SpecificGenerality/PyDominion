@@ -21,10 +21,27 @@ class Game:
     def newGame(self):
         self.state.newGame()
 
-    def getStats(self, player):
+    def getWinningPlayers(self):
+        scores = [self.state.getPlayerScore(pInfo.id) for pInfo in self.players]
+        m = max(scores)
+        return [i for i, j in enumerate(scores) if j == m]
+
+    def getPlayerStats(self, player):
         score = self.state.getPlayerScore(player)
         counter = self.state.getCardCounts(player)
-        return score, counter
+        return {'Score': score, 'Cards': counter}
+
+    def getStats(self):
+        stats = {}
+        for pInfo in self.players:
+            player = pInfo.id
+            stats[player] = self.getPlayerStats(player)
+            stats['EmptyPiles'] = []
+            for k, v in self.state.data.supply.items():
+                if v == 0:
+                    stats['EmptyPiles'].append(k())
+            stats['Winners'] = self.getWinningPlayers()
+        return stats
 
     def run(self):
         d = self.state.decision
@@ -39,7 +56,7 @@ class Game:
 
         for pInfo in self.players:
             player = pInfo.id
-            score, counter = self.getStats(player)
+            score, counter = self.getPlayerStats(player)
             logging.info(f'====Player {player} Stats====\nScore: {score}\nCards: {counter}')
 
 

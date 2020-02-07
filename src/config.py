@@ -3,7 +3,7 @@ from utils import getBaseKingdomCards
 
 class GameConfig:
     def __init__(self, split: StartingSplit, prosperity: bool, numPlayers:int):
-        self.randomizerDeck = getBaseKingdomCards()
+        self.randomizers = getBaseKingdomCards()
         self.kingdomSize = GameConstants.KingdomSize
         self.startingSplit = split
         self.prosperity = prosperity

@@ -258,7 +258,7 @@ class State:
             elif len(self.events) > 0 and self.events[-1].canProcessDecisions():
                 self.events[-1].processDecision(self, response)
             else:
-                logging.error(f'Decision cannot be processed')
+                logging.error(f'Decision from {self.decision.activeCard} cannot be processed')
 
         if self.decision.controllingPlayer == -1:
             self.decision.controllingPlayer = self.player
@@ -301,6 +301,10 @@ class State:
         allCards = pState.getAllCards()
         counter = Counter([str(card) for card in allCards])
         return counter
+
+    def isDegenerate(self) -> bool:
+        supply = self.data.supply
+        return supply[Curse] == 0 and supply[Copper] == 0 and any((pState.getTotalCards() == 1 and isinstance(pState.getAllCards()[0], Chapel) ) for pState in self.playerStates)
 
     def isGameOver(self) -> bool:
         supply = self.data.supply
@@ -372,7 +376,7 @@ class State:
 
             logging.info(f'Player {self.player} ends their {pState.turns}th turn')
 
-            if self.isGameOver():
+            if self.isGameOver() or self.isDegenerate():
                 self.decision.type = DecisionType.DecisionGameOver
                 return
 
@@ -435,7 +439,7 @@ class State:
         for i in range(playerCount):
             self.drawHand(i)
 
-        self.player = random.randint(0, playerCount-1)
+        # self.player = random.randint(0, playerCount-1)
         logging.info(f'Player {self.player} starts')
         self.playerStates[self.player].turns = 1
 
@@ -494,6 +498,8 @@ class DiscardCard(Event):
             s.discardCard(self.player, self.card, pState.hand)
         elif self.zone == DiscardZone.DiscardFromDeck:
             s.discardCard(self.player, self.card, pState.deck)
+        elif self.zone == DiscardZone.DiscardFromSideZone:
+            pState.discard.append(self.card)
         else:
             logging.warning(f'Attempted to discard from non-hand zone')
         return True
@@ -544,7 +550,7 @@ class GainCard(Event):
             supply[type(self.card)] -= 1
 
             if self.bought:
-                cost = self.card.getCoinCost()
+                cost = s.getSupplyCost(self.card)
                 logging.info(f'Player {self.player} spends {cost} and buys {self.card}')
                 pState.coins -= cost
                 pState.buys -= 1
@@ -592,7 +598,7 @@ class DiscardDownToN(Event):
         cards_to_discard = current_hand_size - self.hand_size
 
         if cards_to_discard <= 0:
-            logging._ExcInfoType(f'Player {self.player} has cannot discard down: has {current_hand_size}')
+            logging.info(f'Player {self.player} has cannot discard down: has {current_hand_size}')
             return True
 
         s.decision.selectCards(self.card, cards_to_discard, cards_to_discard)
@@ -716,6 +722,35 @@ class EventLibrary(Event):
         self.done_drawing = False
         self.library_zone = []
 
+    def advance(self, s: State):
+        pState = s.playerStates[s.player]
+        current_hand_size = len(pState.hand)
+        if current_hand_size < 7 and not self.done_drawing:
+            revealed_card = None
+            if not pState.deck:
+                s.shuffle(s.player)
+            else:
+                return True
+            if not pState.deck:
+                logging.info(f'Player {s.player} tries to draw, but has no cards left')
+                self.done_drawing = True
+            else:
+                revealed_card = pState.deck.pop()
+                if isinstance(revealed_card, ActionCard):
+                    self.decision_card = revealed_card
+                    s.decision.makeDiscreteChoice(self.source, 2)
+                    logging.info(f'Player {s.player} reveals {revealed_card}')
+                    s.decision.text = f'Set aside {self.decision_card}? 0. Yes 1. No'
+                else:
+                    logging.info(f'Player {s.player} draws {revealed_card}')
+                    pState.hand.append(revealed_card)
+                return False
+        self.done_drawing = True
+        for card in self.library_zone:
+            print(card)
+            s.events.append(DiscardCard(DiscardZone.DiscardFromSideZone, s.player, card))
+        return True
+
     def canProcessDecisions(self):
         return True
 
@@ -727,32 +762,6 @@ class EventLibrary(Event):
         else:
             pState.hand.append(self.decision_card)
             logging.info(f'Player {s.player} puts {self.decision_card} into their hand')
-
-    def advance(self, s: State):
-        pState = s.playerStates[s.player]
-        current_hand_size = len(pState.hand)
-        if current_hand_size < 7 and self.done_drawing:
-            revealed_card = None
-            if not pState.deck:
-                s.shuffle(s.player)
-            if not pState.deck:
-                logging.info(f'Player {s.player} tries to draw, but has no cards left')
-                self.done_drawing = True
-            else:
-                revealed_card = pState.deck.pop()
-                if isinstance(revealed_card, ActionCard):
-                    self.decision_card = revealed_card
-                    s.decision.makeDiscreteChoice(self.source, 2)
-                    logging.info(f'Player {s.player} reveals {revealed_card}')
-                    logging.info(f'Set aside {self.decision_card}? Yes|No')
-                else:
-                    logging.info(f'Player {s.player} draws {revealed_card}')
-                    pState.hand.append(revealed_card)
-                return False
-
-        for card in self.library_zone:
-            s.events.append(DiscardCard(DiscardZone.DiscardFromSideZone, s.player, card))
-        return True
 
     def __str__(self):
         return f'EventLibrary'
@@ -811,7 +820,7 @@ class BureaucratAttack(Event):
             for card in pState.hand:
                 if isinstance(card, VictoryCard):
                     s.decision.addUniqueCard(card)
-            s.decision.text(f'Choose a victory card to put on top of your deck:')
+            s.decision.text = f'Choose a victory card to put on top of your deck'
         return True
 
     def getAttackAnnotations(self):
