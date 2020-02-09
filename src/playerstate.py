@@ -36,6 +36,14 @@ class PlayerState:
         allCards[0:0] = self.island
         return allCards
 
+    def getTerminalActionDensity(self) -> float:
+        allCards = self.getAllCards()
+        return sum(1 if isinstance(card, ActionCard) and card.getPlusActions() == 0 else 0 for card in allCards) / len(allCards)
+
+    def getTerminalDrawDensity(self) -> float:
+        allCards = self.getAllCards()
+        return sum(1 if isinstance(card, ActionCard) and card.getPlusActions() == 0 and card.getPlusCards() > 0 else 0 for card in allCards) / len(allCards)
+
     def getTotalTreasureValue(self) -> int:
         return sum(c.getTreasure() for c in self.getAllCards())
 
@@ -53,3 +61,6 @@ class PlayerState:
 
     def getTotalCoinCount(self, cardPile: List) -> int:
         return sum(card.getPlusCoins() for card in cardPile)
+
+    def hasCard(self, card):
+        return any(isinstance(c, card) for c in self.getAllCards())

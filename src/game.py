@@ -6,6 +6,7 @@ from enums import StartingSplit
 from state import State
 from typing import List
 import logging
+import numpy as np
 
 class Game:
     def __init__(self, config: GameConfig, data: GameData, players: List[Player]):
@@ -30,6 +31,13 @@ class Game:
         score = self.state.getPlayerScore(player)
         counter = self.state.getCardCounts(player)
         return {'Score': score, 'Cards': counter}
+
+    def getPlayerScores(self):
+        scores = np.zeros(len(self.players))
+        for i, pInfo in enumerate(self.players):
+            scores[i] = self.state.getPlayerScore(pInfo.id)
+
+        return scores
 
     def getStats(self):
         stats = {}

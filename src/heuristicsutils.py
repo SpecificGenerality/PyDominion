@@ -19,6 +19,9 @@ def heuristicBestCard(choices: List[Card], scoringFunction):
         v.sort(key=scoringFunction, reverse=True)
         return v[0]
 
+def getBestTDCard(choices: List[Card]):
+    return max(choices, key=lambda x: x.getPlusCards())
+
 def hasPlusActionCards(choices: List[Card]):
     return any(card.getPlusActions() > 0 for card in choices)
 
@@ -35,7 +38,8 @@ def getFirstNoActionCard(choices: List[Card]):
     return next(c.getPlusActions() == 0 and isinstance(c, ActionCard) for c in choices)
 
 def getMaxPlusCardsCard(choices: List[Card]):
-    return max(choices, key=lambda x: x.getPlusCards())
+    card = max(choices, key=lambda x: x.getPlusCards())
+    return card if card.getPlusCards() >= 2 else None
 
 def getHighestVPCard(choices: List[Card]):
     return max(choices, key=lambda x: x.getVictoryPoints())

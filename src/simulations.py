@@ -2,16 +2,19 @@ from game import Game
 from gamedata import GameData
 from config import GameConfig
 from enums import StartingSplit
+from buyagenda import *
 from victorycard import *
 from player import *
 import json
 import time
 from argparse import ArgumentParser
+import numpy as np
 
 def simulate(args: ArgumentParser, config: GameConfig, n: int):
     print('Starting game simulations...')
     start_time = time.time()
     sim_stats = {'Iters': 0, 'StartWins': 0, 'Ties': 0, 'ProvinceWins': 0, 'Degenerate': 0}
+    scores = np.zeros((n, 2))
     for i in range(n):
         iter_start_time = time.time()
         print(f'====Iteration {i}====')
@@ -21,13 +24,12 @@ def simulate(args: ArgumentParser, config: GameConfig, n: int):
         if args.strategy == 'Random':
             playerClass = RandomPlayer
         elif args.strategy == 'BigMoney':
-            playerClass = BigMoneyPlayer
+            playerClass = HeuristicPlayer
 
-        players = [RandomPlayer(), BigMoneyPlayer()]
+        players = [RandomPlayer(), HeuristicPlayer(TDBigMoneyBuyAgenda())]
         dominion = Game(config, data, players)
 
         dominion.newGame()
-        data.printKingdom()
         dominion.run()
         game_stats = dominion.getStats()
         sim_stats['Iters'] += 1
@@ -35,9 +37,13 @@ def simulate(args: ArgumentParser, config: GameConfig, n: int):
         sim_stats['Ties'] += (1 if len(game_stats['Winners']) > 1 else 0)
         sim_stats['ProvinceWins'] += 1 if any(isinstance(card, Province) for card in game_stats['EmptyPiles']) else 0
         sim_stats['Degenerate'] += 1 if dominion.state.isDegenerate() else 0
+        scores[i] = dominion.getPlayerScores()
         print(f'Time elapsed: {time.time() - iter_start_time}')
-    with open('data/R-BM-10k.txt', 'w+') as file:
+    with open('data/R-TDBM-1k.txt', 'w+') as file:
         json.dump(sim_stats, file)
+
+    np.savez('data/R-TDBM-1k', scores)
+    print()
 
     print(f'Total time elapsed: {time.time() - start_time}s')
 

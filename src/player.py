@@ -12,9 +12,9 @@ class Player(ABC):
     def makeDecision(self, s: State, response: DecisionResponse):
         pass
 
-class BigMoneyPlayer(Player):
-    def __init__(self):
-        self.heuristic = PlayerHeuristic(BigMoneyBuyAgenda())
+class HeuristicPlayer(Player):
+    def __init__(self, agenda: BuyAgenda):
+        self.heuristic = PlayerHeuristic(agenda)
 
     def makePhaseDecision(self, s: State, response: DecisionResponse):
         player = s.decision.controllingPlayer

@@ -133,7 +133,7 @@ class State:
 
     def trashCard(self, card: Card, zone: Zone, player: int) -> None:
         pState = self.playerStates[player]
-
+        # print(f'Trashing {card}')
         if zone == Zone.Hand:
             if pState.hand:
                 trashed_card = removeCard(card, pState.hand)
