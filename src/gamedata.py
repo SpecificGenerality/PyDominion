@@ -20,7 +20,7 @@ class GameData:
                 supply[config.randomizers[i]] = 10
 
         def initSupply(supply: Dict) -> None:
-            if config.numPlayers == 2:
+            if config.numPlayers <= 2:
                 supply[Copper] = 46
                 supply[Curse] = 10
                 supply[Estate] = 8

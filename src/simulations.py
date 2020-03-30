@@ -9,15 +9,16 @@ import json
 import time
 from argparse import ArgumentParser
 import numpy as np
+from ai import *
+from aiutils import *
+from tqdm import tqdm
 
 def simulate(args: ArgumentParser, config: GameConfig, n: int):
     print('Starting game simulations...')
     start_time = time.time()
     sim_stats = {'Iters': 0, 'StartWins': 0, 'Ties': 0, 'ProvinceWins': 0, 'Degenerate': 0}
     scores = np.zeros((n, 2))
-    for i in range(n):
-        iter_start_time = time.time()
-        print(f'====Iteration {i}====')
+    for i in tqdm(range(n)):
 
         data = GameData(config)
 
@@ -26,10 +27,14 @@ def simulate(args: ArgumentParser, config: GameConfig, n: int):
         elif args.strategy == 'BigMoney':
             playerClass = HeuristicPlayer
 
-        players = [RandomPlayer(), HeuristicPlayer(TDBigMoneyBuyAgenda())]
+        mcts_player = MCTSPlayer(load('mcts_chkpt_10000.pk1'))
+        players = [mcts_player, HeuristicPlayer(BigMoneyBuyAgenda())]
+
         dominion = Game(config, data, players)
 
         dominion.newGame()
+
+        mcts_player.reset(dominion.state.playerStates[0])
         dominion.run()
         game_stats = dominion.getStats()
         sim_stats['Iters'] += 1
@@ -38,14 +43,12 @@ def simulate(args: ArgumentParser, config: GameConfig, n: int):
         sim_stats['ProvinceWins'] += 1 if any(isinstance(card, Province) for card in game_stats['EmptyPiles']) else 0
         sim_stats['Degenerate'] += 1 if dominion.state.isDegenerate() else 0
         scores[i] = dominion.getPlayerScores()
-        print(f'Time elapsed: {time.time() - iter_start_time}')
-    with open('data/R-TDBM-1k.txt', 'w+') as file:
+
+    with open('data/MCTS-BM-1k.txt', 'w+') as file:
         json.dump(sim_stats, file)
 
-    np.savez('data/R-TDBM-1k', scores)
-    print()
+    np.savez('data/MCTS-BM-1k', scores)
 
-    print(f'Total time elapsed: {time.time() - start_time}s')
 
 def main(args: ArgumentParser):
     if args.split == 0:

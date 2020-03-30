@@ -8,6 +8,7 @@ import logging
 from enums import *
 from tqdm import tqdm
 import pickle
+from aiutils import *
 
 class MCTS:
     def __init__(self, T: int):
@@ -31,27 +32,36 @@ class MCTS:
             if s.phase == Phase.BuyPhase:
                 # apply selection until leaf node is reached
                 if next_node:
-                    next_node.n += 1
-                    next_node.np += 1
+                    assert next_node.parent == self.player.node
                     self.player.node = next_node
+                    self.player.node.n += 1
                 elif not self.expanded:
                 # expand one node
-                    next_node = Node(self.player.node)
-                    next_node.card = response.singleCard
-                    next_node.n += 1
-                    next_node.np += 1
+                    for c in d.cardChoices + [None]:
+                        if isinstance(c, Curse):
+                            continue
+                        leaf = Node(self.player.node)
+                        leaf.card = c
+                        self.player.node.children.append(leaf)
+                        if c == response.singleCard:
+                            next_node = leaf
                     self.expanded = True
-                    self.player.node.children.append(next_node)
                     self.player.node = next_node
+                    self.player.node.n += 1
 
             s.processDecision(response)
             s.advanceNextDecision()
 
         # backpropagate
         score = self.game.getPlayerScores()[0]
+        self.player.node.v += score
+        self.player.node = self.player.node.parent
         while self.player.node != self.player.root:
-            self.player.node.v += score
+            nodes = [n.v for n in self.player.node.children if n.n > 0]
+            self.player.node.v = sum(nodes) / len(nodes)
             self.player.node = self.player.node.parent
+
+        return score
 
     def reset(self):
         config = GameConfig(StartingSplit.StartingRandomSplit, prosperity=False, numPlayers=1)
@@ -63,21 +73,23 @@ class MCTS:
 
         self.player.reset(self.game.state.playerStates[0])
 
-    def save(self, i: int):
-        with open (f'mcts_chkpt_{i}.pk1', 'wb') as output:
-            pickle.dump(self.player.root, output, pickle.HIGHEST_PROTOCOL)
-
-    def train(self, n: int, m: int):
+    def train(self, n: int, m: int, output_iters: int):
+        scores = []
         for i in tqdm(range(n)):
             # initialize new game
             self.reset()
-            self.run()
+            score = self.run()
+            scores.append(score)
 
             if i % m == 0:
-                self.save(m)
+                save(self.player.root, m)
 
-        self.save(n)
+            if i > 0 and i % output_iters == 0:
+                print(f'Last {output_iters} avg: {sum(scores[i-output_iters:i]) / output_iters}')
+                print(f'Total {i} avg: {sum(scores) / i}')
+
+        save(self.player.root, n)
 
 if __name__ == '__main__':
-    mcts = MCTS(20)
-    mcts.train(10000, 1000)
+    mcts = MCTS(30)
+    mcts.train(100000, 1000, 1000)

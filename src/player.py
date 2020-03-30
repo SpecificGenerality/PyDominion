@@ -8,6 +8,7 @@ from mcts import *
 from cursecard import *
 import random
 import logging
+import sys
 
 class Player(ABC):
     @abstractmethod
@@ -17,18 +18,20 @@ class Player(ABC):
 
 # TODO: Expand MCTS to work outside of sandbox games
 class MCTSPlayer(Player):
-    def __init__(self):
-        self.root = Node()
+    def __init__(self, root=Node()):
+        self.root = root
         self.root.parent = self.root
-        self.root.children = [Node(self.root)] * 4
+        # To prevent clobbering trees loaded from file
+        if not root.children:
+            self.root.children = [Node(self.root) for i in range(4)]
         self.node = None
         self.C = np.sqrt(2)
 
     def reset(self, pState: PlayerState):
         self.root.n += 1
-        self.root.np += 1
         # advance MCTS from virtual root to the correct start position (2/3/4/5 coppers)
         self.node = self.root.children[pState.getTreasureCardCount(pState.hand)-2]
+        self.node.n += 1
 
     def makeDecision(self, s: State, response: DecisionResponse):
         player = s.decision.controllingPlayer
@@ -42,6 +45,8 @@ class MCTSPlayer(Player):
             if not self.node.children:
                 response.singleCard = random.choice([card for card in d.cardChoices if not isinstance(card, Curse)] + [None])
                 return None
+
+            self.node.add_unique_children(d.cardChoices)
             # the next node in the tree is the one that maximizes the UCB1 score
             next_node = max(self.node.children, key=lambda x: x.score(self.C))
             return next_node

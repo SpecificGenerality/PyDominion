@@ -1,7 +1,8 @@
 from collections import Counter
-from typing import Dict
+from typing import Dict, List
 from state import *
 import numpy as np
+import sys
 
 class MCTSState:
     def __init__(self, s: State):
@@ -22,15 +23,13 @@ class MCTSState:
         return self.deck == other.deck and self.supply == other.supply
 
 class Node:
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, card=None):
         # TODO: For non-sandbox, maybe states should be stored?
         # self.state = s
         # the card played to get from parent to current
-        self.card = None
+        self.card = card
         # number of times visited
         self.n = 0
-        # number of times the parent has been visited
-        self.np = 0
         # node value
         self.v = 0
         self.parent = parent
@@ -38,7 +37,23 @@ class Node:
 
     # UCB1 formula
     def score(self, C):
-        return self.v + C * np.sqrt(np.log(self.np) / self.n)
+        return self.v + C * np.sqrt(np.log(self.parent.n) / self.n) if self.n > 0 else sys.maxsize
+
+    def add_unique_children(self, cards: List[Card]):
+        for c in cards:
+            found = False
+            for child in self.children:
+                if str(c) == str(child.card):
+                    found = True
+            if not found:
+                self.children.append(Node(self, c))
+    # size of the subtree rooted at the current node
+    def size(self):
+        acc = 1
+        for child in self.children:
+            if child.n > 0:
+                acc += child.size()
+        return acc
 
     def __str__(self):
-        return f'{self.parent.card}<--{self.card}-->{[str(c.card) for c in self.children]}'
+        return f'{self.parent.card}<--n: {self.n}, v: {self.v}, c: {self.card}-->{[str(c.card) for c in self.children]}'
