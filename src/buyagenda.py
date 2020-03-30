@@ -16,6 +16,14 @@ class BuyAgenda(ABC):
     def forceBuy(self, s: State, player: int, choices: List[Card]):
         pass
 
+# TODO: Do we need this?
+class MCTSBuyAgenda(BuyAgenda):
+    def buy(self, s: State, player: int, choices: List[Card]):
+        return super().buy(s, player, choices)
+
+    def forceBuy(self, s, player, choices):
+        return super().forceBuy(s, player, choices)
+
 class TDEBigMoneyBuyAgenda(BuyAgenda):
     def buy(self, s: State, player: int, choices: List[Card]):
         pState = s.playerStates[player]

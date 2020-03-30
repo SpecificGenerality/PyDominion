@@ -43,7 +43,9 @@ class GameData:
 
         self.supply = {}
         initSupply(self.supply)
-        initKingdomCards(self.supply)
+
+        if not config.sandbox:
+            initKingdomCards(self.supply)
         self.players = range(config.numPlayers)
         self.trash = []
 
@@ -52,5 +54,6 @@ class GameData:
         for k, _ in self.supply.items():
             kingdom.append(k())
         print(kingdom)
+
 if __name__=='__main__':
     x = GameData(GameConfig(StartingSplit.Starting34Split, False, 2))

@@ -5,9 +5,9 @@ from enums import StartingSplit
 from player import *
 
 def main():
-    config = GameConfig(StartingSplit.StartingRandomSplit, prosperity=False, numPlayers=2)
+    config = GameConfig(StartingSplit.StartingRandomSplit, prosperity=False, numPlayers=2, sandbox=True)
     data = GameData(config)
-    players = [HumanPlayer(), BigMoneyPlayer()]
+    players = [HumanPlayer(), HeuristicPlayer(BigMoneyBuyAgenda())]
     dominion = Game(config, data, players)
 
     dominion.newGame()

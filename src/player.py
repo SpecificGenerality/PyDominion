@@ -4,6 +4,8 @@ from state import State, DecisionResponse
 from enums import *
 from actioncard import ActionCard
 from heuristics import *
+from mcts import *
+from cursecard import *
 import random
 import logging
 
@@ -11,6 +13,38 @@ class Player(ABC):
     @abstractmethod
     def makeDecision(self, s: State, response: DecisionResponse):
         pass
+
+
+# TODO: Expand MCTS to work outside of sandbox games
+class MCTSPlayer(Player):
+    def __init__(self):
+        self.root = Node()
+        self.root.parent = self.root
+        self.root.children = [Node(self.root)] * 4
+        self.node = None
+        self.C = np.sqrt(2)
+
+    def reset(self, pState: PlayerState):
+        self.root.n += 1
+        self.root.np += 1
+        # advance MCTS from virtual root to the correct start position (2/3/4/5 coppers)
+        self.node = self.root.children[pState.getTreasureCardCount(pState.hand)-2]
+
+    def makeDecision(self, s: State, response: DecisionResponse):
+        player = s.decision.controllingPlayer
+        d = s.decision
+
+        if s.phase == Phase.ActionPhase:
+            assert False, 'MCTS does not support action cards yet'
+        elif s.phase == Phase.TreasurePhase:
+            response.singleCard = d.cardChoices[0]
+        else:
+            if not self.node.children:
+                response.singleCard = random.choice([card for card in d.cardChoices if not isinstance(card, Curse)] + [None])
+                return None
+            # the next node in the tree is the one that maximizes the UCB1 score
+            next_node = max(self.node.children, key=lambda x: x.score(self.C))
+            return next_node
 
 class HeuristicPlayer(Player):
     def __init__(self, agenda: BuyAgenda):
@@ -29,6 +63,7 @@ class HeuristicPlayer(Player):
 
     def makeDecision(self, s: State, response: DecisionResponse):
         d = s.decision
+        player = d.controllingPlayer
         if d.type != DecisionType.DecisionSelectCards and d.type != DecisionType.DecisionDiscreteChoice:
             logging.error('Invalid decision type')
         if not d.activeCard:
