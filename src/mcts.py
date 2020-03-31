@@ -42,11 +42,14 @@ class Node:
     def add_unique_children(self, cards: List[Card]):
         for c in cards:
             found = False
+            if isinstance(c, Curse):
+                continue
             for child in self.children:
                 if str(c) == str(child.card):
                     found = True
             if not found:
                 self.children.append(Node(self, c))
+
     # size of the subtree rooted at the current node
     def size(self):
         acc = 1
@@ -57,3 +60,6 @@ class Node:
 
     def __str__(self):
         return f'{self.parent.card}<--n: {self.n}, v: {self.v}, c: {self.card}-->{[str(c.card) for c in self.children]}'
+
+    def __repr__(self):
+        return str(self)

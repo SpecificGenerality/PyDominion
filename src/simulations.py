@@ -27,7 +27,7 @@ def simulate(args: ArgumentParser, config: GameConfig, n: int):
         elif args.strategy == 'BigMoney':
             playerClass = HeuristicPlayer
 
-        mcts_player = MCTSPlayer(load('mcts_chkpt_10000.pk1'))
+        mcts_player = MCTSPlayer(load('mcts_chkpt_100000.pk1'))
         players = [mcts_player, HeuristicPlayer(BigMoneyBuyAgenda())]
 
         dominion = Game(config, data, players)
@@ -44,10 +44,11 @@ def simulate(args: ArgumentParser, config: GameConfig, n: int):
         sim_stats['Degenerate'] += 1 if dominion.state.isDegenerate() else 0
         scores[i] = dominion.getPlayerScores()
 
-    with open('data/MCTS-BM-1k.txt', 'w+') as file:
+
+    with open('data/MCTS-BM-100.txt', 'w+') as file:
         json.dump(sim_stats, file)
 
-    np.savez('data/MCTS-BM-1k', scores)
+    np.savez('data/MCTS-BM-100', scores)
 
 
 def main(args: ArgumentParser):

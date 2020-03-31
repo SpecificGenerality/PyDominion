@@ -53,7 +53,8 @@ class MCTS:
             s.advanceNextDecision()
 
         # backpropagate
-        score = self.game.getPlayerScores()[0]
+        player_turns = s.playerStates[0].turns
+        score = -1 if player_turns >= self.T else 1 + player_turns / 10
         self.player.node.v += score
         self.player.node = self.player.node.parent
         while self.player.node != self.player.root:
@@ -91,5 +92,5 @@ class MCTS:
         save(self.player.root, n)
 
 if __name__ == '__main__':
-    mcts = MCTS(30)
-    mcts.train(100000, 1000, 1000)
+    mcts = MCTS(60)
+    mcts.train(10000, 1000, 100)

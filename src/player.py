@@ -33,6 +33,19 @@ class MCTSPlayer(Player):
         self.node = self.root.children[pState.getTreasureCardCount(pState.hand)-2]
         self.node.n += 1
 
+    def get_next_node(self, choices: List[Card], C):
+        max_score = 0
+        next_node = None
+        for c in choices:
+            for node in self.node.children:
+                if str(node.card) == str(c):
+                    val = node.score(C)
+                    if val > max_score:
+                        max_score = val
+                        next_node = node
+
+        return next_node
+
     def makeDecision(self, s: State, response: DecisionResponse):
         player = s.decision.controllingPlayer
         d = s.decision
@@ -48,7 +61,11 @@ class MCTSPlayer(Player):
 
             self.node.add_unique_children(d.cardChoices)
             # the next node in the tree is the one that maximizes the UCB1 score
-            next_node = max(self.node.children, key=lambda x: x.score(self.C))
+            next_node = self.get_next_node(d.cardChoices, self.C)
+            if not next_node:
+                response.singleCard = random.choice([card for card in d.cardChoices if not isinstance(card, Curse)] + [None])
+                return None
+            response.singleCard = next_node.card
             return next_node
 
 class HeuristicPlayer(Player):
