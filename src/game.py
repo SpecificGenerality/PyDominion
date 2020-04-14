@@ -32,6 +32,9 @@ class Game:
         counter = self.state.getCardCounts(player)
         return {'Score': score, 'Cards': counter}
 
+    def getAllCards(self, player):
+        return self.state.playerStates[player].getAllCards()
+
     def getPlayerScores(self):
         scores = np.zeros(len(self.players))
         for i, pInfo in enumerate(self.players):

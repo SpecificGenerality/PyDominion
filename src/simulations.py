@@ -13,7 +13,7 @@ from ai import *
 from aiutils import *
 from tqdm import tqdm
 
-def simulate(args: ArgumentParser, config: GameConfig, n: int):
+def simulate(args: ArgumentParser, config: GameConfig, n: int, save=False):
     print('Starting game simulations...')
     start_time = time.time()
     sim_stats = {'Iters': 0, 'StartWins': 0, 'Ties': 0, 'ProvinceWins': 0, 'Degenerate': 0}
@@ -27,7 +27,7 @@ def simulate(args: ArgumentParser, config: GameConfig, n: int):
         elif args.strategy == 'BigMoney':
             playerClass = HeuristicPlayer
 
-        mcts_player = MCTSPlayer(load('mcts_chkpt_100000.pk1'))
+        mcts_player = MCTSPlayer(load('models/mcts_chkpt_10000_Tinf.pk1'))
         players = [mcts_player, HeuristicPlayer(BigMoneyBuyAgenda())]
 
         dominion = Game(config, data, players)
@@ -44,11 +44,11 @@ def simulate(args: ArgumentParser, config: GameConfig, n: int):
         sim_stats['Degenerate'] += 1 if dominion.state.isDegenerate() else 0
         scores[i] = dominion.getPlayerScores()
 
+    if save:
+        with open('data/MCTS-BM-100.txt', 'w+') as file:
+            json.dump(sim_stats, file)
 
-    with open('data/MCTS-BM-100.txt', 'w+') as file:
-        json.dump(sim_stats, file)
-
-    np.savez('data/MCTS-BM-100', scores)
+        np.savez('data/MCTS-BM-100', scores)
 
 
 def main(args: ArgumentParser):

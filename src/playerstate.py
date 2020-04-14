@@ -62,5 +62,5 @@ class PlayerState:
     def getTotalCoinCount(self, cardPile: List) -> int:
         return sum(card.getPlusCoins() for card in cardPile)
 
-    def hasCard(self, card):
-        return any(isinstance(c, card) for c in self.getAllCards())
+    def hasCard(self, card_class):
+        return any(isinstance(c, card_class) for c in self.getAllCards())

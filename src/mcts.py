@@ -39,6 +39,10 @@ class Node:
     def score(self, C):
         return self.v + C * np.sqrt(np.log(self.parent.n) / self.n) if self.n > 0 else sys.maxsize
 
+    def update_v(self, f):
+        vals = [n.v for n in self.children if n.n > 0]
+        self.v = f(vals)
+
     def add_unique_children(self, cards: List[Card]):
         for c in cards:
             found = False
@@ -50,11 +54,19 @@ class Node:
             if not found:
                 self.children.append(Node(self, c))
 
+    def is_leaf(self) -> bool:
+        if not self.children:
+            return True
+        for c in self.children:
+            if c.n > 0:
+                return False
+        return True
+
     # size of the subtree rooted at the current node
     def size(self):
         acc = 1
         for child in self.children:
-            if child.n > 0:
+            if not child.is_leaf():
                 acc += child.size()
         return acc
 
