@@ -74,13 +74,11 @@ def get_most_visited_paths_at_depth(root: Node, k: int, p: int):
     # bfs from start nodes
     for i in range(1, k+1):
         l = len(Q)
-        print(len(Q))
         for j in range(l):
             n = Q.popleft()
             Q = Q + deque(list(filter(lambda x: x and x.n > 0, n.children)))
 
     paths = sorted(Q, key=lambda x: x.n, reverse=True)
-    print(len(paths))
     for i, n in enumerate(paths):
         paths[i] = get_path(root, n)
 
@@ -115,17 +113,19 @@ def get_buy_sequence(path: List[Node]) -> List[Card]:
 def get_card_counts(cards: List[Card]) -> Counter:
     return Counter(str(c) for c in cards)
 
-def plot_stacked_card_counts(decks: List[Counter], limit=None, skip=1):
+def plot_card_counts_stacked(decks: List[Counter], limit=None, skip=1, trim=None):
     '''Produce a stacked plot of card counts every skip number of iterations,
         including only cards in limit'''
     n = len(decks)
     counts = dict()
     for i, d in enumerate(decks):
+        if trim and i >= trim:
+            break
         for k, v in d.items():
             if limit and k not in limit:
                 continue
             if k not in counts.keys():
-                counts[k] = [0] * (n // skip)
+                counts[k] = [0] * (trim if trim else (n // skip + 1))
             counts[k][(i // skip)] = v
 
     df = pd.DataFrame(counts)
@@ -134,19 +134,21 @@ def plot_stacked_card_counts(decks: List[Counter], limit=None, skip=1):
     plt.ylabel('Card count')
     plt.show()
 
-def plot_card_counts(decks: List[Counter], limit=None, skip=1):
+def plot_card_counts(decks: List[Counter], limit=None, skip=1, trim=None):
     '''Produce a line plot of card counts every skip number of iterations,
     including only cards in limit'''
     n = len(decks)
     counts = dict()
     for i, d in enumerate(decks):
+        if trim and i >= trim:
+            break
         if i % skip != 0:
             continue
         for k, v in d.items():
             if limit and k not in limit:
                 continue
             if k not in counts.keys():
-                counts[k] = [0] * (n // skip)
+                counts[k] = [0] * (trim if trim else (n // skip + 1))
             counts[k][(i // skip)] = v
 
     legend = []
@@ -189,7 +191,7 @@ def plot_scores(score: np.array):
     for i, x in enumerate(score):
         score_sum += score[i]
         avgs.append(score_sum / (i + 1))
-    plt.scatter(range(len(score)), score)
+    plt.scatter(range(len(score)), score, s=0.9)
     plt.plot(avgs, 'r')
     plt.xlabel('Iterations')
     plt.ylabel('Score')

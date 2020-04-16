@@ -1,6 +1,7 @@
 # Experimental results
 data*
 models*
+*.ipynb
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -10,10 +10,14 @@ from enums import *
 from tqdm import tqdm
 import pickle
 from aiutils import *
+from mctsdata import MCTSData
+
+# define first k turns, and then plot the expected value
+# of the random rollout
 
 class MCTS:
     def __init__(self, T: int):
-        self.player = MCTSPlayer()
+        self.player = MCTSPlayer(train=True)
         self.game = None
         # max number of turns in a game
         self.T = T
@@ -59,14 +63,15 @@ class MCTS:
         # backpropagate
         player_turns = s.playerStates[0].turns
         score = self.game.getPlayerScores()[0]
-        self.player.node.v += score
+        delta = score
+        self.player.node.v += delta
         self.player.node = self.player.node.parent
         while self.player.node != self.player.root:
             self.player.node.update_v(lambda x: sum(x) / len(x))
             self.player.node = self.player.node.parent
 
         # update history heuristic
-        self.player.update_mast(self.rollout, score)
+        self.player.update_mast(self.rollout, delta)
 
         return self.game.getPlayerScores()[0]
 
@@ -82,26 +87,27 @@ class MCTS:
         self.player.reset(self.game.state.playerStates[0])
 
     def train(self, n: int, m: int, output_iters: int, save_model=False, model_name='mcts'):
-        scores = []
-        decks = []
+        mcts_data = MCTSData()
+        eps = 10e-3
+        avg = 0
+        last_avg = 0
         for i in tqdm(range(n)):
             # initialize new game
             self.reset()
-            score = self.run()
-            scores.append(score)
-            decks.append(get_card_counts(self.game.getAllCards(0)))
+            self.run()
+            mcts_data.update(self.game, self.player, i)
+
+            avg = sum(mcts_data.scores) / (i+1)
 
             if i > 0 and i % output_iters == 0:
-                print(f'Last {output_iters} avg: {sum(scores[i-output_iters:i]) / output_iters}')
-                print(f'Total {i} avg: {sum(scores) / i}')
+                print(f'Last {output_iters} avg: {sum(mcts_data.scores[i-output_iters:i]) / output_iters}')
+                print(f'Total {i} avg: {avg}')
 
         if save_model:
             save(f'models/{model_name}', self.player.root)
-            np.save(f'data/{model_name}', np.array(scores))
-            save(f'data/{model_name}', decks)
-            save(f'data/{model_name}_mast', self.player.mast)
+            save(f'data/{model_name}', mcts_data)
 
 
 if __name__ == '__main__':
     mcts = MCTS(30)
-    mcts.train(10000, 1000, 100, save_model=True, model_name='mcts_100k_T30_Sflat_avg_mast')
+    mcts.train(10000, 10000, 100, save_model=True, model_name='mcts_10k_T30_Sflat_avg_C1_25')

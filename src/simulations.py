@@ -27,7 +27,7 @@ def simulate(args: ArgumentParser, config: GameConfig, n: int, save=False):
         elif args.strategy == 'BigMoney':
             playerClass = HeuristicPlayer
 
-        mcts_player = MCTSPlayer(load('models/mcts_chkpt_10000_Tinf.pk1'))
+        mcts_player = MCTSPlayer(load('models/mcts_inf_T30_ST_avg_mast_var_2'), load('data/mcts_inf_T30_ST_avg_mast_var_2'))
         players = [mcts_player, HeuristicPlayer(BigMoneyBuyAgenda())]
 
         dominion = Game(config, data, players)
@@ -45,10 +45,10 @@ def simulate(args: ArgumentParser, config: GameConfig, n: int, save=False):
         scores[i] = dominion.getPlayerScores()
 
     if save:
-        with open('data/MCTS-BM-100.txt', 'w+') as file:
+        with open('data/MCTS-infmast-BM-100.txt', 'w+') as file:
             json.dump(sim_stats, file)
 
-        np.savez('data/MCTS-BM-100', scores)
+        np.savez('data/MCTS-infmast-BM-100', scores)
 
 
 def main(args: ArgumentParser):
@@ -61,7 +61,7 @@ def main(args: ArgumentParser):
 
     config = GameConfig(split, prosperity=args.prosperity, numPlayers=args.players)
 
-    simulate(args, config, args.iters)
+    simulate(args, config, args.iters, args.save)
 
 
 if __name__=='__main__':
@@ -71,6 +71,7 @@ if __name__=='__main__':
     parser.add_argument('--players', default=2, type=int, help='Number of AI players')
     parser.add_argument('--prosperity', action='store_true', help='Whether the Prosperity settings should be used')
     parser.add_argument('--iters', type=int,  required=True, help='Number of games to simulate')
+    parser.add_argument('--save', action='store_true', help='Whether the data should be saved')
 
     args = parser.parse_args()
     main(args)

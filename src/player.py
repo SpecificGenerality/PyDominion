@@ -19,7 +19,7 @@ class Player(ABC):
 
 # TODO: Expand MCTS to work outside of sandbox games
 class MCTSPlayer(Player):
-    def __init__(self, root=Node()):
+    def __init__(self, root=Node(), mast={}, train=False):
         self.root = root
         self.root.parent = self.root
         # To prevent clobbering trees loaded from file
@@ -27,11 +27,9 @@ class MCTSPlayer(Player):
             self.root.children = [Node(self.root) for i in range(4)]
         self.node = None
         # K: card name, V: (avg value, times played)
-        self.mast = {}
-        self.tau = 0.05
-
-        # static C
-        # self.C = np.sqrt(2)
+        self.mast = mast
+        self.tau = 0.5
+        self.train = train
 
     def update_mast(self, cards: List[Card], score: int):
         '''Update history heuristic with card buys from last rollout'''
@@ -46,13 +44,16 @@ class MCTSPlayer(Player):
 
     def gibbs_sample_mast(self, choices: List[Card]) -> Card:
         # create gibbs distribution over choices
-        D = [np.exp(self.mast.get(str(c), (0, 0))[0] / self.tau) for c in choices]
+        D = [np.exp(self.mast.get(str(c), (10 if self.train else 0, 0))[0] / self.tau) for c in choices]
         D /= sum(D)
+
         return np.random.choice(choices, p=D)
 
     def get_C(self):
-        # time-varying C
-        return max(0.01, min(0.25, 1 / np.sqrt(self.root.n)))
+        ##  time-varying C
+        return max(1, min(25, 25 / np.sqrt(self.root.n)))
+        ## static C
+        # return 10
 
     def reset(self, pState: PlayerState):
         self.root.n += 1
@@ -61,6 +62,7 @@ class MCTSPlayer(Player):
         self.node.n += 1
 
     def get_next_node(self, choices: List[Card], C):
+        '''Select the node that maximizes the UCB score'''
         max_score = 0
         next_node = None
         for c in choices:
@@ -84,17 +86,17 @@ class MCTSPlayer(Player):
         else:
             if not self.node.children:
                 # random rollout
-                # response.singleCard = random.choice([card for card in d.cardChoices if not isinstance(card, Curse)] + [None])
+                response.singleCard = random.choice([card for card in d.cardChoices if not isinstance(card, Curse)] + [None])
                 # gibbs history heuristic rollout
-                response.singleCard = self.gibbs_sample_mast([card for card in d.cardChoices if not isinstance(card, Curse)] + [None])
+                # response.singleCard = self.gibbs_sample_mast([card for card in d.cardChoices if not isinstance(card, Curse)] + [None])
                 return None
 
             self.node.add_unique_children(d.cardChoices)
             # the next node in the tree is the one that maximizes the UCB1 score
             next_node = self.get_next_node(d.cardChoices, self.get_C())
             if not next_node:
-                # response.singleCard = random.choice([card for card in d.cardChoices if not isinstance(card, Curse)] + [None])
-                response.singleCard = self.gibbs_sample_mast([card for card in d.cardChoices if not isinstance(card, Curse)] + [None])
+                response.singleCard = random.choice([card for card in d.cardChoices if not isinstance(card, Curse)] + [None])
+                # response.singleCard = self.gibbs_sample_mast([card for card in d.cardChoices if not isinstance(card, Curse)] + [None])
                 return None
             response.singleCard = next_node.card
             return next_node
