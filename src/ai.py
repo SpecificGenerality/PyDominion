@@ -1,19 +1,24 @@
-import numpy as np
-from player import MCTSPlayer
-from config import GameConfig
-from mcts import *
-from gamedata import GameData
-from game import Game
-from state import *
 import logging
-from enums import *
-from tqdm import tqdm
 import pickle
+from argparse import ArgumentParser
+
+import numpy as np
+from tqdm import tqdm
+
 from aiutils import *
+from config import GameConfig
+from enums import *
+from game import Game
+from gamedata import GameData
+from mcts import *
 from mctsdata import MCTSData
+from player import MCTSPlayer
+from state import *
 
 # define first k turns, and then plot the expected value
 # of the random rollout
+data_dir = 'C:\\Users\\yanju\\Documents\\Princeton\\IW\\Dominion\\PyDominion\\data'
+model_dir = 'C:\\Users\\yanju\\Documents\\Princeton\\IW\\Dominion\\PyDominion\\models'
 
 class MCTS:
     def __init__(self, T: int):
@@ -23,10 +28,12 @@ class MCTS:
         self.T = T
         self.expanded = False
         self.rollout = []
+        self.data = MCTSData()
 
     def run(self):
         s = self.game.state
         d = s.decision
+        tree_score = 0
         # run the game up to game end or turn limit reached
         while d.type != DecisionType.DecisionGameOver and s.playerStates[0].turns < self.T:
             if d.text:
@@ -54,15 +61,22 @@ class MCTS:
                     self.expanded = True
                     self.player.node = next_node
                     self.player.node.n += 1
+                    # Uncomment to track UCT score within the tree
+                    # tree_score = self.game.getPlayerScores()[0]
+                    # self.data.update_split_scores(tree_score, False)
                 else:
                     self.rollout.append(response.singleCard)
 
             s.processDecision(response)
             s.advanceNextDecision()
 
-        # backpropagate
+
         player_turns = s.playerStates[0].turns
         score = self.game.getPlayerScores()[0]
+        # update data
+        # self.data.update_split_scores(score - tree_score, True)
+
+        # backpropagate
         delta = score
         self.player.node.v += delta
         self.player.node = self.player.node.parent
@@ -86,28 +100,43 @@ class MCTS:
 
         self.player.reset(self.game.state.playerStates[0])
 
-    def train(self, n: int, m: int, output_iters: int, save_model=False, model_name='mcts'):
-        mcts_data = MCTSData()
-        eps = 10e-3
+    def train(self, n: int, output_iters: int,
+        save_model=False, model_dir=model_dir, model_name='mcts',
+        save_data=False, data_dir=data_dir, data_name='data'):
+
         avg = 0
         last_avg = 0
         for i in tqdm(range(n)):
             # initialize new game
             self.reset()
             self.run()
-            mcts_data.update(self.game, self.player, i)
+            self.data.update(self.game, self.player, i)
 
-            avg = sum(mcts_data.scores) / (i+1)
+            avg = sum(self.data.scores) / (i+1)
 
             if i > 0 and i % output_iters == 0:
-                print(f'Last {output_iters} avg: {sum(mcts_data.scores[i-output_iters:i]) / output_iters}')
+                print(f'Last {output_iters} avg: {sum(self.data.scores[i-output_iters:i]) / output_iters}')
                 print(f'Total {i} avg: {avg}')
 
         if save_model:
             save(f'models/{model_name}', self.player.root)
-            save(f'data/{model_name}', mcts_data)
+        if save_data:
+            save(f'data/{model_name}', self.data)
 
 
 if __name__ == '__main__':
-    mcts = MCTS(30)
-    mcts.train(10000, 10000, 100, save_model=True, model_name='mcts_10k_T30_Sflat_avg_C1_25')
+    parser = ArgumentParser('MCTS Dominion AI')
+    parser.add_argument('-T', default=30, type=int, help='Threshold number of turns')
+    parser.add_argument('-n', default=10000, type=int, help='Number of training iterations')
+    parser.add_argument('-l', default=100, type=int, help='Number of iterations before logging')
+    parser.add_argument('--save_model', action='store_true')
+    parser.add_argument('--model_dir', type=str, help='Where to save the model', default=model_dir)
+    parser.add_argument('--model_name', type=str, help='What to name the model')
+    parser.add_argument('--save_data', action='store_true')
+    parser.add_argument('--data_dir', type=str, help='Where to save the data', default=data_dir)
+    args = parser.parse_args()
+
+    mcts = MCTS(args.T)
+    mcts.train(args.n, args.l,
+        save_model=args.save_model, model_dir=model_dir, model_name=args.model_name,
+        save_data=args.save_data, data_dir=data_dir)

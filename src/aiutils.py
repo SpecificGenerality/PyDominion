@@ -1,11 +1,14 @@
 import pickle
-from mcts import Node
-from card import Card
 from collections import Counter, deque
 from typing import List
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+
+from card import Card
+from mcts import Node
+
 
 def load(checkpoint: str):
     '''Load and return a saved object'''
@@ -15,7 +18,7 @@ def load(checkpoint: str):
 def save(file: str, obj):
     '''Save obj to pickled file'''
     with open (file, 'wb') as output:
-        pickle.dump(obj, output, pickle.HIGHEST_PROTOCOL)
+        pickle.dump(obj, output, 4)
 
 def print_path(path: List[Node]):
     print('-->'.join([str(node.card) for node in path]))
@@ -196,5 +199,4 @@ def plot_scores(score: np.array):
     plt.xlabel('Iterations')
     plt.ylabel('Score')
     plt.show()
-
 

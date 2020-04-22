@@ -1,7 +1,9 @@
-from enum import Enum, auto, IntEnum
+from enum import Enum, IntEnum, auto
+
 
 class GameConstants(IntEnum):
     KingdomSize = 10
+    StartingHands = 4
 
 # TODO: Use auto() after upgrading pygame and running python3.7
 class Phase(Enum):
@@ -47,4 +49,3 @@ class TriggerState(Enum):
     TriggerProcessed = auto()
     TriggerProcessingRoyalSeal = auto()
     TriggerProcessingWatchtower = auto()
-

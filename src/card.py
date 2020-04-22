@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 
+
 class Card(ABC):
     def __init__(self, copies=1, turns_left=1):
         self.copies = copies

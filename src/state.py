@@ -1,19 +1,20 @@
+import logging
+import random
 from abc import ABC
-from card import Card
+from collections import Counter
+from typing import Dict, List
+
 from actioncard import *
-from treasurecard import TreasureCard
-from victorycard import *
+from card import Card
 from config import GameConfig
 from enums import *
 from gamedata import GameData
 from playerstate import PlayerState
-from typing import List, Dict
 from stateutils import *
+from treasurecard import TreasureCard
 from utils import *
+from victorycard import *
 
-import random
-import logging
-from collections import Counter
 
 class DecisionResponse():
     def __init__(self, cards: List[Card]):

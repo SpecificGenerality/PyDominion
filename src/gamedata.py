@@ -1,11 +1,13 @@
+from random import shuffle
+from typing import Dict, List
+
+from actioncard import *
 from config import GameConfig
-from typing import List, Dict
-from treasurecard import *
-from victorycard import *
 from cursecard import *
 from enums import *
-from actioncard import *
-from random import shuffle
+from treasurecard import *
+from victorycard import *
+
 
 class GameData:
 

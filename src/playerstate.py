@@ -1,12 +1,13 @@
+import random
+from typing import List
+
+from actioncard import ActionCard, Merchant
+from card import Card
 from config import GameConfig
 from enums import StartingSplit
-from actioncard import ActionCard, Merchant
 from treasurecard import *
-from victorycard import VictoryCard, Estate
-from typing import List
-from card import Card
+from victorycard import Estate, VictoryCard
 
-import random
 
 class PlayerState:
     def __init__(self, gameConfig: GameConfig) -> None:

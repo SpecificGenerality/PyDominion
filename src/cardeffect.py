@@ -1,6 +1,8 @@
-from abc import ABC, abstractmethod
-from state import State, DecisionResponse
 import logging
+from abc import ABC, abstractmethod
+
+from state import DecisionResponse, State
+
 
 class CardEffect(ABC):
     def __init__(self):

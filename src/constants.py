@@ -1,5 +1,5 @@
-from card import Card
 from actioncard import *
+from card import Card
 from cardeffectbase import *
 
 # TODO: Implement Sentry, Bandit

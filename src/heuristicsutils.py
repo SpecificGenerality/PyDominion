@@ -1,10 +1,12 @@
-from typing import List
-from card import Card
-from victorycard import VictoryCard
-from actioncard import ActionCard
-from treasurecard import TreasureCard
-from state import *
 import random
+from typing import List
+
+from actioncard import ActionCard
+from card import Card
+from state import *
+from treasurecard import TreasureCard
+from victorycard import VictoryCard
+
 
 def heuristicSelectCards(s: State, response: DecisionResponse, scoringFunction):
         choices = s.decision.cardChoices

@@ -1,10 +1,12 @@
-from state import *
-from card import Card
-from heuristicsutils import *
+import logging
 from random import shuffle
 from typing import List
+
 from buyagenda import *
-import logging
+from card import Card
+from heuristicsutils import *
+from state import *
+
 
 class PlayerHeuristic():
     def __init__(self, agenda: BuyAgenda):

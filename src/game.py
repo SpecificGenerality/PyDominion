@@ -1,12 +1,15 @@
+import logging
+from typing import List
+
+import numpy as np
+
 from config import GameConfig
+from enums import StartingSplit
 from gamedata import GameData
 from player import *
 from playerstate import PlayerState
-from enums import StartingSplit
 from state import State
-from typing import List
-import logging
-import numpy as np
+
 
 class Game:
     def __init__(self, config: GameConfig, data: GameData, players: List[Player]):
@@ -21,6 +24,9 @@ class Game:
 
     def newGame(self):
         self.state.newGame()
+
+    def getSupplyCardTypes(self):
+        return [str(c()) for c in self.state.data.supply.keys()]
 
     def getWinningPlayers(self):
         scores = [self.state.getPlayerScore(pInfo.id) for pInfo in self.players]
@@ -54,9 +60,11 @@ class Game:
             stats['Winners'] = self.getWinningPlayers()
         return stats
 
-    def run(self):
+    def run(self, T=None):
         d = self.state.decision
         while d.type != DecisionType.DecisionGameOver:
+            if T and all(t.turns >= T for t in self.state.playerStates):
+                break
             if d.text:
                 logging.info(d.text)
             response = DecisionResponse([])
@@ -69,6 +77,4 @@ class Game:
             player = pInfo.id
             score, counter = self.getPlayerStats(player)
             logging.info(f'====Player {player} Stats====\nScore: {score}\nCards: {counter}')
-
-
 

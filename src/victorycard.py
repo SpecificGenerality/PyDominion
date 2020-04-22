@@ -1,5 +1,7 @@
 from abc import abstractmethod
+
 from card import Card
+
 
 class VictoryCard(Card):
     @abstractmethod
@@ -73,6 +75,4 @@ class Gardens(VictoryCard):
 
     def __str__(self):
         return "Gardens"
-
-
 

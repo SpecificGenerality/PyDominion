@@ -1,34 +1,37 @@
+import logging
+import random
+import sys
 from abc import ABC, abstractmethod
-from playerstate import PlayerState
-from state import State, DecisionResponse
-from enums import *
+
+import numpy as np
+
 from actioncard import ActionCard
+from cursecard import *
+from enums import *
 from heuristics import *
 from mcts import *
-from cursecard import *
-import random
-import logging
-import sys
-import numpy as np
+from playerstate import PlayerState
+from state import DecisionResponse, State
+
 
 class Player(ABC):
     @abstractmethod
     def makeDecision(self, s: State, response: DecisionResponse):
+        '''Given the current state s of the game, make a decision given the choices in s and modify response.'''
         pass
-
 
 # TODO: Expand MCTS to work outside of sandbox games
 class MCTSPlayer(Player):
-    def __init__(self, root=Node(), mast={}, train=False):
+    def __init__(self, root=Node(), mast={}, tau=2, train=False):
         self.root = root
         self.root.parent = self.root
         # To prevent clobbering trees loaded from file
         if not root.children:
-            self.root.children = [Node(self.root) for i in range(4)]
+            self.root.children = [Node(self.root) for i in range(GameConstants.StartingHands)]
         self.node = None
         # K: card name, V: (avg value, times played)
         self.mast = mast
-        self.tau = 0.5
+        self.tau = tau
         self.train = train
 
     def update_mast(self, cards: List[Card], score: int):
@@ -40,20 +43,17 @@ class MCTSPlayer(Player):
                 self.mast[str(c)] = (x_bar / (n+1) * n + score / (n+1), n+1)
             else:
                 self.mast[str(c)] = (score, 1)
-        # print(self.mast)
 
     def gibbs_sample_mast(self, choices: List[Card]) -> Card:
-        # create gibbs distribution over choices
+        '''Create gibbs distribution over choices given mast and return card choice'''
         D = [np.exp(self.mast.get(str(c), (10 if self.train else 0, 0))[0] / self.tau) for c in choices]
         D /= sum(D)
 
         return np.random.choice(choices, p=D)
 
     def get_C(self):
-        ##  time-varying C
+        '''Return time-varying C tuned for raw score reward'''
         return max(1, min(25, 25 / np.sqrt(self.root.n)))
-        ## static C
-        # return 10
 
     def reset(self, pState: PlayerState):
         self.root.n += 1
@@ -86,17 +86,17 @@ class MCTSPlayer(Player):
         else:
             if not self.node.children:
                 # random rollout
-                response.singleCard = random.choice([card for card in d.cardChoices if not isinstance(card, Curse)] + [None])
+                # response.singleCard = random.choice([card for card in d.cardChoices if not isinstance(card, Curse)] + [None])
                 # gibbs history heuristic rollout
-                # response.singleCard = self.gibbs_sample_mast([card for card in d.cardChoices if not isinstance(card, Curse)] + [None])
+                response.singleCard = self.gibbs_sample_mast([card for card in d.cardChoices if not isinstance(card, Curse)] + [None])
                 return None
 
             self.node.add_unique_children(d.cardChoices)
             # the next node in the tree is the one that maximizes the UCB1 score
             next_node = self.get_next_node(d.cardChoices, self.get_C())
             if not next_node:
-                response.singleCard = random.choice([card for card in d.cardChoices if not isinstance(card, Curse)] + [None])
-                # response.singleCard = self.gibbs_sample_mast([card for card in d.cardChoices if not isinstance(card, Curse)] + [None])
+                # response.singleCard = random.choice([card for card in d.cardChoices if not isinstance(card, Curse)] + [None])
+                response.singleCard = self.gibbs_sample_mast([card for card in d.cardChoices if not isinstance(card, Curse)] + [None])
                 return None
             response.singleCard = next_node.card
             return next_node

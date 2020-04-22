@@ -1,23 +1,41 @@
-from game import Game
-from gamedata import GameData
-from config import GameConfig
-from enums import StartingSplit
-from buyagenda import *
-from victorycard import *
-from player import *
 import json
+import os
 import time
 from argparse import ArgumentParser
+from typing import List
+
 import numpy as np
+from tqdm import tqdm
+
 from ai import *
 from aiutils import *
-from tqdm import tqdm
+from buyagenda import *
+from config import GameConfig
+from enums import StartingSplit
+from game import Game
+from gamedata import GameData
+from player import *
+from victorycard import *
+
+
+def test_tau(taus: List, trials=100, iters=500):
+    '''Test the UCT for varying values of tau'''
+    agent = MCTS(30)
+    for tau in taus:
+        for _ in range(trials):
+            agent.player=MCTSPlayer(train=True, tau=tau)
+            agent.train(iters, trials)
+            agent.data.update_dataframes()
+            agent.data.augment_avg_scores(100)
+    save(os.path.join(data_dir, 'taus'), agent.data)
 
 def simulate(args: ArgumentParser, config: GameConfig, n: int, save=False):
     print('Starting game simulations...')
     start_time = time.time()
     sim_stats = {'Iters': 0, 'StartWins': 0, 'Ties': 0, 'ProvinceWins': 0, 'Degenerate': 0}
-    scores = np.zeros((n, 2))
+    scores = np.zeros((n, config.numPlayers))
+    mcts_player = MCTSPlayer(mast=load('data\mcts_10k_T30_Sflat_avg_mast_tau_2').get_last_mast())
+
     for i in tqdm(range(n)):
 
         data = GameData(config)
@@ -27,15 +45,14 @@ def simulate(args: ArgumentParser, config: GameConfig, n: int, save=False):
         elif args.strategy == 'BigMoney':
             playerClass = HeuristicPlayer
 
-        mcts_player = MCTSPlayer(load('models/mcts_inf_T30_ST_avg_mast_var_2'), load('data/mcts_inf_T30_ST_avg_mast_var_2'))
-        players = [mcts_player, HeuristicPlayer(BigMoneyBuyAgenda())]
+        players = [mcts_player]
 
         dominion = Game(config, data, players)
 
         dominion.newGame()
 
         mcts_player.reset(dominion.state.playerStates[0])
-        dominion.run()
+        dominion.run(T=30)
         game_stats = dominion.getStats()
         sim_stats['Iters'] += 1
         sim_stats['StartWins'] += (1 if len(game_stats['Winners']) == 1 and game_stats['Winners'][0] == 0 else 0)
@@ -45,10 +62,10 @@ def simulate(args: ArgumentParser, config: GameConfig, n: int, save=False):
         scores[i] = dominion.getPlayerScores()
 
     if save:
-        with open('data/MCTS-infmast-BM-100.txt', 'w+') as file:
+        with open('data/uct-mast-100-gold.txt', 'w+') as file:
             json.dump(sim_stats, file)
 
-        np.savez('data/MCTS-infmast-BM-100', scores)
+        np.savez('data/uct-mast-100-gold', scores)
 
 
 def main(args: ArgumentParser):

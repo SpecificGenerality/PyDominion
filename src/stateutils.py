@@ -1,8 +1,10 @@
+import random
+from typing import List
+
 from card import Card
 from enums import Zone
 from victorycard import *
-from typing import List
-import random
+
 
 def removeCard(card: Card, card_list: List) -> Card:
     for i, c in enumerate(card_list):

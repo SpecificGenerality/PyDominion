@@ -1,11 +1,13 @@
-from cardeffect import CardEffect
+import logging
+
 from actioncard import *
+from cardeffect import CardEffect
 from cursecard import *
 from enums import *
 from state import *
 from treasurecard import Copper, Silver, TreasureCard
 from utils import containsCard
-import logging
+
 
 class ArtisanEffect(CardEffect):
     def __init__(self):

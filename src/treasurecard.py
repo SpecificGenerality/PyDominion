@@ -1,5 +1,7 @@
 from abc import ABC
+
 from card import Card
+
 
 class TreasureCard(Card):
     def getPlusVictoryPoints(self) -> int:

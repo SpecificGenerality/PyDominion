@@ -1,9 +1,10 @@
 from abc import ABC, abstractmethod
-from state import *
 from typing import List
+
 from card import Card
 from heuristics import *
 from heuristicsutils import *
+from state import *
 
 TD_DENSITY = 0.1
 

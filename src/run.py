@@ -1,8 +1,9 @@
-from game import Game
-from gamedata import GameData
 from config import GameConfig
 from enums import StartingSplit
+from game import Game
+from gamedata import GameData
 from player import *
+
 
 def main():
     config = GameConfig(StartingSplit.StartingRandomSplit, prosperity=False, numPlayers=2, sandbox=True)

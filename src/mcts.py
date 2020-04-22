@@ -1,8 +1,11 @@
+import sys
 from collections import Counter
 from typing import Dict, List
-from state import *
+
 import numpy as np
-import sys
+
+from state import *
+
 
 class MCTSState:
     def __init__(self, s: State):
