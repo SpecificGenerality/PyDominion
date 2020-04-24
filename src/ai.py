@@ -1,4 +1,5 @@
 import logging
+import os
 import pickle
 from argparse import ArgumentParser
 
@@ -21,8 +22,8 @@ data_dir = 'C:\\Users\\yanju\\Documents\\Princeton\\IW\\Dominion\\PyDominion\\da
 model_dir = 'C:\\Users\\yanju\\Documents\\Princeton\\IW\\Dominion\\PyDominion\\models'
 
 class MCTS:
-    def __init__(self, T: int):
-        self.player = MCTSPlayer(train=True)
+    def __init__(self, T: int, tau: float, rollout: Rollout):
+        self.player = MCTSPlayer(train=True, tau=tau, rollout=rollout)
         self.game = None
         # max number of turns in a game
         self.T = T
@@ -81,7 +82,7 @@ class MCTS:
         self.player.node.v += delta
         self.player.node = self.player.node.parent
         while self.player.node != self.player.root:
-            self.player.node.update_v(lambda x: sum(x) / len(x))
+            self.player.node.update_v(lambda x: sum(x)/ len(x))
             self.player.node = self.player.node.parent
 
         # update history heuristic
@@ -119,9 +120,10 @@ class MCTS:
                 print(f'Total {i} avg: {avg}')
 
         if save_model:
-            save(f'models/{model_name}', self.player.root)
+            save(os.path.join(model_dir, model_name), self.player.root)
         if save_data:
-            save(f'data/{model_name}', self.data)
+            self.data.update_dataframes()
+            save(os.path.join(data_dir, model_name), self.data)
 
 
 if __name__ == '__main__':
@@ -129,6 +131,8 @@ if __name__ == '__main__':
     parser.add_argument('-T', default=30, type=int, help='Threshold number of turns')
     parser.add_argument('-n', default=10000, type=int, help='Number of training iterations')
     parser.add_argument('-l', default=100, type=int, help='Number of iterations before logging')
+    parser.add_argument('-tau', default=0.5, help='Tau parameter for history heuristic Gibbs distribution')
+    parser.add_argument('-rollout', default=2, type=int, help='1: Random, 2: History Heuristic 3: OLS')
     parser.add_argument('--save_model', action='store_true')
     parser.add_argument('--model_dir', type=str, help='Where to save the model', default=model_dir)
     parser.add_argument('--model_name', type=str, help='What to name the model')
@@ -136,7 +140,14 @@ if __name__ == '__main__':
     parser.add_argument('--data_dir', type=str, help='Where to save the data', default=data_dir)
     args = parser.parse_args()
 
-    mcts = MCTS(args.T)
+    if args.rollout == 1:
+        rollout = Rollout.Random
+    elif args.rollout == 2:
+        rollout = Rollout.HistoryHeuristic
+    elif args.rollout == 3:
+        rollout = Rollout.OLSRegression
+
+    mcts = MCTS(args.T, args.tau, rollout)
     mcts.train(args.n, args.l,
         save_model=args.save_model, model_dir=model_dir, model_name=args.model_name,
         save_data=args.save_data, data_dir=data_dir)

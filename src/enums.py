@@ -49,3 +49,8 @@ class TriggerState(Enum):
     TriggerProcessed = auto()
     TriggerProcessingRoyalSeal = auto()
     TriggerProcessingWatchtower = auto()
+
+class Rollout(Enum):
+    Random = auto()
+    HistoryHeuristic = auto()
+    OLSRegression = auto()

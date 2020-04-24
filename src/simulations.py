@@ -34,7 +34,7 @@ def simulate(args: ArgumentParser, config: GameConfig, n: int, save=False):
     start_time = time.time()
     sim_stats = {'Iters': 0, 'StartWins': 0, 'Ties': 0, 'ProvinceWins': 0, 'Degenerate': 0}
     scores = np.zeros((n, config.numPlayers))
-    mcts_player = MCTSPlayer(mast=load('data\mcts_10k_T30_Sflat_avg_mast_tau_2').get_last_mast())
+    mcts_player = MCTSPlayer(mast=load(os.path.join(data_dir, 'uct-default')).get_last_mast())
 
     for i in tqdm(range(n)):
 
@@ -62,10 +62,10 @@ def simulate(args: ArgumentParser, config: GameConfig, n: int, save=False):
         scores[i] = dominion.getPlayerScores()
 
     if save:
-        with open('data/uct-mast-100-gold.txt', 'w+') as file:
+        with open(os.path.join(data_dir, 'uct-default-1000-copper.txt'), 'w+') as file:
             json.dump(sim_stats, file)
 
-        np.savez('data/uct-mast-100-gold', scores)
+        np.savez(os.path.join(data_dir, 'uct-default-1000-copper'), scores)
 
 
 def main(args: ArgumentParser):
