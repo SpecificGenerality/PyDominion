@@ -8,7 +8,6 @@ from utils import *
 class MCTSData:
     def __init__(self):
         self.data = []
-        self.masts = []
         self.scores = []
         self.data_df = pd.DataFrame()
         self.masts_df = pd.DataFrame()
@@ -19,7 +18,7 @@ class MCTSData:
         self.scores.append(G.getPlayerScores()[0])
         data_dict = {}
         data_dict['score'] = G.getPlayerScores()[0]
-        data_dict['tau'] = P.tau
+        data_dict['rollout'] = str(P.rollout)
         data_dict['i'] = i
 
         card_counts = get_card_counts(G.getAllCards(0))
@@ -27,14 +26,8 @@ class MCTSData:
         for k in supply_cards:
             data_dict[k] = card_counts.get(k, 0)
 
-        mast_dict = {}
-        mast_dict['tau'] = P.tau
-        mast_dict['i'] = i
-        for k in supply_cards + [str(None)]:
-            mast_dict[k] = P.mast.get(k, (0, 0))[0]
-
+        P.rollout.augment_data(data_dict)
         self.data.append(data_dict)
-        self.masts.append(mast_dict)
 
     def update_split_scores(self, score: int, rollout: bool):
         '''Update the scores obtained during selection and rollout, resp.'''
@@ -42,13 +35,6 @@ class MCTSData:
             self.split_scores[1].append(score)
         else:
             self.split_scores[0].append(score)
-
-    def get_last_mast(self) -> dict:
-        '''Return the mast from the end of training'''
-        mast = {}
-        for k, v in self.masts[-1].items():
-            mast[k] = (v, None)
-        return mast
 
     def augment_avg_scores(self, N: int):
         '''Augment data dataframe with running mean of scores with window N'''
@@ -58,8 +44,6 @@ class MCTSData:
     def update_dataframes(self, reset_score=True):
         '''Append current data to dataframes. Useful for updating data after games.'''
         self.data_df = self.data_df.append(pd.DataFrame(self.data))
-        self.data = []
-        self.masts_df= self.masts_df.append(pd.DataFrame(self.masts))
         self.data = []
         if reset_score:
             self.scores = []

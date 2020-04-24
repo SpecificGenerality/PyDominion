@@ -51,6 +51,9 @@ class GameData:
         self.players = range(config.numPlayers)
         self.trash = []
 
+    def getSupplyCardTypes(self):
+        return [str(c()) for c in self.supply.keys()]
+
     def printKingdom(self) -> None:
         kingdom = []
         for k, _ in self.supply.items():

@@ -53,4 +53,4 @@ class TriggerState(Enum):
 class Rollout(Enum):
     Random = auto()
     HistoryHeuristic = auto()
-    OLSRegression = auto()
+    LinearRegression = auto()

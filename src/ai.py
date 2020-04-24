@@ -14,6 +14,7 @@ from gamedata import GameData
 from mcts import *
 from mctsdata import MCTSData
 from player import MCTSPlayer
+from rollout import *
 from state import *
 
 # define first k turns, and then plot the expected value
@@ -22,14 +23,29 @@ data_dir = 'C:\\Users\\yanju\\Documents\\Princeton\\IW\\Dominion\\PyDominion\\da
 model_dir = 'C:\\Users\\yanju\\Documents\\Princeton\\IW\\Dominion\\PyDominion\\models'
 
 class MCTS:
-    def __init__(self, T: int, tau: float, rollout: Rollout):
-        self.player = MCTSPlayer(train=True, tau=tau, rollout=rollout)
+    def __init__(self, T: int, n: int, tau: float, rollout: Rollout):
+        # initialize game config
+        self.game_config = GameConfig(StartingSplit.StartingRandomSplit, prosperity=False, numPlayers=1)
+        self.game_data = GameData(self.game_config)
+
         self.game = None
         # max number of turns in a game
         self.T = T
         self.expanded = False
-        self.rollout = []
+        self.rollout_model = rollout
         self.data = MCTSData()
+        self.player = None
+        self.iter = 0
+        self.iters = n
+
+        if self.rollout_model == Rollout.Random:
+            self.rollout = RandomRollout()
+        elif rollout == Rollout.HistoryHeuristic:
+            self.rollout_cards = []
+            self.rollout = HistoryHeuristicRollout(tau=tau, train=True)
+        elif rollout == Rollout.LinearRegression:
+            self.rollout= LinearRegressionRollout(self.iters, self.game_data, tau=tau, train=True)
+        self.player = MCTSPlayer(rollout=self.rollout)
 
     def run(self):
         s = self.game.state
@@ -65,8 +81,8 @@ class MCTS:
                     # Uncomment to track UCT score within the tree
                     # tree_score = self.game.getPlayerScores()[0]
                     # self.data.update_split_scores(tree_score, False)
-                else:
-                    self.rollout.append(response.singleCard)
+                elif self.rollout_model == Rollout.HistoryHeuristic:
+                    self.rollout_cards.append(response.singleCard)
 
             s.processDecision(response)
             s.advanceNextDecision()
@@ -86,17 +102,20 @@ class MCTS:
             self.player.node = self.player.node.parent
 
         # update history heuristic
-        self.player.update_mast(self.rollout, delta)
+        if self.rollout_model == Rollout.HistoryHeuristic:
+            self.rollout.update(cards=self.rollout_cards, score=score)
+        elif self.rollout_model == Rollout.LinearRegression:
+            self.rollout.update(counts=get_card_counts(self.game.getAllCards(0)),score=score, i=self.iter)
 
         return self.game.getPlayerScores()[0]
 
-    def reset(self):
-        config = GameConfig(StartingSplit.StartingRandomSplit, prosperity=False, numPlayers=1)
-        data = GameData(config)
+    def reset(self, i: int):
         self.expanded = False
-        self.rollout = []
-
-        self.game = Game(config, data, [self.player])
+        self.rollout_cards = []
+        self.iter = i
+        self.game_config = GameConfig(StartingSplit.StartingRandomSplit, prosperity=False, numPlayers=1)
+        self.game_data = GameData(self.game_config)
+        self.game = Game(self.game_config, self.game_data, [self.player])
         self.game.newGame()
 
         self.player.reset(self.game.state.playerStates[0])
@@ -109,7 +128,7 @@ class MCTS:
         last_avg = 0
         for i in tqdm(range(n)):
             # initialize new game
-            self.reset()
+            self.reset(i)
             self.run()
             self.data.update(self.game, self.player, i)
 
@@ -132,7 +151,7 @@ if __name__ == '__main__':
     parser.add_argument('-n', default=10000, type=int, help='Number of training iterations')
     parser.add_argument('-l', default=100, type=int, help='Number of iterations before logging')
     parser.add_argument('-tau', default=0.5, help='Tau parameter for history heuristic Gibbs distribution')
-    parser.add_argument('-rollout', default=2, type=int, help='1: Random, 2: History Heuristic 3: OLS')
+    parser.add_argument('-rollout', default=2, type=int, help='1: Random, 2: History Heuristic 3: Linear Regression')
     parser.add_argument('--save_model', action='store_true')
     parser.add_argument('--model_dir', type=str, help='Where to save the model', default=model_dir)
     parser.add_argument('--model_name', type=str, help='What to name the model')
@@ -145,9 +164,9 @@ if __name__ == '__main__':
     elif args.rollout == 2:
         rollout = Rollout.HistoryHeuristic
     elif args.rollout == 3:
-        rollout = Rollout.OLSRegression
+        rollout = Rollout.LinearRegression
 
-    mcts = MCTS(args.T, args.tau, rollout)
+    mcts = MCTS(args.T, args.n, args.tau, rollout)
     mcts.train(args.n, args.l,
         save_model=args.save_model, model_dir=model_dir, model_name=args.model_name,
         save_data=args.save_data, data_dir=data_dir)
