@@ -10,7 +10,6 @@ class MCTSData:
         self.data = []
         self.scores = []
         self.data_df = pd.DataFrame()
-        self.masts_df = pd.DataFrame()
         self.split_scores = [[], []]
 
     def update(self, G: Game, P: MCTSPlayer, i: int):

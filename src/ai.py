@@ -140,8 +140,10 @@ class MCTS:
 
         if save_model:
             save(os.path.join(model_dir, model_name), self.player.root)
+            save(os.path.join(model_dir, f'{model_name}_rollout'), self.rollout)
         if save_data:
             self.data.update_dataframes()
+            self.data.augment_avg_scores(100)
             save(os.path.join(data_dir, model_name), self.data)
 
 
