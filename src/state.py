@@ -174,8 +174,6 @@ class State:
         pState.buys += card.getPlusBuys()
         pState.coins += card.getPlusCoins()
 
-        logging.info(f'Actions: {pState.actions}\nBuys: {pState.buys}\nCoins: {pState.coins}')
-
         for i in range(card.getPlusCards()):
             self.drawCard(self.player)
 
@@ -322,8 +320,6 @@ class State:
 
     def advancePhase(self):
         pState = self.playerStates[self.player]
-        logging.info(f'Play: {pState.playArea}')
-        logging.info(f'Hand: {pState.hand}')
         if self.phase == Phase.ActionPhase:
             logging.info(f'====ACTION PHASE====')
             if pState.actions == 0 or pState.getActionCardCount(pState.hand) == 0:
@@ -365,9 +361,9 @@ class State:
                     self.phase = Phase.CleanupPhase
                     logging.info(f'Player {self.player} cannot afford to buy any cards')
         if self.phase == Phase.CleanupPhase:
-            logging.info(f'====CLEANUP PHASE====')
-            logging.info(f'Play: {pState.playArea}')
-            logging.info(f'Hand: {pState.hand}')
+            logging.debug(f'====CLEANUP PHASE====')
+            logging.debug(f'Play: {pState.playArea}')
+            logging.debug(f'Hand: {pState.hand}')
             logging.debug(f'Discard: {pState.discard}')
             logging.debug(f'Deck: {pState.deck}')
             logging.debug(f'Trash: {self.data.trash}')

@@ -72,7 +72,7 @@ class HistoryHeuristicRollout(RolloutModel):
         return 'HistoryHeuristicRollout'
 
 class LinearRegressionRollout(RolloutModel):
-    def __init__(self, iters: int, G: GameData, tau=0.5, train=False):
+    def __init__(self, iters: int, G: GameData, tau=0.5, train=False, eps=10e-4):
         self.supply: List[str] = G.getSupplyCardTypes() + [str(None)]
         # Index map for kingdom cards
         self.n = len(self.supply)
@@ -82,8 +82,11 @@ class LinearRegressionRollout(RolloutModel):
         self.y = np.zeros((iters, ))
         self.tau = tau
         self.train = train
+        self.eps = eps
 
     def update(self, **data):
+        if not self.train:
+            return
         '''Perform OLS of self.X against self.y if there's enough data'''
         # We expect counts to be a Counter
         counts: Counter = data['counts']
@@ -107,6 +110,11 @@ class LinearRegressionRollout(RolloutModel):
             return
 
         reg = LinearRegression().fit(self.X[:i+1], self.y[:i+1])
+
+        beta_norm = np.linalg.norm(self.betas)
+        if not np.isclose(beta_norm, 0) and abs(np.linalg.norm(reg.coef_) - beta_norm) / beta_norm < self.eps:
+            self.train = False
+
         self.betas = reg.coef_
 
     def select(self, choices):

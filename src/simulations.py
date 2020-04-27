@@ -17,6 +17,7 @@ from gamedata import GameData
 from player import *
 from simulationdata import *
 from victorycard import *
+import logging
 
 
 def test_tau(taus: List, trials=100, iters=500):
@@ -38,7 +39,7 @@ def init_players(args: ArgumentParser):
             players.append(RandomPlayer())
         elif args.strategy[i] == 'UCT':
             try:
-                rollout_model = load(os.path.join(args.model_dir, args.rollout[j]))
+                rollout_model = load(os.path.join(args.model_dir, args.rollouts[j]))
             except:
                 rollout_model = RandomRollout()
             root = load(os.path.join(args.model_dir, args.roots[j]))
@@ -52,12 +53,14 @@ def init_players(args: ArgumentParser):
 
     return players
 
-def simulate(args: ArgumentParser, config: GameConfig, n: int, save_data=False):
+def simulate(args: ArgumentParser, split:StartingSplit, n: int, save_data=False):
+
     sim_data = SimulationData()
 
     players = init_players(args)
 
     for i in tqdm(range(n)):
+        config = GameConfig(split, prosperity=args.prosperity, numPlayers=args.players)
         data = GameData(config)
         dominion = Game(config, data, players)
         dominion.newGame()
@@ -67,16 +70,21 @@ def simulate(args: ArgumentParser, config: GameConfig, n: int, save_data=False):
                 player.reset(dominion.state.playerStates[i])
 
         t_start = time.time()
-        dominion.run()
+        dominion.run(T=args.T)
         t_end = time.time()
         sim_data.update(dominion, t_end - t_start)
 
-    sim_data.finalize()
+    sim_data.finalize(dominion)
 
     if save_data:
         save(os.path.join(data_dir, args.data_name), sim_data)
 
+    print('===SUMMARY===')
+    print(sim_data.summary)
+
 def main(args: ArgumentParser):
+    if args.debug:
+        logging.basicConfig(level=logging.INFO)
     if args.split == 0:
         split = StartingSplit.StartingRandomSplit
     elif args.split == 1:
@@ -84,13 +92,12 @@ def main(args: ArgumentParser):
     else:
         split = StartingSplit.Starting34Split
 
-    config = GameConfig(split, prosperity=args.prosperity, numPlayers=args.players)
-
-    simulate(args, config, args.iters, args.save_data)
+    simulate(args, split, args.iters, args.save_data)
 
 
 if __name__=='__main__':
     parser = ArgumentParser('Simulation Chamber for Dominion')
+    parser.add_argument('-T', type=int, default=None, help='Upper threshold for number of turns in each game')
     parser.add_argument('--iters', type=int,  required=True, help='Number of games to simulate')
     parser.add_argument('--split', default=0, type=int, help='Starting Copper/Estate split. 0: Random, 1: 25Split, 2: 34Split')
     parser.add_argument('--prosperity', action='store_true', help='Whether the Prosperity settings should be used')
@@ -98,10 +105,11 @@ if __name__=='__main__':
     parser.add_argument('--strategy', nargs='+', type=str, help='Strategy of AI opponent. Supported: [R, BM, TDBM, UCT]')
     parser.add_argument('--model_dir', default=model_dir, help='Where the models are located')
     parser.add_argument('--roots', nargs='+', help='Roots of UCT')
-    parser.add_argument('--rollout', nargs='+', help='Rollout models of UCT')
+    parser.add_argument('--rollouts', nargs='+', help='Rollout models of UCT')
     parser.add_argument('--save_data', action='store_true', help='Whether the data should be saved')
     parser.add_argument('--data_dir', default=data_dir, type=str, help='Where the data should be saved')
     parser.add_argument('--data_name', default='data', type=str, help='Name of the data file')
+    parser.add_argument('--debug', action='store_true', help='Turn logging settings to DEBUG')
 
     args = parser.parse_args()
     main(args)

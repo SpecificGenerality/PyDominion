@@ -45,7 +45,7 @@ class MCTS:
             self.rollout = HistoryHeuristicRollout(tau=tau, train=True)
         elif rollout == Rollout.LinearRegression:
             self.rollout= LinearRegressionRollout(self.iters, self.game_data, tau=tau, train=True)
-        self.player = MCTSPlayer(rollout=self.rollout)
+        self.player = MCTSPlayer(rollout=self.rollout, train=True)
 
     def run(self):
         s = self.game.state
@@ -62,8 +62,7 @@ class MCTS:
             if s.phase == Phase.BuyPhase:
                 # apply selection until leaf node is reached
                 if next_node:
-                    assert next_node.parent == self.player.node
-                    self.player.node = next_node
+                    assert next_node == self.player.node
                     self.player.node.n += 1
                 elif not self.expanded:
                 # expand one node
@@ -154,6 +153,7 @@ if __name__ == '__main__':
     parser.add_argument('-l', default=100, type=int, help='Number of iterations before logging')
     parser.add_argument('-tau', default=0.5, help='Tau parameter for history heuristic Gibbs distribution')
     parser.add_argument('-rollout', default=2, type=int, help='1: Random, 2: History Heuristic 3: Linear Regression')
+    parser.add_argument('-eps', default=10e-4, help='When to stop updating rollout models')
     parser.add_argument('--save_model', action='store_true')
     parser.add_argument('--model_dir', type=str, help='Where to save the model', default=model_dir)
     parser.add_argument('--model_name', type=str, help='What to name the model')

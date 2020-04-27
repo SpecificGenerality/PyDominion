@@ -25,7 +25,8 @@ class Player(ABC):
 
 # TODO: Expand MCTS to work outside of sandbox games
 class MCTSPlayer(Player):
-    def __init__(self, rollout, root=Node()):
+    def __init__(self, rollout, root=Node(), train=False):
+        self.train = train
         self.root = root
         self.root.parent = self.root
         # To prevent clobbering trees loaded from file
@@ -39,10 +40,12 @@ class MCTSPlayer(Player):
         return max(1, min(25, 25 / np.sqrt(self.root.n)))
 
     def reset(self, pState: PlayerState):
-        self.root.n += 1
+        if self.train:
+            self.root.n += 1
         # advance MCTS from virtual root to the correct start position (2/3/4/5 coppers)
         self.node = self.root.children[pState.getTreasureCardCount(pState.hand)-2]
-        self.node.n += 1
+        if self.train:
+            self.node.n += 1
 
     def get_next_node(self, choices: List[Card], C):
         '''Select the node that maximizes the UCB score'''
@@ -61,7 +64,6 @@ class MCTSPlayer(Player):
     def makeDecision(self, s: State, response: DecisionResponse):
         player = s.decision.controllingPlayer
         d = s.decision
-
         if s.phase == Phase.ActionPhase:
             assert False, 'MCTS does not support action cards yet'
         elif s.phase == Phase.TreasurePhase:
@@ -71,12 +73,14 @@ class MCTSPlayer(Player):
                 response.singleCard = self.rollout.select([card for card in d.cardChoices if not isinstance(card, Curse)] + [None])
                 return None
 
-            self.node.add_unique_children(d.cardChoices)
+            if self.train:
+                self.node.add_unique_children(d.cardChoices)
             # the next node in the tree is the one that maximizes the UCB1 score
             next_node = self.get_next_node(d.cardChoices, self.get_C())
             if not next_node:
                 response.singleCard = self.rollout.select([card for card in d.cardChoices if not isinstance(card, Curse)] + [None])
                 return None
+            self.node = next_node
             response.singleCard = next_node.card
             return next_node
 
