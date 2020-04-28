@@ -23,7 +23,7 @@ data_dir = 'C:\\Users\\yanju\\Documents\\Princeton\\IW\\Dominion\\PyDominion\\da
 model_dir = 'C:\\Users\\yanju\\Documents\\Princeton\\IW\\Dominion\\PyDominion\\models'
 
 class MCTS:
-    def __init__(self, T: int, n: int, tau: float, rollout: Rollout):
+    def __init__(self, T: int, n: int, tau: float, rollout: Rollout, eps: float):
         # initialize game config
         self.game_config = GameConfig(StartingSplit.StartingRandomSplit, prosperity=False, numPlayers=1)
         self.game_data = GameData(self.game_config)
@@ -44,7 +44,7 @@ class MCTS:
             self.rollout_cards = []
             self.rollout = HistoryHeuristicRollout(tau=tau, train=True)
         elif rollout == Rollout.LinearRegression:
-            self.rollout= LinearRegressionRollout(self.iters, self.game_data, tau=tau, train=True)
+            self.rollout= LinearRegressionRollout(self.iters, self.game_data, tau=tau, train=True, eps=eps)
         self.player = MCTSPlayer(rollout=self.rollout, train=True)
 
     def run(self):
@@ -153,7 +153,7 @@ if __name__ == '__main__':
     parser.add_argument('-l', default=100, type=int, help='Number of iterations before logging')
     parser.add_argument('-tau', default=0.5, help='Tau parameter for history heuristic Gibbs distribution')
     parser.add_argument('-rollout', default=2, type=int, help='1: Random, 2: History Heuristic 3: Linear Regression')
-    parser.add_argument('-eps', default=10e-4, help='When to stop updating rollout models')
+    parser.add_argument('-eps', default=10e-4, type=float, help='When to stop updating rollout models')
     parser.add_argument('--save_model', action='store_true')
     parser.add_argument('--model_dir', type=str, help='Where to save the model', default=model_dir)
     parser.add_argument('--model_name', type=str, help='What to name the model')
@@ -168,7 +168,7 @@ if __name__ == '__main__':
     elif args.rollout == 3:
         rollout = Rollout.LinearRegression
 
-    mcts = MCTS(args.T, args.n, args.tau, rollout)
+    mcts = MCTS(args.T, args.n, args.tau, rollout, eps=args.eps)
     mcts.train(args.n, args.l,
         save_model=args.save_model, model_dir=model_dir, model_name=args.model_name,
         save_data=args.save_data, data_dir=data_dir)
