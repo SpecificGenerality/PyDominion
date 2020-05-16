@@ -6,6 +6,7 @@ from argparse import ArgumentParser
 import numpy as np
 from tqdm import tqdm
 
+from aiconfig import *
 from aiutils import *
 from config import GameConfig
 from enums import *
@@ -19,8 +20,6 @@ from state import *
 
 # define first k turns, and then plot the expected value
 # of the random rollout
-data_dir = 'C:\\Users\\yanju\\Documents\\Princeton\\IW\\Dominion\\PyDominion\\data'
-model_dir = 'C:\\Users\\yanju\\Documents\\Princeton\\IW\\Dominion\\PyDominion\\models'
 
 class MCTS:
     def __init__(self, T: int, n: int, tau: float, rollout: Rollout, eps: float):
@@ -78,8 +77,8 @@ class MCTS:
                     self.player.node = next_node
                     self.player.node.n += 1
                     # Uncomment to track UCT score within the tree
-                    # tree_score = self.game.getPlayerScores()[0]
-                    # self.data.update_split_scores(tree_score, False)
+                    tree_score = self.game.getPlayerScores()[0]
+                    self.data.update_split_scores(tree_score, False, self.iter)
                 elif self.rollout_model == Rollout.HistoryHeuristic:
                     self.rollout_cards.append(response.singleCard)
 
@@ -90,7 +89,7 @@ class MCTS:
         player_turns = s.playerStates[0].turns
         score = self.game.getPlayerScores()[0]
         # update data
-        # self.data.update_split_scores(score - tree_score, True)
+        self.data.update_split_scores(score - tree_score, True, self.iter)
 
         # backpropagate
         delta = score
@@ -143,7 +142,7 @@ class MCTS:
         if save_data:
             self.data.update_dataframes()
             self.data.augment_avg_scores(100)
-            save(os.path.join(data_dir, model_name), self.data)
+            save(os.path.join(data_dir, data_name), self.data)
 
 
 if __name__ == '__main__':
@@ -159,6 +158,7 @@ if __name__ == '__main__':
     parser.add_argument('--model_name', type=str, help='What to name the model')
     parser.add_argument('--save_data', action='store_true')
     parser.add_argument('--data_dir', type=str, help='Where to save the data', default=data_dir)
+    parser.add_argument('--data_name', type=str, help='Name of the data file')
     args = parser.parse_args()
 
     if args.rollout == 1:
@@ -171,4 +171,4 @@ if __name__ == '__main__':
     mcts = MCTS(args.T, args.n, args.tau, rollout, eps=args.eps)
     mcts.train(args.n, args.l,
         save_model=args.save_model, model_dir=model_dir, model_name=args.model_name,
-        save_data=args.save_data, data_dir=data_dir)
+        save_data=args.save_data, data_dir=data_dir, data_name=args.data_name)

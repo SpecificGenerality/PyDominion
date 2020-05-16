@@ -8,6 +8,7 @@ import numpy as np
 from tqdm import tqdm
 
 from ai import *
+from aiconfig import *
 from aiutils import *
 from buyagenda import *
 from config import GameConfig
@@ -22,14 +23,27 @@ import logging
 
 def test_tau(taus: List, trials=100, iters=500):
     '''Test the UCT for varying values of tau'''
-    agent = MCTS(30)
+    agent = MCTS(30, n=iters, tau=0.5, rollout=Rollout.LinearRegression, eps=0)
     for tau in taus:
         for _ in range(trials):
-            agent.player=MCTSPlayer(train=True, tau=tau)
-            agent.train(iters, trials)
+            agent.rollout = LinearRegressionRollout(iters, agent.game_data, tau, train=True, eps=0)
+            agent.player=MCTSPlayer(rollout=agent.rollout, train=True)
+            agent.train(n=iters, output_iters=iters)
             agent.data.update_dataframes()
             agent.data.augment_avg_scores(100)
-    save(os.path.join(data_dir, 'taus'), agent.data)
+    save(os.path.join(data_dir, 'taus-lr'), agent.data)
+
+def test_C(trials=10, iters=500):
+    agent = MCTS(T=30, n=iters, tau=0.5, rollout=Rollout.LinearRegression, eps=0)
+    L = [lambda x: 25, lambda x: 25 / np.sqrt(x), lambda x: max(1, min(25, 25 / np.sqrt(x)))]
+    for C in L:
+        for _ in range(trials):
+            agent.rollout = LinearRegressionRollout(iters, agent.game_data, train=True, eps=0)
+            agent.player=MCTSPlayer(rollout=agent.rollout, train=True, C=C)
+            agent.train(n=iters, output_iters=100)
+            agent.data.update_dataframes()
+            agent.data.augment_avg_scores(100)
+    save(os.path.join(data_dir, 'C-lr'), agent.data)
 
 def init_players(args: ArgumentParser):
     players = []
