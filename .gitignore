@@ -3,6 +3,7 @@ data*
 models*
 *.ipynb
 figures*
+aiconfig.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

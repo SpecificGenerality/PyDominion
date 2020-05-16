@@ -10,7 +10,8 @@ class MCTSData:
         self.data = []
         self.scores = []
         self.data_df = pd.DataFrame()
-        self.split_scores = [[], []]
+        self.split_scores = []
+        self.split_scores_df = pd.DataFrame()
 
     def update(self, G: Game, P: MCTSPlayer, i: int):
         '''Update game statistics after game i'''
@@ -28,12 +29,13 @@ class MCTSData:
         P.rollout.augment_data(data_dict)
         self.data.append(data_dict)
 
-    def update_split_scores(self, score: int, rollout: bool):
+    def update_split_scores(self, score: int, rollout: bool, i: int):
         '''Update the scores obtained during selection and rollout, resp.'''
-        if rollout:
-            self.split_scores[1].append(score)
-        else:
-            self.split_scores[0].append(score)
+        data_dict = {}
+        data_dict['i'] = i
+        data_dict['score'] = score
+        data_dict['rollout'] = rollout
+        self.split_scores.append(data_dict)
 
     def augment_avg_scores(self, N: int):
         '''Augment data dataframe with running mean of scores with window N'''
@@ -44,5 +46,7 @@ class MCTSData:
         '''Append current data to dataframes. Useful for updating data after games.'''
         self.data_df = self.data_df.append(pd.DataFrame(self.data))
         self.data = []
+        self.split_scores_df = self.split_scores_df.append(pd.DataFrame(self.split_scores))
+        self.split_scores = []
         if reset_score:
             self.scores = []

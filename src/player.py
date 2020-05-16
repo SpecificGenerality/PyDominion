@@ -25,7 +25,7 @@ class Player(ABC):
 
 # TODO: Expand MCTS to work outside of sandbox games
 class MCTSPlayer(Player):
-    def __init__(self, rollout, root=Node(), train=False):
+    def __init__(self, rollout, root=Node(), train=False, C=lambda x: max(1, min(5, 5 / np.sqrt(x)))):
         self.train = train
         self.root = root
         self.root.parent = self.root
@@ -34,10 +34,11 @@ class MCTSPlayer(Player):
             self.root.children = [Node(self.root) for i in range(GameConstants.StartingHands)]
         self.node = None
         self.rollout = rollout
+        self.Cfx = C
 
     def get_C(self):
         '''Return time-varying C tuned for raw score reward'''
-        return max(1, min(25, 25 / np.sqrt(self.root.n)))
+        return self.Cfx(self.node.n)
 
     def reset(self, pState: PlayerState):
         if self.train:
