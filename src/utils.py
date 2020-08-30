@@ -4,7 +4,6 @@ import numpy as np
 
 from actioncard import *
 from card import *
-from card import Card
 from cursecard import *
 from treasurecard import *
 from victorycard import *

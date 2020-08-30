@@ -1,0 +1,9 @@
+---
+name: dominion
+dependencies:  
+  - tqdm
+  - numpy 
+  - pandas
+  - scikit-learn
+  - matplotlib
+  - unittest
