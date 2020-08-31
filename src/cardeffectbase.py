@@ -6,7 +6,7 @@ from cursecard import *
 from enums import *
 from state import *
 from treasurecard import Copper, Silver, TreasureCard
-from utils import containsCard
+from utils import containsCard, moveCard
 
 
 class ArtisanEffect(CardEffect):

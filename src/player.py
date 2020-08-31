@@ -11,8 +11,8 @@ from enums import *
 from heuristics import *
 from mcts import *
 from playerstate import PlayerState
-from state import DecisionResponse, State
 from rollout import *
+from state import DecisionResponse, State
 
 # feature decks as counts of each card, least squares regress each against scores + offset
 # try random + greedy
@@ -134,7 +134,7 @@ class RandomPlayer(Player):
         d = s.decision
         d.cardChoices.append(None)
         if s.phase == Phase.BuyPhase:
-            removeCard(Curse(), d.cardChoices)
+            removeFirstCard(Curse(), d.cardChoices)
         if d.type == DecisionType.DecisionSelectCards:
             cardsToPick = d.minCards
             if d.maxCards > d.minCards:

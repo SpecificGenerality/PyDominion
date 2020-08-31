@@ -10,7 +10,6 @@ from config import GameConfig
 from enums import *
 from gamedata import GameData
 from playerstate import PlayerState
-from stateutils import *
 from treasurecard import TreasureCard
 from utils import *
 from victorycard import *
@@ -137,7 +136,7 @@ class State:
         # print(f'Trashing {card}')
         if zone == Zone.Hand:
             if pState.hand:
-                trashed_card = removeCard(card, pState.hand)
+                trashed_card = removeFirstCard(card, pState.hand)
                 if trashed_card:
                     self.data.trash.append(trashed_card)
                     logging.info(f'Player {player} trashes {card} from hand.')
@@ -154,7 +153,7 @@ class State:
                 logging.info(f'Player {player} deck is empty, trashing nothing')
         elif zone == Zone.Play:
             if pState.playArea:
-                trashed_card = removeCard(pState.playArea, card)
+                trashed_card = removeFirstCard(pState.playArea, card)
                 if trashed_card:
                     self.data.trash.append(trashed_card)
                     logging.info(f'Player {player} trashes {card} from play.')
@@ -941,7 +940,7 @@ class PlayActionNTimes(Event):
     def processDecision(self, s: State, response: DecisionResponse):
         pState = s.playerStates[s.player]
         self.target = response.cards[0]
-        target = removeCard(self.target, pState.hand)
+        target = removeFirstCard(self.target, pState.hand)
 
         target.copies = self.count
         pState.playArea.append(target)

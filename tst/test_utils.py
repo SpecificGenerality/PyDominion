@@ -3,31 +3,6 @@ from utils import *
 from victorycard import *
 
 class TestUtils(unittest.TestCase):
-    def testContainsCard(self): 
-        card = Colony()
-        cards = []
-
-        self.assertFalse(containsCard(card, cards))
-
-        cards = [Colony() for i in range(2)]
-
-        self.assertTrue(containsCard(card, cards))
-
-    def testRemoveCard(self):
-        card = Colony()
-
-        cards = []
-
-        self.assertIsNone(removeCard(card, cards))
-        
-        cards = [card]
-
-        self.assertEqual(removeCard(card, cards), card)
-
-        cards = [Estate(), card, Province(), Colony()]
-
-        self.assertEqual(removeCard(card, cards), card)
-
     def testGetFirstIndex(self):
         card = Colony()
 
@@ -45,6 +20,63 @@ class TestUtils(unittest.TestCase):
         cards = [Estate(), Colony(), Province(), Colony()]
 
         self.assertEqual(getFirstIndex(card, cards), 1) 
+
+    def testContainsCard(self): 
+        card = Colony()
+        cards = []
+
+        self.assertFalse(containsCard(card, cards))
+
+        cards = [Colony() for i in range(2)]
+
+        self.assertTrue(containsCard(card, cards))
+
+    def testRemoveFirstCard(self):
+        card = Colony()
+
+        cards = []
+
+        self.assertIsNone(removeFirstCard(card, cards))
+        
+        cards = [card]
+
+        self.assertEqual(removeFirstCard(card, cards), card)
+
+        cards = [Estate(), card, Province(), Colony()]
+
+        self.assertEqual(removeFirstCard(card, cards), card)
+
+    def testRemoveCard(self):
+        card = Colony()
+
+        cards = []
+
+        self.assertIsNone(removeCard(card, cards), card)
+
+        cards = [card]
+
+        self.assertEqual(removeCard(card, cards), card)
+        
+        cards = [Colony(), Colony(), card]
+
+        self.assertEqual(removeCard(card, cards), card)
+
+    def testMoveCard(self):
+        card = Colony()
+
+        src, dst = [], []
+
+        self.assertRaises(ValueError, moveCard, card, src, dst)
+
+        src = [Colony()]
+
+        self.assertRaises(ValueError, moveCard, card, src, dst)
+
+        src = [card]
+        
+        moveCard(card, src, dst)
+        self.assertEqual(src, [])
+        self.assertEqual(dst, [card])
 
     def test_running_mean(self):
         x, N = [1,1,1], 1
