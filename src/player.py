@@ -134,7 +134,7 @@ class RandomPlayer(Player):
         d = s.decision
         d.cardChoices.append(None)
         if s.phase == Phase.BuyPhase:
-            removeFirstCard(Curse(), d.cardChoices)
+            removeCard(Curse(), d.cardChoices)
         if d.type == DecisionType.DecisionSelectCards:
             cardsToPick = d.minCards
             if d.maxCards > d.minCards:

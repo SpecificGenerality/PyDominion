@@ -1,10 +1,10 @@
 from enums import GameConstants, StartingSplit
-from utils import getBaseKingdomCards
+from constants import BASE_CARDS
 
 
 class GameConfig:
     def __init__(self, split: StartingSplit, prosperity: bool, numPlayers:int, sandbox=True):
-        self.randomizers = getBaseKingdomCards()
+        self.randomizers = BASE_CARDS
         self.kingdomSize = GameConstants.KingdomSize
         self.startingSplit = split
         self.prosperity = prosperity
