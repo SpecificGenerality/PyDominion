@@ -167,7 +167,7 @@ class State:
         moveCard(card, pState.hand, pState.playArea)
 
     def processAction(self, card: Card):
-        import constants
+        import cardeffectbase
         pState = self.playerStates[self.player]
         pState.actions += card.getPlusActions()
         pState.buys += card.getPlusBuys()
@@ -176,7 +176,7 @@ class State:
         for i in range(card.getPlusCards()):
             self.drawCard(self.player)
 
-        effect = constants.getCardEffect(card)
+        effect = cardeffectbase.getCardEffect(card)
         if effect:
             effect.playAction(self)
 

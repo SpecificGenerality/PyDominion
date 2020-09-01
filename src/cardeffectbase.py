@@ -8,7 +8,6 @@ from state import *
 from treasurecard import Copper, Silver, TreasureCard
 from utils import containsCard, moveCard
 
-
 class ArtisanEffect(CardEffect):
     def __init__(self):
         self.c = Artisan()
@@ -235,3 +234,28 @@ class ThroneRoomEffect(CardEffect):
 
     def playAction(self, s: State):
         s.events.append(PlayActionNTimes(self.c, 2))
+
+# TODO: Implement Sentry, Bandit
+BASE_EFFECT_MAP = {
+    Artisan: ArtisanEffect,
+    Chapel: ChapelEffect,
+    Cellar: CellarEffect,
+    Harbinger: HarbingerEffect,
+    Workshop: WorkshopEffect,
+    Bureaucrat: BureaucratEffect,
+    Militia: MilitiaEffect,
+    Moneylender: MoneylenderEffect,
+    Remodel: RemodelEffect,
+    ThroneRoom: ThroneRoomEffect,
+    Library: LibraryEffect,
+    Mine: MineEffect,
+    Poacher: PoacherEffect,
+    Witch: WitchEffect,
+    Gardens: GardensEffect
+}
+
+def getCardEffect(card: Card) -> CardEffect:
+    for k, v in BASE_EFFECT_MAP.items():
+        if isinstance(card, k):
+            return v()
+    return None

@@ -26,17 +26,17 @@ class MCTSState:
         return self.deck == other.deck and self.supply == other.supply
 
 class Node:
-    def __init__(self, parent=None, card=None):
+    def __init__(self, parent=None, card=None, n=0, v=0, children=[]):
         # TODO: For non-sandbox, maybe states should be stored?
         # self.state = s
         # the card played to get from parent to current
+        self.parent = parent
         self.card = card
         # number of times visited
-        self.n = 0
+        self.n = n
         # node value
-        self.v = 0
-        self.parent = parent
-        self.children = []
+        self.v = v
+        self.children = children
 
     # UCB1 formula
     def score(self, C):

@@ -1,6 +1,6 @@
 import unittest
-from utils import *
-from victorycard import *
+from utils import getFirstIndex, containsCard, removeCard, removeFirstCard, moveCard, running_mean
+from victorycard import Estate, Province, Colony
 
 class TestUtils(unittest.TestCase):
     def testGetFirstIndex(self):

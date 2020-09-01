@@ -28,7 +28,7 @@ def path_helper(curr: Node, acc: List[Node], key):
     if curr.n > 0 and curr.children:
         child = max(curr.children, key=key)
         acc.append(child)
-        path_helper(child, acc)
+        path_helper(child, acc, key=key)
 
 def best_path(root: Node) -> List[Node]:
     '''Return the max-valued path from root to leaf'''
@@ -36,17 +36,33 @@ def best_path(root: Node) -> List[Node]:
     path_helper(root, path, lambda x: x.v)
     return path
 
-def get_branching_factors(root: Node) -> List[int]:
+def update_mean(n: int, prev_mean: float, x: float):
+    '''Incremental update mean'''
+    return (n - 1) / n * prev_mean + x / n 
+
+def update_var(n: int, prev_var: float, prev_mean: float, x: float):
+    '''Incremental update variance'''
+    if n == 1: 
+        return 0
+    else: 
+        return (n - 2) / (n - 1) * prev_var + 1 / n * (x - prev_mean) ** 2
+
+def get_branching_factor_stats(root: Node) -> List[int]:
+    '''Calculate the mean and variance of tree branching factor'''
     Q = deque(root.children)
-    L = []
+    mean, var = 0, 0
     while Q:
+        k = 1
         N = len(Q)
         for i in range(N):
             n = Q.popleft()
-            L.append(sum(1 if not n.is_leaf() > 0 else 0 for c in n.children))
+            x = sum(1 if not n.is_leaf() else 0 for c in n.children)
+            prev_mean = mean 
+            mean = update_mean(k, prev_mean, x)
+            var = update_var(k, var, prev_mean, x)
             Q = Q + deque(list(filter(lambda x: not x.is_leaf(), n.children)))
-
-    return L
+            k += 1
+    return mean, var
 
 
 def get_path(root: Node, leaf: Node):
@@ -199,4 +215,3 @@ def plot_scores(score: np.array):
     plt.xlabel('Iterations')
     plt.ylabel('Score')
     plt.show()
-
