@@ -23,7 +23,6 @@ def save(file: str, obj):
 def print_path(path: List[Node]):
     print('-->'.join([str(node.card) for node in path]))
 
-
 def path_helper(curr: Node, acc: List[Node], key):
     if curr.n > 0 and curr.children:
         child = max(curr.children, key=key)
@@ -51,6 +50,7 @@ def get_branching_factor_stats(root: Node) -> List[int]:
     '''Calculate the mean and variance of tree branching factor'''
     Q = deque(root.children)
     mean, var = 0, 0
+    # bfs
     while Q:
         k = 1
         N = len(Q)
@@ -64,33 +64,24 @@ def get_branching_factor_stats(root: Node) -> List[int]:
             k += 1
     return mean, var
 
-
 def get_path(root: Node, leaf: Node):
+    '''Get the path from leaf to root'''
     path = []
     curr = leaf
-    while curr and curr.parent != root:
+    while curr and curr != root:
         path.append(curr)
         curr = curr.parent
+
+    if curr == root: 
+        path.append(root)
+
     path.reverse()
     return path
 
-def get_path_lengths(root: Node) -> List[int]:
-    lengths = []
-    def get_path_lengths_helper(curr: Node, acc: int):
-        if curr.is_leaf():
-            lengths.append(acc)
-        for c in curr.children:
-            get_path_lengths_helper(c, acc+1)
-    get_path_lengths_helper(root, 0)
-    return lengths
-
 def get_most_visited_paths_at_depth(root: Node, k: int, p: int):
-    '''Return the p most traversed length-k path from starting node (not virtual root).'''
-    assert k > 0, 'k must be positive'
-    assert p > 0, 'p must be positive'
-
+    '''Return the p most traversed length-k path from game start nodes (not virtual root).'''
     Q = deque(root.children)
-    # bfs from start nodes
+    # find the level-k nodes via bfs
     for i in range(1, k+1):
         l = len(Q)
         for j in range(l):
@@ -99,31 +90,9 @@ def get_most_visited_paths_at_depth(root: Node, k: int, p: int):
 
     paths = sorted(Q, key=lambda x: x.n, reverse=True)
     for i, n in enumerate(paths):
-        paths[i] = get_path(root, n)
+        paths[i] = get_path(root, n)[1:]
 
     return paths[:p]
-
-def get_most_visited_leaf(root: Node) -> Node:
-    '''Returns the leaf with the highest visit count'''
-    max_n = 0
-    max_leaf = None
-    def get_most_visited_leaf_helper(curr: Node):
-        nonlocal max_n
-        nonlocal max_leaf
-        if not curr.children or max([c.n for c in curr.children]) == 0:
-            if curr.n > max_n:
-                max_n = curr.n
-                max_leaf = curr
-        else:
-            for child in curr.children:
-                get_most_visited_leaf_helper(child)
-    get_most_visited_leaf_helper(root)
-    return max_leaf
-
-def most_visited_path(root: Node) -> List[Node]:
-    '''Return the most-visited path from root to leaf'''
-    curr = get_most_visited_leaf(root)
-    return get_path(root, curr)
 
 def get_buy_sequence(path: List[Node]) -> List[Card]:
     '''Given a path, return the associated list of card buys.'''
