@@ -23,12 +23,11 @@ def save(file: str, obj):
 def print_path(path: List[Node]):
     print('-->'.join([str(node.card) for node in path]))
 
-
 def path_helper(curr: Node, acc: List[Node], key):
     if curr.n > 0 and curr.children:
         child = max(curr.children, key=key)
         acc.append(child)
-        path_helper(child, acc)
+        path_helper(child, acc, key=key)
 
 def best_path(root: Node) -> List[Node]:
     '''Return the max-valued path from root to leaf'''
@@ -36,45 +35,53 @@ def best_path(root: Node) -> List[Node]:
     path_helper(root, path, lambda x: x.v)
     return path
 
-def get_branching_factors(root: Node) -> List[int]:
+def update_mean(n: int, prev_mean: float, x: float):
+    '''Incremental update mean'''
+    return (n - 1) / n * prev_mean + x / n 
+
+def update_var(n: int, prev_var: float, prev_mean: float, x: float):
+    '''Incremental update variance'''
+    if n == 1: 
+        return 0
+    else: 
+        return (n - 2) / (n - 1) * prev_var + 1 / n * (x - prev_mean) ** 2
+
+def get_branching_factor_stats(root: Node) -> List[int]:
+    '''Calculate the mean and variance of tree branching factor'''
     Q = deque(root.children)
-    L = []
+    mean, var = 0, 0
+    # bfs
     while Q:
+        k = 1
         N = len(Q)
         for i in range(N):
             n = Q.popleft()
-            L.append(sum(1 if not n.is_leaf() > 0 else 0 for c in n.children))
+            x = sum(1 if not n.is_leaf() else 0 for c in n.children)
+            prev_mean = mean 
+            mean = update_mean(k, prev_mean, x)
+            var = update_var(k, var, prev_mean, x)
             Q = Q + deque(list(filter(lambda x: not x.is_leaf(), n.children)))
-
-    return L
-
+            k += 1
+    return mean, var
 
 def get_path(root: Node, leaf: Node):
+    '''Get the path from leaf to root'''
     path = []
     curr = leaf
-    while curr and curr.parent != root:
+    while curr and curr != root:
         path.append(curr)
         curr = curr.parent
+
+    if curr == root: 
+        path.append(root)
+
     path.reverse()
     return path
 
-def get_path_lengths(root: Node) -> List[int]:
-    lengths = []
-    def get_path_lengths_helper(curr: Node, acc: int):
-        if curr.is_leaf():
-            lengths.append(acc)
-        for c in curr.children:
-            get_path_lengths_helper(c, acc+1)
-    get_path_lengths_helper(root, 0)
-    return lengths
-
 def get_most_visited_paths_at_depth(root: Node, k: int, p: int):
-    '''Return the p most traversed length-k path from starting node (not virtual root).'''
-    assert k > 0, 'k must be positive'
-    assert p > 0, 'p must be positive'
-
+    '''Return the p most traversed length-k path from game start nodes (not virtual root).'''
     Q = deque(root.children)
-    # bfs from start nodes
+    # find the level-k nodes via bfs
     for i in range(1, k+1):
         l = len(Q)
         for j in range(l):
@@ -83,31 +90,9 @@ def get_most_visited_paths_at_depth(root: Node, k: int, p: int):
 
     paths = sorted(Q, key=lambda x: x.n, reverse=True)
     for i, n in enumerate(paths):
-        paths[i] = get_path(root, n)
+        paths[i] = get_path(root, n)[1:]
 
     return paths[:p]
-
-def get_most_visited_leaf(root: Node) -> Node:
-    '''Returns the leaf with the highest visit count'''
-    max_n = 0
-    max_leaf = None
-    def get_most_visited_leaf_helper(curr: Node):
-        nonlocal max_n
-        nonlocal max_leaf
-        if not curr.children or max([c.n for c in curr.children]) == 0:
-            if curr.n > max_n:
-                max_n = curr.n
-                max_leaf = curr
-        else:
-            for child in curr.children:
-                get_most_visited_leaf_helper(child)
-    get_most_visited_leaf_helper(root)
-    return max_leaf
-
-def most_visited_path(root: Node) -> List[Node]:
-    '''Return the most-visited path from root to leaf'''
-    curr = get_most_visited_leaf(root)
-    return get_path(root, curr)
 
 def get_buy_sequence(path: List[Node]) -> List[Card]:
     '''Given a path, return the associated list of card buys.'''
@@ -199,4 +184,3 @@ def plot_scores(score: np.array):
     plt.xlabel('Iterations')
     plt.ylabel('Score')
     plt.show()
-
