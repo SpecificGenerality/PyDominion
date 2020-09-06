@@ -10,9 +10,10 @@ from config import GameConfig
 from enums import *
 from gamedata import GameData
 from playerstate import PlayerState
-from treasurecard import TreasureCard
+from treasurecard import *
 from utils import *
 from victorycard import *
+from cursecard import *
 
 
 class DecisionResponse():
@@ -188,7 +189,7 @@ class State:
             else:
                 return 0
 
-        import constants
+        import cardeffectbase
 
         assert isinstance(card, TreasureCard), 'Attemped to processTreasure a non-treasure card'
         treasureValue = card.getTreasure()
@@ -203,7 +204,7 @@ class State:
             logging.info(f'Player {self.player} gets ${merchantCoins} from Merchant')
         pState.buys += card.getPlusBuys()
 
-        effect = constants.getCardEffect(card)
+        effect = cardeffectbase.getCardEffect(card)
         if effect:
             effect.playAction(self)
 
@@ -249,8 +250,8 @@ class State:
                 else:
                     self.events.append(GainCard(GainZone.GainToDiscard, self.player, singleCard, True, False))
         else:
-            import constants
-            activeCardEffect = constants.getCardEffect(self.decision.activeCard)
+            import cardeffectbase
+            activeCardEffect = cardeffectbase.getCardEffect(self.decision.activeCard)
             if activeCardEffect and activeCardEffect.canProcessDecisions():
                 activeCardEffect.processDecision(self, response)
             elif len(self.events) > 0 and self.events[-1].canProcessDecisions():
@@ -279,7 +280,7 @@ class State:
         return card.getCoinCost()
 
     def getPlayerScore(self, player: int) -> int:
-        import constants
+        import cardeffectbase
         pState = self.playerStates[player]
         score = 0
         allCards = pState.getAllCards()
@@ -287,7 +288,7 @@ class State:
         for card in allCards:
             points = card.getVictoryPoints()
             score += card.getVictoryPoints()
-            effect = constants.getCardEffect(card)
+            effect = cardeffectbase.getCardEffect(card)
             if isinstance(card, VictoryCard) and effect:
                 score += effect.victoryPoints(self, player)
 
