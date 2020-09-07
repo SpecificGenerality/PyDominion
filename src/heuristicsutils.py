@@ -9,7 +9,7 @@ from victorycard import VictoryCard
 
 
 def heuristic_select_cards(s: State, response: DecisionResponse, scoringFunction):
-        choices = s.decision.cardChoices
+        choices = s.decision.card_choices
         random.shuffle(choices)
         choices.sort(key=scoringFunction, reverse=True)
         for i in range(max(1, s.decision.minCards)):

@@ -15,7 +15,7 @@ class PlayerHeuristic():
     def makePutDownOnDeckDecision(self, s: State, response: DecisionResponse):
         d = s.decision
         def scoringFunction(card: Card):
-            if has_excess_actions(s.decision.cardChoices):
+            if has_excess_actions(s.decision.card_choices):
                 if isinstance(card, ActionCard):
                     return 100 - card.get_plus_actions()
                 return -card.get_coin_cost()
@@ -74,25 +74,25 @@ class PlayerHeuristic():
 
     # plays all treasures
     def makeGreedyTreasureDecision(self, s: State, response: DecisionResponse):
-        d = s.decision
-        response.cards[0:0] = d.cardChoices
+        d: DecisionState = s.decision
+        response.cards[0:0] = d.card_choices
         print(f'{response.cards}')
 
     def makeBaseDecision(self, s: State, response: DecisionResponse):
-        d = s.decision
-        card = d.activeCard
+        d: DecisionState = s.decision
+        card = d.active_card
         player = s.decision.controllingPlayer
         pState = s.playerStates[player]
         if isinstance(card, Cellar):
             l = 0
-            for c in d.cardChoices:
+            for c in d.card_choices:
                 if isinstance(c, VictoryCard) or c.get_coin_cost() < 2:
                     response.cards.append(c)
         elif isinstance(card, Chapel):
             treasureValue = s.playerStates[player].getTotalTreasureValue()
             trashCoppers = (treasureValue >= 7)
             l = 0
-            for c in d.cardChoices:
+            for c in d.card_choices:
                 if l == 4:
                     break
                 if isinstance(c, Copper) and trashCoppers:
@@ -104,7 +104,7 @@ class PlayerHeuristic():
         elif isinstance(card, Moat):
             response.choice = 0
         elif isinstance(card, Bureaucrat):
-            response.cards.append(d.cardChoices[0])
+            response.cards.append(d.card_choices[0])
         elif isinstance(card, Militia):
             makeDiscardDownDecision(s, response)
         elif isinstance(card, ThroneRoom):
@@ -127,7 +127,7 @@ class PlayerHeuristic():
                     return -card.get_coin_cost()
                 heuristic_select_cards(s, response, scoringFunction)
             else:
-                response.cards.append(self.agenda.forceBuy(s, player, d.cardChoices))
+                response.cards.append(self.agenda.forceBuy(s, player, d.card_choices))
         elif isinstance(card, Harbinger):
             def scoringFunction(card: Card):
                 if has_excess_actions(pState.hand):
@@ -141,7 +141,7 @@ class PlayerHeuristic():
         elif isinstance(card, Artisan):
             event = s.events[-1]
             if not event.gained_card:
-                response.cards.append(self.agenda.forceBuy(s, player, d.cardChoices))
+                response.cards.append(self.agenda.forceBuy(s, player, d.card_choices))
             else:
                 self.makePutDownOnDeckDecision(s, response)
         elif isinstance(card, Poacher):

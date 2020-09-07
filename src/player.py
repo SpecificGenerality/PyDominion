@@ -64,25 +64,25 @@ class MCTSPlayer(Player):
 
     def makeDecision(self, s: State, response: DecisionResponse):
         player = s.decision.controllingPlayer
-        d = s.decision
+        d: DecisionState = s.decision
         if s.phase == Phase.ActionPhase:
             assert False, 'MCTS does not support action cards yet'
         elif s.phase == Phase.TreasurePhase:
-            response.singleCard = d.cardChoices[0]
+            response.single_card = d.card_choices[0]
         else:
             if not self.node.children:
-                response.singleCard = self.rollout.select([card for card in d.cardChoices if not isinstance(card, Curse)] + [None])
+                response.single_card = self.rollout.select([card for card in d.card_choices if not isinstance(card, Curse)] + [None])
                 return None
 
             if self.train:
-                self.node.add_unique_children(d.cardChoices)
+                self.node.add_unique_children(d.card_choices)
             # the next node in the tree is the one that maximizes the UCB1 score
-            next_node = self.get_next_node(d.cardChoices, self.get_C())
+            next_node = self.get_next_node(d.card_choices, self.get_C())
             if not next_node:
-                response.singleCard = self.rollout.select([card for card in d.cardChoices if not isinstance(card, Curse)] + [None])
+                response.single_card = self.rollout.select([card for card in d.card_choices if not isinstance(card, Curse)] + [None])
                 return None
             self.node = next_node
-            response.singleCard = next_node.card
+            response.single_card = next_node.card
             return next_node
 
 class HeuristicPlayer(Player):
@@ -90,22 +90,22 @@ class HeuristicPlayer(Player):
         self.heuristic = PlayerHeuristic(agenda)
 
     def makePhaseDecision(self, s: State, response: DecisionResponse):
-        player = s.decision.controllingPlayer
-        d = s.decision
+        d: DecisionState = s.decision
+        player = d.controlling_player
         if s.phase == Phase.ActionPhase:
             self.heuristic.makeGreedyActionDecision(s, response)
         elif s.phase == Phase.TreasurePhase:
-            response.singleCard = d.cardChoices[0]
+            response.single_card = d.card_choices[0]
         else:
-            response.singleCard = self.heuristic.agenda.buy(s, player, d.cardChoices)
+            response.single_card = self.heuristic.agenda.buy(s, player, d.card_choices)
         return
 
     def makeDecision(self, s: State, response: DecisionResponse):
-        d = s.decision
-        player = d.controllingPlayer
+        d: DecisionState = s.decision
+        player = d.controlling_player
         if d.type != DecisionType.DecisionSelectCards and d.type != DecisionType.DecisionDiscreteChoice:
             logging.error('Invalid decision type')
-        if not d.activeCard:
+        if not d.active_card:
             self.makePhaseDecision(s, response)
         elif s.events:
             event = s.events[-1]
@@ -125,29 +125,29 @@ class HeuristicPlayer(Player):
                         return -card.get_coin_cost()
                     heuristic_select_cards(s, response, scoringFunction)
                 else:
-                    response.cards.append(self.heuristic.agenda.forceBuy(s, player, d.cardChoices))
+                    response.cards.append(self.heuristic.agenda.forceBuy(s, player, d.card_choices))
             else:
                 self.heuristic.makeBaseDecision(s, response)
 
 class RandomPlayer(Player):
     def makeDecision(self, s: State, response: DecisionResponse):
-        d = s.decision
-        d.cardChoices.append(None)
+        d: DecisionState = s.decision
+        d.card_choices.append(None)
         if s.phase == Phase.BuyPhase:
-            remove_first_card(Curse(), d.cardChoices)
+            remove_first_card(Curse(), d.card_choices)
         if d.type == DecisionType.DecisionSelectCards:
-            cardsToPick = d.minCards
-            if d.maxCards > d.minCards:
-                cardsToPick = random.randint(d.minCards, d.maxCards)
+            cardsToPick = d.min_cards
+            if d.max_cards > d.min_cards:
+                cardsToPick = random.randint(d.min_cards, d.max_cards)
             responseIdxs = []
             for i in range(0, cardsToPick):
-                choice = random.randint(0, len(d.cardChoices)-1)
+                choice = random.randint(0, len(d.card_choices)-1)
                 while choice in responseIdxs:
-                    choice = random.randint(0, len(d.cardChoices)-1)
+                    choice = random.randint(0, len(d.card_choices)-1)
                 responseIdxs.append(choice)
-                response.cards.append(d.cardChoices[choice])
+                response.cards.append(d.card_choices[choice])
         elif d.type == DecisionType.DecisionDiscreteChoice:
-            response.choice = random.randint(0, d.minCards)
+            response.choice = random.randint(0, d.min_cards)
         else:
             logging.error(f'Invalid decision type')
 
@@ -156,11 +156,11 @@ class RandomPlayer(Player):
 
 class HumanPlayer(Player):
     def makeDecision(self, s: State, response: DecisionResponse):
-        d = s.decision
+        d: DecisionState = s.decision
         if d.type == DecisionType.DecisionSelectCards:
             cardsToPick = -1
-            d.printCardChoices()
-            while (cardsToPick < d.minCards or cardsToPick > d.maxCards):
+            d.print_card_choices()
+            while (cardsToPick < d.min_cards or cardsToPick > d.max_cards):
                 text = ''
                 while not text:
                     text = input(f'Pick between {d.minCards} and {d.maxCards} of the above cards:\n')
@@ -169,22 +169,22 @@ class HumanPlayer(Player):
             responseIdxs = []
             for i in range(cardsToPick):
                 cardIdx = -1
-                while (cardIdx == -1 or cardIdx in responseIdxs or cardIdx >= len(d.cardChoices)):
-                    d.printCardChoices()
+                while (cardIdx == -1 or cardIdx in responseIdxs or cardIdx >= len(d.card_choices)):
+                    d.print_card_choices()
                     text = ''
                     while not text:
                         text = input(f'Choose another card:\n')
                     cardIdx = int(text)
                 responseIdxs.append(cardIdx)
-                response.cards.append(d.cardChoices[cardIdx])
+                response.cards.append(d.card_choices[cardIdx])
         elif d.type == DecisionType.DecisionDiscreteChoice:
             choice = -1
-            while choice == -1 or choice > d.minCards:
+            while choice == -1 or choice > d.min_cards:
                 text = ''
                 while not text:
                     text = input(f'Please make a discrete choice from the above cards:\n')
                 choice = int(text)
-                d.printCardChoices()
+                d.print_card_choices()
             response.choice = choice
         else:
             logging.error(f'Player {self.id} given invalid decision type.')

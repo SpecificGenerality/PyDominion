@@ -27,8 +27,8 @@ class MCTSBuyAgenda(BuyAgenda):
 
 class TDEBigMoneyBuyAgenda(BuyAgenda):
     def buy(self, s: State, player: int, choices: List[Card]):
-        pState = s.playerStates[player]
-        coins = s.playerStates[player].coins
+        pState = s.player_states[player]
+        coins = s.player_states[player].coins
         cardIdx = -1
 
         if pState.get_terminal_draw_density() < TD_DENSITY:
@@ -86,8 +86,8 @@ class TDEBigMoneyBuyAgenda(BuyAgenda):
 
 class TDBigMoneyBuyAgenda(BuyAgenda):
     def buy(self, s: State, player: int, choices: List[Card]):
-        pState = s.playerStates[player]
-        coins = s.playerStates[player].coins
+        pState = s.player_states[player]
+        coins = s.player_states[player].coins
         cardIdx = -1
 
         if pState.get_terminal_draw_density() < TD_DENSITY:
@@ -140,7 +140,7 @@ class TDBigMoneyBuyAgenda(BuyAgenda):
 # implements the Big Money Optimized Buy Strategy: http://wiki.dominionstrategy.com/index.php/Big_money
 class BigMoneyBuyAgenda(BuyAgenda):
     def buy(self, s: State, player: int, choices: List[Card]):
-        coins = s.playerStates[player].coins
+        coins = s.player_states[player].coins
         cardIdx = -1
         if coins >= 8:
             # Province is guaranteed to exist while the game isn't over

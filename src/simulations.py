@@ -81,7 +81,7 @@ def simulate(args: ArgumentParser, split:StartingSplit, n: int, save_data=False)
 
         for i, player in enumerate(players):
             if isinstance(player, MCTSPlayer):
-                player.reset(dominion.state.playerStates[i])
+                player.reset(dominion.state.player_states[i])
 
         t_start = time.time()
         dominion.run(T=args.T)

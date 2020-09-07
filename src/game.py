@@ -23,35 +23,35 @@ class Game:
             logging.basicConfig(level=logging.WARNING)
 
     def newGame(self):
-        self.state.newGame()
+        self.state.new_game()
 
     def getSupplyCardTypes(self):
         return [str(c()) for c in self.state.supply.supply.keys()]
 
     def getWinningPlayers(self):
-        scores = [self.state.getPlayerScore(pInfo.id) for pInfo in self.players]
+        scores = [self.state.get_player_score(pInfo.id) for pInfo in self.players]
         m = max(scores)
         return [i for i, j in enumerate(scores) if j == m]
 
     def getAllCards(self, player):
-        return self.state.playerStates[player].cards
+        return self.state.player_states[player].cards
 
     def getPlayerScores(self):
         scores = np.zeros(len(self.players))
         for i, pInfo in enumerate(self.players):
-            scores[i] = self.state.getPlayerScore(pInfo.id)
+            scores[i] = self.state.get_player_score(pInfo.id)
 
         return scores
 
     def run(self, T=None):
         d = self.state.decision
         while d.type != DecisionType.DecisionGameOver:
-            if T and all(t.turns >= T for t in self.state.playerStates):
+            if T and all(t.turns >= T for t in self.state.player_states):
                 break
             if d.text:
                 logging.info(d.text)
             response = DecisionResponse([])
-            player = self.players[self.state.decision.controllingPlayer]
+            player = self.players[self.state.decision.controlling_player]
             player.controller.makeDecision(self.state, response)
-            self.state.processDecision(response)
-            self.state.advanceNextDecision()
+            self.state.process_decision(response)
+            self.state.advance_next_decision()

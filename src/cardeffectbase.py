@@ -26,7 +26,7 @@ class SentryEffect(CardEffect):
 
         numCards = min(2, len(deck))
         s.decision.selectCards(self.c, 0, numCards)
-        s.decision.cardChoices = deck[-numCards:]
+        s.decision.card_choices = deck[-numCards:]
         s.decision.text = 'Select cards to discard'
 
     def canProcessDecisions(self):
@@ -46,7 +46,7 @@ class CellarEffect(CardEffect):
         if s.playerStates[s.player].hand:
             s.decision.selectCards(self.c, 0, len(s.playerStates[s.player].hand))
             s.decision.text = "Select cards to discard"
-            s.decision.cardChoices = s.playerStates[s.player].hand
+            s.decision.card_choices = s.playerStates[s.player].hand
         else:
             logging.info(f'Player {s.player} has no cards to discard')
 
@@ -67,7 +67,7 @@ class ChapelEffect(CardEffect):
         if s.playerStates[s.player].hand:
             s.decision.selectCards(self.c, 0, 4)
             s.decision.text = "Select up to 4 cards to trash"
-            s.decision.cardChoices = s.playerStates[s.player].hand
+            s.decision.card_choices = s.playerStates[s.player].hand
         else:
             logging.info(f'Player {s.player} has no cards to trash')
 
@@ -96,7 +96,7 @@ class WorkshopEffect(CardEffect):
 
     def playAction(self, s: State):
         s.decision.gainCardFromSupply(s, self.c, 0, 4)
-        if not s.decision.cardChoices:
+        if not s.decision.card_choices:
             s.decision.type = DecisionType.DecisionNone
             logging.info(f'Player {s.player} has no cards to gain')
 
@@ -124,7 +124,7 @@ class RemodelEffect(CardEffect):
         if s.playerStates[s.player].hand:
             s.decision.selectCards(self.c, 1, 1)
             s.decision.text = 'Select a card to trash:'
-            s.decision.cardChoices = s.playerStates[s.player].hand
+            s.decision.card_choices = s.playerStates[s.player].hand
             s.events.append(RemodelExpand(self.c, 2))
         else:
             logging.info(f'Player {s.player} has no cards to trash')
@@ -180,7 +180,7 @@ class PoacherEffect(CardEffect):
         if numEmptySupply > 0 and pState.hand:
             numCards = min(len(pState.hand), numEmptySupply)
             s.decision.selectCards(self.c, numCards, numCards)
-            s.decision.cardChoices = pState.hand
+            s.decision.card_choices = pState.hand
             s.decision.text = 'Choose card(s) to discard'
 
     def canProcessDecisions(self):
@@ -198,7 +198,7 @@ class HarbingerEffect(CardEffect):
         pState = s.playerStates[s.player]
         if len(pState.discard) > 0:
             s.decision.selectCards(self.c, 0, 1)
-            s.decision.cardChoices = pState.discard
+            s.decision.card_choices = pState.discard
             s.decision.text = 'Choose a card from discard to move'
         else:
             logging.info(f'Harbinger has no effect: player {s.player} has empty discard')

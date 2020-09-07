@@ -27,7 +27,7 @@ class SimulationData:
 
         for i in range(G.gameConfig.num_players):
             sim_stats = dict()
-            sim_stats['Turns'] = G.state.playerStates[i].turns
+            sim_stats['Turns'] = G.state.player_states[i].turns
             sim_stats['Player'] = i
             sim_stats['Score'] = scores[i]
             sim_stats['Won'] = scores[i] >= winning_score
