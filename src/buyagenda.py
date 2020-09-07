@@ -31,43 +31,43 @@ class TDEBigMoneyBuyAgenda(BuyAgenda):
         coins = s.playerStates[player].coins
         cardIdx = -1
 
-        if pState.getTerminalDrawDensity() < TD_DENSITY:
-            card = getMaxPlusCardsCard(choices)
+        if pState.get_terminal_draw_density() < TD_DENSITY:
+            card = get_max_plus_cards_card(choices)
             # print(f'TD Agenda buys {card}')
             if card:
                 return card
 
         # buy one chapel if we don't have one
         if coins >= 2 and not pState.hasCard(Chapel):
-            cardIdx = getFirstIndex(Chapel(), choices)
+            cardIdx = get_first_index(Chapel(), choices)
             if cardIdx >= 0:
                 return choices[cardIdx]
 
         if coins >= 8:
             # Province is guaranteed to exist while the game isn't over
-            cardIdx = getFirstIndex(Province(), choices)
+            cardIdx = get_first_index(Province(), choices)
             return choices[cardIdx]
         elif coins == 6 or coins == 7:
-            cardIdx = getFirstIndex(Gold(), choices)
+            cardIdx = get_first_index(Gold(), choices)
             if cardIdx < 0:
                 # if the Golds ran out, then the game is probably almost over
-                return getHighestVPCard(choices)
+                return get_highest_VP_card(choices)
             else:
                 return choices[cardIdx]
         elif coins == 5:
-            cardIdx = getFirstIndex(Silver(), choices)
-            if s.data.supply[Province] <= 4 or cardIdx < 0:
-                return getHighestVPCard(choices)
+            cardIdx = get_first_index(Silver(), choices)
+            if s.supply.supply[Province] <= 4 or cardIdx < 0:
+                return get_highest_VP_card(choices)
             else:
                 return choices[cardIdx]
         elif coins == 3 or coins == 4:
-            cardIdx = getFirstIndex(Silver(), choices)
+            cardIdx = get_first_index(Silver(), choices)
             if cardIdx < 0:
-                return getHighestVPCard(choices)
+                return get_highest_VP_card(choices)
             else:
                 return choices[cardIdx]
-        elif coins == 2 and s.data.supply[Province] <= 3:
-            cardIdx = getFirstIndex(Estate(), choices)
+        elif coins == 2 and s.supply.supply[Province] <= 3:
+            cardIdx = get_first_index(Estate(), choices)
             if cardIdx >= 0:
                 return choices[cardIdx]
         return None
@@ -78,11 +78,11 @@ class TDEBigMoneyBuyAgenda(BuyAgenda):
             return card
 
         def scoringFunction(card: Card):
-            score = card.getCoinCost()
+            score = card.get_coin_cost()
             if isinstance(card, VictoryCard):
                 score -= 0.5
             return score
-        return heuristicBestCard(choices, scoringFunction)
+        return heuristic_best_card(choices, scoringFunction)
 
 class TDBigMoneyBuyAgenda(BuyAgenda):
     def buy(self, s: State, player: int, choices: List[Card]):
@@ -90,37 +90,37 @@ class TDBigMoneyBuyAgenda(BuyAgenda):
         coins = s.playerStates[player].coins
         cardIdx = -1
 
-        if pState.getTerminalDrawDensity() < TD_DENSITY:
-            card = getMaxPlusCardsCard(choices)
+        if pState.get_terminal_draw_density() < TD_DENSITY:
+            card = get_max_plus_cards_card(choices)
             # print(f'TD Agenda buys {card}')
             if card:
                 return card
 
         if coins >= 8:
             # Province is guaranteed to exist while the game isn't over
-            cardIdx = getFirstIndex(Province(), choices)
+            cardIdx = get_first_index(Province(), choices)
             return choices[cardIdx]
         elif coins == 6 or coins == 7:
-            cardIdx = getFirstIndex(Gold(), choices)
-            if cardIdx < 0 or s.data.supply[Province] <= 4:
+            cardIdx = get_first_index(Gold(), choices)
+            if cardIdx < 0 or s.supply[Province] <= 4:
                 # if the Golds ran out, then the game is probably almost over
-                return getHighestVPCard(choices)
+                return get_highest_VP_card(choices)
             else:
                 return choices[cardIdx]
         elif coins == 5:
-            cardIdx = getFirstIndex(Silver(), choices)
-            if s.data.supply[Province] <= 4 or cardIdx < 0:
-                return getHighestVPCard(choices)
+            cardIdx = get_first_index(Silver(), choices)
+            if s.supply[Province] <= 4 or cardIdx < 0:
+                return get_highest_VP_card(choices)
             else:
                 return choices[cardIdx]
         elif coins == 3 or coins == 4:
-            cardIdx = getFirstIndex(Silver(), choices)
-            if cardIdx < 0 or s.data.supply[Province] <= 2:
-                return getHighestVPCard(choices)
+            cardIdx = get_first_index(Silver(), choices)
+            if cardIdx < 0 or s.supply[Province] <= 2:
+                return get_highest_VP_card(choices)
             else:
                 return choices[cardIdx]
-        elif coins == 2 and s.data.supply[Province] <= 3:
-            cardIdx = getFirstIndex(Estate(), choices)
+        elif coins == 2 and s.supply[Province] <= 3:
+            cardIdx = get_first_index(Estate(), choices)
             if cardIdx >= 0:
                 return choices[cardIdx]
         return None
@@ -131,11 +131,11 @@ class TDBigMoneyBuyAgenda(BuyAgenda):
             return card
 
         def scoringFunction(card: Card):
-            score = card.getCoinCost()
+            score = card.get_coin_cost()
             if isinstance(card, VictoryCard):
                 score -= 0.5
             return score
-        return heuristicBestCard(choices, scoringFunction)
+        return heuristic_best_card(choices, scoringFunction)
 
 # implements the Big Money Optimized Buy Strategy: http://wiki.dominionstrategy.com/index.php/Big_money
 class BigMoneyBuyAgenda(BuyAgenda):
@@ -144,29 +144,29 @@ class BigMoneyBuyAgenda(BuyAgenda):
         cardIdx = -1
         if coins >= 8:
             # Province is guaranteed to exist while the game isn't over
-            cardIdx = getFirstIndex(Province(), choices)
+            cardIdx = get_first_index(Province(), choices)
             return choices[cardIdx]
         elif coins == 6 or coins == 7:
-            cardIdx = getFirstIndex(Gold(), choices)
+            cardIdx = get_first_index(Gold(), choices)
             if cardIdx < 0:
                 # if the Golds ran out, then the game is probably almost over
-                return getHighestVPCard(choices)
+                return get_highest_VP_card(choices)
             else:
                 return choices[cardIdx]
         elif coins == 5:
-            cardIdx = getFirstIndex(Silver(), choices)
-            if s.data.supply[Province] <= 4 or cardIdx < 0:
-                return getHighestVPCard(choices)
+            cardIdx = get_first_index(Silver(), choices)
+            if s.supply[Province] <= 4 or cardIdx < 0:
+                return get_highest_VP_card(choices)
             else:
                 return choices[cardIdx]
         elif coins == 3 or coins == 4:
-            cardIdx = getFirstIndex(Silver(), choices)
+            cardIdx = get_first_index(Silver(), choices)
             if cardIdx < 0:
-                return getHighestVPCard(choices)
+                return get_highest_VP_card(choices)
             else:
                 return choices[cardIdx]
-        elif coins == 2 and s.data.supply[Province] <= 3:
-            cardIdx = getFirstIndex(Estate(), choices)
+        elif coins == 2 and s.supply[Province] <= 3:
+            cardIdx = get_first_index(Estate(), choices)
             if cardIdx >= 0:
                 return choices[cardIdx]
         return None
@@ -177,8 +177,8 @@ class BigMoneyBuyAgenda(BuyAgenda):
             return card
 
         def scoringFunction(card: Card):
-            score = card.getCoinCost()
+            score = card.get_coin_cost()
             if isinstance(card, VictoryCard):
                 score -= 0.5
             return score
-        return heuristicBestCard(choices, scoringFunction)
+        return heuristic_best_card(choices, scoringFunction)

@@ -44,7 +44,7 @@ class MCTSPlayer(Player):
         if self.train:
             self.root.n += 1
         # advance MCTS from virtual root to the correct start position (2/3/4/5 coppers)
-        self.node = self.root.children[pState.getTreasureCardCount(pState.hand)-2]
+        self.node = self.root.children[pState.get_treasure_card_count(Zone.Hand)-2]
         if self.train:
             self.node.n += 1
 
@@ -121,9 +121,9 @@ class HeuristicPlayer(Player):
                         elif isinstance(card, Estate):
                             return 18
                         elif isinstance(card, VictoryCard):
-                            return -200 + card.getCoinCost()
-                        return -card.getCoinCost()
-                    heuristicSelectCards(s, response, scoringFunction)
+                            return -200 + card.get_coin_cost()
+                        return -card.get_coin_cost()
+                    heuristic_select_cards(s, response, scoringFunction)
                 else:
                     response.cards.append(self.heuristic.agenda.forceBuy(s, player, d.cardChoices))
             else:
@@ -134,7 +134,7 @@ class RandomPlayer(Player):
         d = s.decision
         d.cardChoices.append(None)
         if s.phase == Phase.BuyPhase:
-            removeFirstCard(Curse(), d.cardChoices)
+            remove_first_card(Curse(), d.cardChoices)
         if d.type == DecisionType.DecisionSelectCards:
             cardsToPick = d.minCards
             if d.maxCards > d.minCards:

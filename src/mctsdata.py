@@ -21,7 +21,7 @@ class MCTSData:
         data_dict['rollout'] = str(P.rollout)
         data_dict['i'] = i
 
-        card_counts = get_card_counts(G.getAllCards(0))
+        card_counts = G.state.get_player_card_counts(0)
         supply_cards = G.getSupplyCardTypes()
         for k in supply_cards:
             data_dict[k] = card_counts.get(k, 0)

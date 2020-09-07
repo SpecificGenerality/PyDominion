@@ -11,7 +11,7 @@ from aiutils import *
 from config import GameConfig
 from enums import *
 from game import Game
-from gamedata import GameData
+from supply import Supply
 from mcts import *
 from mctsdata import MCTSData
 from player import MCTSPlayer
@@ -24,8 +24,8 @@ from state import *
 class MCTS:
     def __init__(self, T: int, n: int, tau: float, rollout: Rollout, eps: float):
         # initialize game config
-        self.game_config = GameConfig(StartingSplit.StartingRandomSplit, prosperity=False, numPlayers=1)
-        self.game_data = GameData(self.game_config)
+        self.game_config = GameConfig(StartingSplit.StartingRandomSplit, prosperity=False, num_players=1)
+        self.supply = Supply(self.game_config)
 
         self.game = None
         # max number of turns in a game
@@ -43,7 +43,7 @@ class MCTS:
             self.rollout_cards = []
             self.rollout = HistoryHeuristicRollout(tau=tau, train=True)
         elif rollout == Rollout.LinearRegression:
-            self.rollout= LinearRegressionRollout(self.iters, self.game_data, tau=tau, train=True, eps=eps)
+            self.rollout= LinearRegressionRollout(self.iters, self.supply, tau=tau, train=True, eps=eps)
         self.player = MCTSPlayer(rollout=self.rollout, train=True)
 
     def run(self):
@@ -51,7 +51,7 @@ class MCTS:
         d = s.decision
         tree_score = 0
         # run the game up to game end or turn limit reached
-        while d.type != DecisionType.DecisionGameOver and s.playerStates[0].turns < self.T:
+        while d.type != DecisionType.DecisionGameOver and s.playerStates[0]._turns < self.T:
             if d.text:
                 logging.info(d.text)
             response = DecisionResponse([])
@@ -86,7 +86,7 @@ class MCTS:
             s.advanceNextDecision()
 
 
-        player_turns = s.playerStates[0].turns
+        player_turns = s.playerStates[0]._turns
         score = self.game.getPlayerScores()[0]
         # update data
         self.data.update_split_scores(score - tree_score, True, self.iter)
@@ -103,7 +103,7 @@ class MCTS:
         if self.rollout_model == Rollout.HistoryHeuristic:
             self.rollout.update(cards=self.rollout_cards, score=score)
         elif self.rollout_model == Rollout.LinearRegression:
-            self.rollout.update(counts=get_card_counts(self.game.getAllCards(0)),score=score, i=self.iter)
+            self.rollout.update(counts=self.game.state.playerStates[0].get_card_counts(),score=score, i=self.iter)
 
         return self.game.getPlayerScores()[0]
 
@@ -111,9 +111,9 @@ class MCTS:
         self.expanded = False
         self.rollout_cards = []
         self.iter = i
-        self.game_config = GameConfig(StartingSplit.StartingRandomSplit, prosperity=False, numPlayers=1)
-        self.game_data = GameData(self.game_config)
-        self.game = Game(self.game_config, self.game_data, [self.player])
+        self.game_config = GameConfig(StartingSplit.StartingRandomSplit, prosperity=False, num_players=1)
+        self.supply = Supply(self.game_config)
+        self.game = Game(self.game_config, self.supply, [self.player])
         self.game.newGame()
 
         self.player.reset(self.game.state.playerStates[0])

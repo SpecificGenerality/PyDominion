@@ -6,7 +6,7 @@ from cursecard import *
 from enums import *
 from state import *
 from treasurecard import Copper, Silver, TreasureCard
-from utils import containsCard, moveCard
+from utils import contains_card, move_card
 
 class ArtisanEffect(CardEffect):
     def __init__(self):
@@ -83,7 +83,7 @@ class MoneylenderEffect(CardEffect):
         self.c = Moneylender()
 
     def playAction(self, s: State):
-        trashIdx = getFirstIndex(Copper(), s.playerStates[s.player].hand)
+        trashIdx = get_first_index(Copper(), s.playerStates[s.player].hand)
         if trashIdx >= 0:
             s.events.append(TrashCard(Zone.Hand, s.player, s.playerStates[s.player].hand[trashIdx]))
             s.playerStates[s.player].coins += 3
@@ -112,7 +112,7 @@ class MilitiaEffect(CardEffect):
         self.c = Militia()
 
     def playAction(self, s: State):
-        for player in s.data.players:
+        for player in s.players:
             if player != s.player:
                 s.events.append(DiscardDownToN(self.c, player, 3))
 
@@ -135,7 +135,7 @@ class MineEffect(CardEffect):
 
     def playAction(self, s: State):
         pState = s.playerStates[s.player]
-        if pState.getTreasureCardCount(pState.hand) > 0:
+        if pState.get_treasure_card_count(pState.hand) > 0:
             s.decision.selectCards(self.c, 1, 1)
             s.decision.text = 'Select a treasure to trash:'
             for card in pState.hand:
@@ -160,7 +160,7 @@ class WitchEffect(CardEffect):
         self.c = Witch()
 
     def playAction(self, s: State):
-        for player in s.data.players:
+        for player in s.players:
             if player != s.player:
                 s.events.append(GainCard(GainZone.GainToDiscard, player, Curse(), False, True))
 
@@ -208,7 +208,7 @@ class HarbingerEffect(CardEffect):
 
     def processDecision(self, s: State, response: DecisionResponse):
         pState = s.playerStates[s.player]
-        moveCard(pState.discard[response.choice], pState.discard, pState.deck)
+        move_card(pState.discard[response.choice], pState.discard, pState.deck)
 
 class BureaucratEffect(CardEffect):
     def __init__(self):
@@ -216,7 +216,7 @@ class BureaucratEffect(CardEffect):
 
     def playAction(self, s: State):
         s.events.append(GainCard(GainZone.GainToDeckTop, s.player, Silver()))
-        for player in s.data.players:
+        for player in s.players:
             if player != s.player:
                 s.events.append(BureaucratAttack(self.c, player))
 
@@ -226,7 +226,7 @@ class BureaucratEffect(CardEffect):
     def processDecision(self, s: State, response: DecisionResponse):
         c = response.cards[0]
         pState = s.playerStates[s.decision.controllingPlayer]
-        moveCard(c, pState.hand, pState.deck)
+        move_card(c, pState.hand, pState.deck)
 
 class ThroneRoomEffect(CardEffect):
     def __init__(self):

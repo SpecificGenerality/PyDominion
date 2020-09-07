@@ -8,7 +8,7 @@ import numpy as np
 from sklearn.linear_model import LinearRegression
 
 from card import Card
-from gamedata import *
+from supply import Supply
 
 
 class RolloutModel(ABC):
@@ -72,7 +72,7 @@ class HistoryHeuristicRollout(RolloutModel):
         return 'HistoryHeuristicRollout'
 
 class LinearRegressionRollout(RolloutModel):
-    def __init__(self, iters: int, G: GameData, tau=0.5, train=False, eps=10e-10):
+    def __init__(self, iters: int, G: Supply, tau=0.5, train=False, eps=10e-10):
         self.supply: List[str] = G.getSupplyCardTypes() + [str(None)]
         # Index map for kingdom card
         self.n = len(self.supply)

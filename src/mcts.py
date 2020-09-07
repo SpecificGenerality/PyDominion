@@ -12,8 +12,8 @@ class MCTSState:
         self.player = s.decision.controllingPlayer
         # In sandbox mode, hand is not important for making decisions
         # self.hand = Counter([str(c) for c in s.playerStates[self.player].hand])
-        self.deck = Counter([str(c) for c in s.playerStates[self.player].getAllCards()])
-        self.supply = Counter(s.data.supply)
+        self.deck = s.get_player_card_counts(self.player)
+        self.supply = s.supply
 
     # Two MCTS states are equal if
     #   1) The hands are equal up to multiplicity

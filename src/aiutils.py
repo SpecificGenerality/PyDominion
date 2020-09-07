@@ -98,9 +98,6 @@ def get_buy_sequence(path: List[Node]) -> List[Card]:
     '''Given a path, return the associated list of card buys.'''
     return [n.card for n in path]
 
-def get_card_counts(cards: List[Card]) -> Counter:
-    return Counter(str(c) for c in cards)
-
 def plot_card_counts_stacked(decks: List[Counter], limit=None, skip=1, trim=None):
     '''Produce a stacked plot of card counts every skip number of iterations,
         including only cards in limit'''

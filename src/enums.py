@@ -20,6 +20,7 @@ class Zone(Enum):
     Hand = auto()
     Trash = auto()
     Play = auto()
+    Island = auto()
 
 class GainZone(Enum):
     GainToDiscard = auto()

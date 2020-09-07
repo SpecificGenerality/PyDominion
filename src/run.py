@@ -1,13 +1,13 @@
 from config import GameConfig
 from enums import StartingSplit
 from game import Game
-from gamedata import GameData
+from supply import Supply
 from player import *
 
 
 def main():
-    config = GameConfig(StartingSplit.StartingRandomSplit, prosperity=False, numPlayers=2, sandbox=True)
-    data = GameData(config)
+    config = GameConfig(StartingSplit.StartingRandomSplit, prosperity=False, num_players=2, sandbox=True)
+    data = Supply(config)
     players = [HumanPlayer(), HeuristicPlayer(BigMoneyBuyAgenda())]
     dominion = Game(config, data, players)
 

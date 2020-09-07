@@ -14,7 +14,7 @@ from buyagenda import *
 from config import GameConfig
 from enums import StartingSplit
 from game import Game
-from gamedata import GameData
+from supply import Supply
 from player import *
 from simulationdata import *
 from victorycard import *
@@ -26,7 +26,7 @@ def test_tau(taus: List, trials=100, iters=500):
     agent = MCTS(30, n=iters, tau=0.5, rollout=Rollout.LinearRegression, eps=0)
     for tau in taus:
         for _ in range(trials):
-            agent.rollout = LinearRegressionRollout(iters, agent.game_data, tau, train=True, eps=0)
+            agent.rollout = LinearRegressionRollout(iters, agent.supply, tau, train=True, eps=0)
             agent.player=MCTSPlayer(rollout=agent.rollout, train=True)
             agent.train(n=iters, output_iters=iters)
             agent.data.update_dataframes()
@@ -38,7 +38,7 @@ def test_C(trials=10, iters=500):
     L = [lambda x: 25, lambda x: 25 / np.sqrt(x), lambda x: max(1, min(25, 25 / np.sqrt(x)))]
     for C in L:
         for _ in range(trials):
-            agent.rollout = LinearRegressionRollout(iters, agent.game_data, train=True, eps=0)
+            agent.rollout = LinearRegressionRollout(iters, agent.supply, train=True, eps=0)
             agent.player=MCTSPlayer(rollout=agent.rollout, train=True, C=C)
             agent.train(n=iters, output_iters=100)
             agent.data.update_dataframes()
@@ -74,8 +74,8 @@ def simulate(args: ArgumentParser, split:StartingSplit, n: int, save_data=False)
     players = init_players(args)
 
     for i in tqdm(range(n)):
-        config = GameConfig(split, prosperity=args.prosperity, numPlayers=args.players)
-        data = GameData(config)
+        config = GameConfig(split, prosperity=args.prosperity, num_players=args.players)
+        data = Supply(config)
         dominion = Game(config, data, players)
         dominion.newGame()
 
