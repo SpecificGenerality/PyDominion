@@ -15,11 +15,11 @@ class Supply(MutableMapping):
     def __init__(self, config: GameConfig, *args, **kwargs):
         # Gardens, Workshop, Laboratory, Village, Witch, Festival, Mine, Chapel, CouncilRoom, Gardens
         def init_kingdom_cards(supply: Dict, must_include = []) -> None:
-            for i in range(min(config.kingdomSize, len(must_include))):
+            for i in range(min(config.kingdom_size, len(must_include))):
                 supply[must_include[i]] = 10
 
             shuffle(config.randomizers)
-            for i in range(config.kingdomSize - len(must_include)):
+            for i in range(config.kingdom_size - len(must_include)):
                 supply[config.randomizers[i]] = 10
 
         def init_supply(supply: Dict) -> None:
@@ -50,18 +50,17 @@ class Supply(MutableMapping):
         if not config.sandbox:
             init_kingdom_cards(self._supply)
 
-        dict.__init__(self._supply)
+        self.update(self._supply)
 
     @property
     def empty_stack_count(self) -> int:
-        return sum(1 if count == 0 else 0 for count in self._supply.values())
+        return sum(1 if count == 0 else 0 for count in self.__dict__.values())
 
     def is_game_over(self) -> bool: 
-        supply = self._supply
-        if Colony in supply and supply[Colony] == 0:
+        if Colony in self._supply and self._supply[Colony] == 0:
             logging.info(f'Game over. Colonies ran out.')
             return True
-        elif supply[Province] == 0:
+        elif self._supply[Province] == 0:
             logging.info(f'Game over. Provinces ran out.')
             return True
         elif self.empty_stack_count >= 3:

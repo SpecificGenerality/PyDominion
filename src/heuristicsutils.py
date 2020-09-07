@@ -12,7 +12,7 @@ def heuristic_select_cards(s: State, response: DecisionResponse, scoringFunction
         choices = s.decision.card_choices
         random.shuffle(choices)
         choices.sort(key=scoringFunction, reverse=True)
-        for i in range(max(1, s.decision.minCards)):
+        for i in range(max(1, s.decision.min_cards)):
             response.cards.append(choices[i])
 
 def heuristic_best_card(choices: List[Card], scoringFunction):

@@ -163,7 +163,7 @@ class HumanPlayer(Player):
             while (cardsToPick < d.min_cards or cardsToPick > d.max_cards):
                 text = ''
                 while not text:
-                    text = input(f'Pick between {d.minCards} and {d.maxCards} of the above cards:\n')
+                    text = input(f'Pick between {d.min_cards} and {d.max_cards} of the above cards:\n')
                 cardsToPick = int(text)
 
             responseIdxs = []

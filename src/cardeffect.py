@@ -9,14 +9,14 @@ class CardEffect(ABC):
         self.c = None
 
     @abstractmethod
-    def playAction(self, s: State):
+    def play_action(self, s: State):
         pass
 
-    def canProcessDecisions(self) -> bool:
+    def can_process_decisions(self) -> bool:
         return False
 
-    def processDecision(self, s: State, response: DecisionResponse):
+    def process_decision(self, s: State, response: DecisionResponse):
         logging.warning('Card does not support decisions')
 
-    def victoryPoints(self, s: State, player: int):
+    def victory_points(self, s: State, player: int):
         return 0

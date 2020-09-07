@@ -62,8 +62,8 @@ class PlayerHeuristic():
 
     # plays +Action first, then card with most +Card, then randomly
     def makeGreedyActionDecision(self, s: State, response: DecisionResponse):
-        d = s.decision
-        assert d.minCards == 0 and d.maxCards == 1, 'Invalid decisionparameters'
+        d: DecisionState = s.decision
+        assert d.min_cards == 0 and d.max_cards == 1, 'Invalid decisionparameters'
         def scoringFunction(card: Card):
             score = 0
             if card.get_plus_actions() > 0:

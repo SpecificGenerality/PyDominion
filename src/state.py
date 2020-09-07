@@ -11,7 +11,7 @@ from enums import *
 from supply import Supply
 from playerstate import PlayerState
 from treasurecard import *
-from utils import get_first_index, move_card, remove_first_card
+from utils import get_first_index, move_card, remove_first_card, contains_card
 from victorycard import *
 from cursecard import *
 
@@ -43,19 +43,19 @@ class DecisionState:
     def trivial_response(self) -> DecisionResponse:
         return DecisionResponse([self.card_choices[0]])
 
-    def select_cards(self, card: Card, minCards: int, maxCards: int):
+    def select_cards(self, card: Card, min_cards: int, max_cards: int):
         self.active_card = card
         self.type = DecisionType.DecisionSelectCards
-        self.min_cards = minCards
-        self.max_cards = maxCards
+        self.min_cards = min_cards
+        self.max_cards = max_cards
         self.controlling_player = -1
         self.card_choices = []
 
-    def make_discrete_choice(self, card: Card, optionCount: int):
+    def make_discrete_choice(self, card: Card, option_count: int):
         self.active_card = card
         self.type = DecisionType.DecisionDiscreteChoice
-        self.min_cards = optionCount
-        self.max_cards = optionCount
+        self.min_cards = option_count
+        self.max_cards = option_count
         self.controlling_player = -1
 
     def add_unique_card(self, card: Card):
@@ -66,24 +66,24 @@ class DecisionState:
         for card in cardList:
             self.add_unique_card(card)
 
-    def gain_card_from_supply(self, s, card: Card, minCost: int, maxCost: int):
+    def gain_card_from_supply(self, s, card: Card, min_cost: int, max_cost: int):
         self.select_cards(card, 1, 1)
         # TODO: Refactor
-        for k, v in s._supply.items():
+        for k, v in s.supply.items():
             supply_card = k()
             cost = s.get_supply_cost(supply_card)
-            if v > 0 and cost >= minCost and cost <= maxCost:
+            if v > 0 and cost >= min_cost and cost <= max_cost:
                 self.add_unique_card(supply_card)
 
-    def gain_treasure_from_supply(self, s, card: Card, minCost: int, maxCost: int):
+    def gain_treasure_from_supply(self, s, card: Card, min_cost: int, max_cost: int):
         self.select_cards(card, 1, 1)
         self.text = 'Select a treasure to gain:'
 
         # TODO: Refactor
-        for k, v in s._supply.items():
+        for k, v in s.items():
             supplyCard = k()
             cost = s.get_supply_cost(supplyCard)
-            if v > 0 and cost >= minCost and cost <= maxCost:
+            if v > 0 and cost >= min_cost and cost <= max_cost:
                 self.add_unique_card(supplyCard)
 
     def print_card_choices(self):
@@ -181,13 +181,13 @@ class State:
         for i in range(card.get_plus_cards()):
             self.draw_card(self.player)
 
-        effect = cardeffectbase.getCardEffect(card)
+        effect = cardeffectbase.get_card_effect(card)
         if effect:
-            effect.playAction(self)
+            effect.play_action(self)
 
     def process_treasure(self, card: Card):
         pState = self.player_states[self.player]
-        def getMerchantCoins() -> int:
+        def get_merchant_coins() -> int:
             if isinstance(card, Silver) and sum([1 if isinstance(c, Silver) else 0 for c in pState._playArea]) == 1:
                 return sum([1 if isinstance(card, Merchant) else 0 for card in pState._playArea])
             else:
@@ -197,7 +197,7 @@ class State:
 
         assert isinstance(card, TreasureCard), 'Attemped to processTreasure a non-treasure card'
         treasureValue = card.get_treasure()
-        merchantCoins = getMerchantCoins()
+        merchantCoins = get_merchant_coins()
 
         logging.info(f'Player {self.player} gets ${treasureValue}')
 
@@ -208,9 +208,9 @@ class State:
             logging.info(f'Player {self.player} gets ${merchantCoins} from Merchant')
         pState.buys += card.get_plus_buys()
 
-        effect = cardeffectbase.getCardEffect(card)
+        effect = cardeffectbase.get_card_effect(card)
         if effect:
-            effect.playAction(self)
+            effect.play_action(self)
 
     def process_decision(self, response: DecisionResponse):
         if self.decision.type == DecisionType.DecisionGameOver:
@@ -255,7 +255,7 @@ class State:
                     self.events.append(GainCard(GainZone.GainToDiscard, self.player, single_card, True, False))
         else:
             import cardeffectbase
-            activeCardEffect = cardeffectbase.getCardEffect(self.decision.active_card)
+            activeCardEffect = cardeffectbase.get_card_effect(self.decision.active_card)
             if activeCardEffect and activeCardEffect.can_process_decisions():
                 activeCardEffect.process_decision(self, response)
             elif len(self.events) > 0 and self.events[-1].can_process_decisions():
@@ -284,9 +284,9 @@ class State:
         for card in allCards:
             points = card.get_victory_points()
             score += card.get_victory_points()
-            effect = cardeffectbase.getCardEffect(card)
+            effect = cardeffectbase.get_card_effect(card)
             if isinstance(card, VictoryCard) and effect:
-                score += effect.victoryPoints(self, player)
+                score += effect.victory_points(self, player)
 
         return score
 
@@ -334,7 +334,7 @@ class State:
                 i = 0
                 logging.info(f'Player {self.player} has ${pState.coins}')
                 # TODO: Refactor
-                for cardClass, cardCount in self.supply._supply.items():
+                for cardClass, cardCount in self.supply.items():
                     card = cardClass()
                     if self.get_supply_cost(card) <= pState._coins and cardCount > 0:
                         self.decision.card_choices.append(card)
@@ -456,7 +456,7 @@ class DrawCard(Event):
         self.eventPlayer = player
 
     def advance(self, s: State) -> bool:
-        s.drawCard(self.eventPlayer)
+        s.draw_card(self.eventPlayer)
         return True
 
     def __str__(self):
@@ -471,9 +471,9 @@ class DiscardCard(Event):
     def advance(self, s: State):
         pState = s.player_states[self.player]
         if self.zone == DiscardZone.DiscardFromHand:
-            s.discardCard(self.player, self.card, pState.hand)
+            s.discard_card(self.player, self.card, pState.hand)
         elif self.zone == DiscardZone.DiscardFromDeck:
-            s.discardCard(self.player, self.card, pState.deck)
+            s.discard_card(self.player, self.card, pState.deck)
         elif self.zone == DiscardZone.DiscardFromSideZone:
             pState._discard.append(self.card)
         else:
@@ -525,7 +525,7 @@ class GainCard(Event):
                 logging.info(f'Player {self.player} gains {self.card} to deck')
 
             # TODO: Refactor
-            supply._supply[type(self.card)] -= 1
+            supply[type(self.card)] -= 1
 
             if self.bought:
                 cost = s.get_supply_cost(self.card)
@@ -579,7 +579,7 @@ class DiscardDownToN(Event):
             logging.info(f'Player {self.player} has cannot discard down: has {current_hand_size}')
             return True
 
-        s.decision.selectCards(self.card, cards_to_discard, cards_to_discard)
+        s.decision.select_cards(self.card, cards_to_discard, cards_to_discard)
         s.decision.card_choices = s.player_states[self.player].hand
         s.decision.controllingPlayer = self.player
 
@@ -596,7 +596,7 @@ class TrashCard(Event):
         self.card = card
 
     def advance(self, s: State):
-        s.trashCard(self.card, self.zone, self.player)
+        s.trash_card(self.card, self.zone, self.player)
         return True
 
     def __str__(self):
@@ -625,7 +625,7 @@ class RemodelExpand(Event):
         if self.done:
             return True
 
-        s.decision.gainCardFromSupply(s, self.source, 0, self.trashed_card.get_coin_cost() + self.gained_value)
+        s.decision.gain_card_from_supply(s, self.source, 0, self.trashed_card.get_coin_cost() + self.gained_value)
         if not s.decision.card_choices:
             s.decision.type = DecisionType.DecisionNone
             logging.info(f'Player {s.player} cannot gain any cards')
@@ -644,7 +644,7 @@ class EventArtisan(Event):
     def advance(self, s: State):
         if self.done:
             return True
-        s.decision.gainCardFromSupply(s, self.source, 0, 5)
+        s.decision.gain_card_from_supply(s, self.source, 0, 5)
         s.decision.text = 'Choose a card to gain'
         return False
 
@@ -757,7 +757,7 @@ class EventSentry(Event):
 
         if len(self.discarded) < len(s.decision.card_choices) and not self.once:
             card_choices = list(set(s.decision.card_choices) - set(self.discarded))
-            s.decision.selectCards(self.source, 0, len(s.decision.card_choices) - len(self.discarded))
+            s.decision.select_cards(self.source, 0, len(s.decision.card_choices) - len(self.discarded))
             s.decision.card_choices = card_choices
             s.decision.text = 'Select cards to trash'
             self.once = True
@@ -789,15 +789,15 @@ class BureaucratAttack(Event):
 
     def advance(self, s: State):
         pState = s.player_states[self.player]
-        if pState.getVictoryCardCount(Zone.Hand) == 0:
+        if pState.get_victory_card_count(Zone.Hand) == 0:
             logging.info(f'Player {self.player} reveals a hand with no victory cards')
         else:
-            s.decision.selectCards(self.source, 1, 1)
+            s.decision.select_cards(self.source, 1, 1)
             s.decision.controllingPlayer = self.player
 
             for card in pState.hand:
                 if isinstance(card, VictoryCard):
-                    s.decision.addUniqueCard(card)
+                    s.decision.add_unique_card(card)
             s.decision.text = f'Choose a victory card to put on top of your deck'
         return True
 
@@ -868,7 +868,7 @@ class PutOnDeckDownToN(Event):
             logging.info(f'Player {self.player} has {currentHandSize} cards in hand')
             return True
 
-        s.decision.selectCards(self.source, cardsToDiscard, cardsToDiscard)
+        s.decision.select_cards(self.source, cardsToDiscard, cardsToDiscard)
         s.decision.card_choices = s.player_states[self.player].hand
         s.decision.controllingPlayer = self.player
         s.decision.text = f'Choose {cardsToDiscard} card(s) to put on top of your deck:'
@@ -907,12 +907,12 @@ class PlayActionNTimes(Event):
                 logging.info(f'Player {s.player} has no actions to play')
                 return True
 
-            s.decision.selectCards(self.source, 1, 1)
+            s.decision.select_cards(self.source, 1, 1)
             s.decision.text = "Select an action to play"
 
             for card in pState.hand:
                 if isinstance(card, ActionCard):
-                    s.decision.addUniqueCard(card)
+                    s.decision.add_unique_card(card)
         else:
             logging.info(f'Player {s.player} plays {self.target}')
             self.count -= 1
