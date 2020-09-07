@@ -82,7 +82,7 @@ class PlayerHeuristic():
         d: DecisionState = s.decision
         card = d.active_card
         player = s.decision.controllingPlayer
-        pState = s.playerStates[player]
+        p_state: PlayerState = s.playerStates[player]
         if isinstance(card, Cellar):
             l = 0
             for c in d.card_choices:
@@ -130,7 +130,7 @@ class PlayerHeuristic():
                 response.cards.append(self.agenda.forceBuy(s, player, d.card_choices))
         elif isinstance(card, Harbinger):
             def scoringFunction(card: Card):
-                if has_excess_actions(pState.hand):
+                if has_excess_actions(p_state.hand):
                     if isinstance(card, ActionCard):
                         return 100 + card.get_coin_cost()
                     else:

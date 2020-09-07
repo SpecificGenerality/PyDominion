@@ -11,20 +11,20 @@ from victorycard import Estate, VictoryCard
 
 
 class PlayerState:
-    def __init__(self, gameConfig: GameConfig) -> None:
+    def __init__(self, game_config: GameConfig) -> None:
         self._actions = 1
         self._buys = 1
         self._coins = 0
         self._turns = 0
         self._deck = []
         self._discard = []
-        self._hand = []
+        self.hand = []
         self._island = []
-        self._playArea = []
+        self._play_area = []
 
-        if (gameConfig.starting_split == StartingSplit.Starting34Split):
+        if (game_config.starting_split == StartingSplit.Starting34Split):
         	self._deck = [Copper() for i in range(3)] + [Estate() for i in range(2)] + [Copper() for i in range(4)] + [Estate()]
-        elif (gameConfig.starting_split == StartingSplit.Starting25Split):
+        elif (game_config.starting_split == StartingSplit.Starting25Split):
         	self._deck = [Copper() for i in range(5)] + [Estate() for i in range(3)] + [Copper() for i in range(2)]
         else:
         	self._deck = [Copper() for i in range(7)] + [Estate() for i in range(3)]
@@ -42,52 +42,48 @@ class PlayerState:
     def buys(self):
         return self._buys
 
-    @buys.setter 
-    def buys(self, val: int): 
-        self._buys = val 
+    @buys.setter
+    def buys(self, val: int):
+        self._buys = val
 
     @property
-    def coins(self): 
+    def coins(self):
         return self._coins
 
-    @coins.setter 
-    def coins(self, val: int): 
+    @coins.setter
+    def coins(self, val: int):
         self._coins = val
 
     @property
-    def turns(self): 
+    def turns(self):
         return self._turns
 
-    @turns.setter 
+    @turns.setter
     def turns(self, val: int):
         self._turns = val
-    
-    @property
-    def hand(self):
-        return self._hand
 
     @property
-    def cards(self): 
-        cards = self._hand.copy()
+    def cards(self):
+        cards = self.hand.copy()
         cards[0:0] = self._deck
         cards[0:0] = self._discard
-        cards[0:0] = self._playArea
+        cards[0:0] = self._play_area
         cards[0:0] = self._island
         return cards
 
     @property
-    def num_cards(self): 
-        return len(self._hand) + len(self._deck) + len(self._discard) + len(self._playArea) + len(self._island)
+    def num_cards(self):
+        return len(self.hand) + len(self._deck) + len(self._discard) + len(self._play_area) + len(self._island)
 
-    def shuffle(self) -> None: 
+    def shuffle(self) -> None:
         random.shuffle(self._discard)
         self._deck = self._deck + self._discard
-        self._discard = []    
+        self._discard = []
 
     def is_degenerate(self) -> None:
-        return self.num_cards == 1 and self.has_card(Chapel) 
-    
-    def get_card_counts(self) -> Counter: 
+        return self.num_cards == 1 and self.has_card(Chapel)
+
+    def get_card_counts(self) -> Counter:
         cards = self.cards
         return Counter([str(card) for card in cards])
 
@@ -102,18 +98,18 @@ class PlayerState:
     def get_total_treasure_value(self) -> int:
         return sum(c.get_treasure() for c in self.cards)
 
-    def _get_zone_cards(self, zone: Zone): 
+    def _get_zone_cards(self, zone: Zone):
         if zone == Zone.Hand:
-            return self._hand
-        elif zone == Zone.Deck: 
+            return self.hand
+        elif zone == Zone.Deck:
             return self._deck
-        elif zone == Zone.Discard: 
+        elif zone == Zone.Discard:
             return self._discard
-        elif zone == Zone.Island: 
+        elif zone == Zone.Island:
             return self._island
-        elif zone == Zone.Play: 
-            return self._playArea
-        else: 
+        elif zone == Zone.Play:
+            return self._play_area
+        else:
             raise ValueError(f'Playerstate does not have list corresponding to zone: {zone}.')
 
     def get_action_card_count(self, zone: Zone) -> int:

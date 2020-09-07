@@ -80,7 +80,7 @@ class DecisionState:
         self.text = 'Select a treasure to gain:'
 
         # TODO: Refactor
-        for k, v in s.items():
+        for k, v in s.supply.items():
             supplyCard = k()
             cost = s.get_supply_cost(supplyCard)
             if v > 0 and cost >= min_cost and cost <= max_cost:
@@ -102,46 +102,46 @@ class State:
         self.events = []
 
     def draw_card(self, player: int) -> None:
-        pState = self.player_states[player]
-        if not pState._deck:
+        p_state: PlayerState = self.player_states[player]
+        if not p_state._deck:
             self.shuffle(player)
 
-        if not pState._deck:
+        if not p_state._deck:
             logging.info(f'Player {player} tries to draw but has no cards')
         else:
-            pState._hand.append(pState._deck.pop())
+            p_state.hand.append(p_state._deck.pop())
 
     def draw_hand(self, player: int):
-        numCardsToDraw = 5
-        for i in range(numCardsToDraw):
+        num_cards_to_draw = 5
+        for i in range(num_cards_to_draw):
             self.draw_card(player)
         logging.info(f'Player {player} draws a new hand.')
 
     def discard_card(self, player: int, card: Card, cards: List[Card]):
-        pState = self.player_states[player]
-        move_card(card, cards, pState._discard)
+        p_state: PlayerState = self.player_states[player]
+        move_card(card, cards, p_state._discard)
 
     def discard_hand(self, player: int):
-        pState = self.player_states[player]
-        pState._discard += pState._hand
-        pState._hand = []
+        p_state: PlayerState = self.player_states[player]
+        p_state._discard += p_state.hand
+        p_state.hand = []
         logging.info(f'Player {player} discards their hand')
 
     def update_play_area(self, player: int):
-        pState = self.player_states[player]
-        newPlayArea = []
-        for card in pState._playArea:
+        p_state: PlayerState = self.player_states[player]
+        new_play_area = []
+        for card in p_state._play_area:
             if card.turns_left > 1:
-                move_card(card, pState._playArea, newPlayArea)
-        pState._discard += pState._playArea
-        pState._playArea = newPlayArea
+                move_card(card, p_state._play_area, new_play_area)
+        p_state._discard += p_state._play_area
+        p_state._play_area = new_play_area
 
     def trash_card(self, card: Card, zone: Zone, player: int) -> None:
-        pState = self.player_states[player]
+        p_state: PlayerState = self.player_states[player]
         # print(f'Trashing {card}')
         if zone == Zone.Hand:
-            if pState._hand:
-                trashed_card = remove_first_card(card, pState._hand)
+            if p_state.hand:
+                trashed_card = remove_first_card(card, p_state.hand)
                 if trashed_card:
                     self.trash.append(trashed_card)
                     logging.info(f'Player {player} trashes {card} from hand.')
@@ -151,14 +151,14 @@ class State:
             else:
                 logging.info(f'Player {player} hand is empty, trashing nothing.')
         elif zone == Zone.Deck:
-            if pState._deck:
-                topCard = pState._deck.pop()
+            if p_state._deck:
+                topCard = p_state._deck.pop()
                 logging.info(f'Player trashes {topCard}')
             else:
                 logging.info(f'Player {player} deck is empty, trashing nothing')
         elif zone == Zone.Play:
-            if pState._playArea:
-                trashed_card = remove_first_card(pState._playArea, card)
+            if p_state._play_area:
+                trashed_card = remove_first_card(p_state._play_area, card)
                 if trashed_card:
                     self.trash.append(trashed_card)
                     logging.info(f'Player {player} trashes {card} from play.')
@@ -168,15 +168,15 @@ class State:
             logging.error(f'Player {player} attemped to trash card from un-recognized zone.')
 
     def play_card(self, player: int, card: Card) -> None:
-        pState = self.player_states[player]
-        move_card(card, pState._hand, pState._playArea)
+        p_state: PlayerState = self.player_states[player]
+        move_card(card, p_state.hand, p_state._play_area)
 
     def process_action(self, card: Card):
         import cardeffectbase
-        pState = self.player_states[self.player]
-        pState.actions += card.get_plus_actions()
-        pState.buys += card.get_plus_buys()
-        pState.coins += card.get_plus_coins()
+        p_state: PlayerState = self.player_states[self.player]
+        p_state.actions += card.get_plus_actions()
+        p_state.buys += card.get_plus_buys()
+        p_state.coins += card.get_plus_coins()
 
         for i in range(card.get_plus_cards()):
             self.draw_card(self.player)
@@ -186,10 +186,10 @@ class State:
             effect.play_action(self)
 
     def process_treasure(self, card: Card):
-        pState = self.player_states[self.player]
+        p_state: PlayerState = self.player_states[self.player]
         def get_merchant_coins() -> int:
-            if isinstance(card, Silver) and sum([1 if isinstance(c, Silver) else 0 for c in pState._playArea]) == 1:
-                return sum([1 if isinstance(card, Merchant) else 0 for card in pState._playArea])
+            if isinstance(card, Silver) and sum([1 if isinstance(c, Silver) else 0 for c in p_state._play_area]) == 1:
+                return sum([1 if isinstance(card, Merchant) else 0 for card in p_state._play_area])
             else:
                 return 0
 
@@ -201,12 +201,12 @@ class State:
 
         logging.info(f'Player {self.player} gets ${treasureValue}')
 
-        pState.coins += treasureValue
-        pState.coins += merchantCoins
+        p_state.coins += treasureValue
+        p_state.coins += merchantCoins
 
         if merchantCoins > 0:
             logging.info(f'Player {self.player} gets ${merchantCoins} from Merchant')
-        pState.buys += card.get_plus_buys()
+        p_state.buys += card.get_plus_buys()
 
         effect = cardeffectbase.get_card_effect(card)
         if effect:
@@ -238,7 +238,7 @@ class State:
                 else:
                     logging.info(f'Playing {single_card}')
                     self.play_card(self.player, single_card)
-                    p._actions -= 1
+                    p.actions -= 1
                     self.process_action(single_card)
             elif self.phase == Phase.TreasurePhase:
                 if single_card is None:
@@ -261,15 +261,15 @@ class State:
             elif len(self.events) > 0 and self.events[-1].can_process_decisions():
                 self.events[-1].process_decision(self, response)
             else:
-                logging.error(f'Decision from {self.decision.activeCard} cannot be processed')
+                logging.error(f'Decision from {self.decision.active_card} cannot be processed')
 
         if self.decision.controlling_player == -1:
             self.decision.controlling_player = self.player
         self.decision.max_cards = min(self.decision.max_cards, len(self.decision.card_choices))
 
     def shuffle(self, player: int) -> None:
-        pState = self.player_states[player]
-        pState.shuffle()
+        p_state: PlayerState = self.player_states[player]
+        p_state.shuffle()
 
     # TODO: peddler, bridge, quarry, and plunder affect this method
     def get_supply_cost(self, card: Card) -> int:
@@ -277,9 +277,9 @@ class State:
 
     def get_player_score(self, player: int) -> int:
         import cardeffectbase
-        pState = self.player_states[player]
+        p_state: PlayerState = self.player_states[player]
         score = 0
-        allCards = pState.cards
+        allCards = p_state.cards
 
         for card in allCards:
             points = card.get_victory_points()
@@ -291,52 +291,52 @@ class State:
         return score
 
     def get_player_card_counts(self, player: int) -> Counter:
-        pState = self.player_states[player]
+        p_state: PlayerState = self.player_states[player]
 
-        return pState.get_card_counts()
+        return p_state.get_card_counts()
 
     def is_degenerate(self) -> bool:
-        return self.supply[Curse] == 0 and self.supply[Copper] == 0 and any(pState.is_degenerate() for pState in self.player_states)
+        return self.supply[Curse] == 0 and self.supply[Copper] == 0 and any(p_state.is_degenerate() for p_state in self.player_states)
 
     def is_game_over(self) -> bool:
         return self.supply.is_game_over()
 
     def advance_phase(self):
-        pState = self.player_states[self.player]
+        p_state: PlayerState = self.player_states[self.player]
         if self.phase == Phase.ActionPhase:
             logging.info(f'====ACTION PHASE====')
-            if pState.actions == 0 or pState.get_action_card_count(Zone.Hand) == 0:
+            if p_state.actions == 0 or p_state.get_action_card_count(Zone.Hand) == 0:
                 self.phase = Phase.TreasurePhase
             else:
                 self.decision.text = 'Choose an action to play:'
                 self.decision.select_cards(None, 0, 1)
-                for card in pState.hand:
+                for card in p_state.hand:
                     if isinstance(card, ActionCard):
                         self.decision.add_unique_card(card)
         if self.phase == Phase.TreasurePhase:
             logging.info(f'====TREASURE PHASE====')
-            if pState.get_treasure_card_count(Zone.Hand) == 0:
+            if p_state.get_treasure_card_count(Zone.Hand) == 0:
                 self.phase = Phase.BuyPhase
             else:
                 self.decision.text = 'Choose a treasure to play'
                 self.decision.select_cards(None, 0, 1)
 
-                for card in pState._hand:
+                for card in p_state.hand:
                     if (isinstance(card, TreasureCard)):
                         self.decision.add_unique_card(card)
         if self.phase == Phase.BuyPhase and len(self.events) == 0:
             logging.info(f'====BUY PHASE====')
-            if pState._buys == 0:
+            if p_state.buys == 0:
                 self.phase = Phase.CleanupPhase
             else:
                 self.decision.text = 'Choose a card to buy'
                 self.decision.select_cards(None, 0, 1)
                 i = 0
-                logging.info(f'Player {self.player} has ${pState.coins}')
+                logging.info(f'Player {self.player} has ${p_state.coins}')
                 # TODO: Refactor
                 for cardClass, cardCount in self.supply.items():
                     card = cardClass()
-                    if self.get_supply_cost(card) <= pState._coins and cardCount > 0:
+                    if self.get_supply_cost(card) <= p_state.coins and cardCount > 0:
                         self.decision.card_choices.append(card)
                     i += 1
 
@@ -350,7 +350,7 @@ class State:
             self.discard_hand(self.player)
             self.draw_hand(self.player)
 
-            logging.info(f'Player {self.player} ends their {pState.turns}th turn')
+            logging.info(f'Player {self.player} ends turn {p_state.turns}')
 
             if self.is_game_over() or self.is_degenerate():
                 self.decision.type = DecisionType.DecisionGameOver
@@ -358,11 +358,11 @@ class State:
 
             self.player = (self.player + 1) % len(self.player_states)
             self.phase = Phase.ActionPhase
-            pState = self.player_states[self.player]
-            pState._actions = 1
-            pState._buys = 1
-            pState._coins = 0
-            pState._turns += 1
+            p_state: PlayerState = self.player_states[self.player]
+            p_state.actions = 1
+            p_state.buys = 1
+            p_state.coins = 0
+            p_state._turns += 1
 
     def advance_next_decision(self):
         if self.decision.type == DecisionType.DecisionGameOver:
@@ -376,26 +376,26 @@ class State:
         if len(self.events) == 0:
             self.advance_phase()
         else:
-            currEvent = self.events[-1]
+            last_event = self.events[-1]
             skipEventProcessing = False
 
-            if currEvent.is_attack():
-                attacked_player = currEvent.attacked_player()
+            if last_event.is_attack():
+                attacked_player = last_event.attacked_player()
                 assert attacked_player != -1, 'Invalid Player'
-                pState = self.player_states[currEvent.attacked_player()]
-                annotations = currEvent.get_attack_annotations()
+                p_state: PlayerState = self.player_states[last_event.attacked_player()]
+                annotations = last_event.get_attack_annotations()
 
-                if not annotations.moatProcessed and contains_card(Moat(), pState._hand):
+                if not annotations.moat_processed and contains_card(Moat(), p_state.hand):
                     self.events.append(MoatReveal(Moat(), attacked_player))
-                    currEvent.annotations.moatProcessed = True
+                    last_event.annotations.moat_processed = True
                     skipEventProcessing = True
             if not skipEventProcessing:
-                eventCompleted = currEvent.advance(self)
+                eventCompleted = last_event.advance(self)
                 if eventCompleted:
-                    destroyNextEvent = currEvent.destroy_next_event_on_stack()
+                    destroy_next_event = last_event.destroy_next_event_on_stack()
                     self.events.pop()
-                    del currEvent
-                    if destroyNextEvent:
+                    del last_event
+                    if destroy_next_event:
                         nextEvent = self.events.pop()
                         del nextEvent
 
@@ -423,7 +423,7 @@ class State:
 
 class AttackAnnotations():
     def __init__(self):
-        self.moatProcessed = False
+        self.moat_processed = False
 
 class Event(ABC):
     @abstractmethod
@@ -453,10 +453,10 @@ class Event(ABC):
 
 class DrawCard(Event):
     def __init__(self, player: int) -> None:
-        self.eventPlayer = player
+        self.event_player = player
 
     def advance(self, s: State) -> bool:
-        s.draw_card(self.eventPlayer)
+        s.draw_card(self.event_player)
         return True
 
     def __str__(self):
@@ -469,13 +469,13 @@ class DiscardCard(Event):
         self.card = card
 
     def advance(self, s: State):
-        pState = s.player_states[self.player]
+        p_state: PlayerState = s.player_states[self.player]
         if self.zone == DiscardZone.DiscardFromHand:
-            s.discard_card(self.player, self.card, pState.hand)
+            s.discard_card(self.player, self.card, p_state.hand)
         elif self.zone == DiscardZone.DiscardFromDeck:
-            s.discard_card(self.player, self.card, pState.deck)
+            s.discard_card(self.player, self.card, p_state._deck)
         elif self.zone == DiscardZone.DiscardFromSideZone:
-            pState._discard.append(self.card)
+            p_state._discard.append(self.card)
         else:
             logging.warning(f'Attempted to discard from non-hand zone')
         return True
@@ -510,18 +510,19 @@ class GainCard(Event):
         self.state = TriggerState.TriggerProcessed
 
     def advance(self, s: State):
-        pState = s.player_states[self.player]
+        p_state: PlayerState = s.player_states[self.player]
         supply = s.supply
         # TODO: Refactor
+
         if supply[type(self.card)] > 0:
             if self.zone == GainZone.GainToHand:
-                pState._hand.append(self.card)
+                p_state.hand.append(self.card)
                 logging.info(f'Player {self.player} gains {self.card} to hand')
             elif self.zone == GainZone.GainToDiscard:
-                pState._discard.append(self.card)
+                p_state._discard.append(self.card)
                 logging.info(f'Player {self.player} gains {self.card} to discard')
             elif self.zone == GainZone.GainToDeckTop:
-                pState._deck.append(self.card)
+                p_state._deck.append(self.card)
                 logging.info(f'Player {self.player} gains {self.card} to deck')
 
             # TODO: Refactor
@@ -530,12 +531,12 @@ class GainCard(Event):
             if self.bought:
                 cost = s.get_supply_cost(self.card)
                 logging.info(f'Player {self.player} spends {cost} and buys {self.card}')
-                pState.coins -= cost
-                pState.buys -= 1
+                p_state.coins -= cost
+                p_state.buys -= 1
         else:
             if self.bought:
                 logging.info(f'Player {self.player} cannot buy {self.card}')
-                pState.buys -= 1
+                p_state.buys -= 1
             else:
                 logging.info(f'Player {self.player} cannot gain {self.card}')
         return True
@@ -613,7 +614,7 @@ class RemodelExpand(Event):
         return True
 
     def process_decision(self, s: State, response: DecisionResponse):
-        pState = s.player_states[s.player]
+        p_state: PlayerState = s.player_states[s.player]
         if not self.trashed_card:
             self.trashed_card = response.cards[0]
             s.events.append(TrashCard(Zone.Hand, s.player, self.trashed_card))
@@ -652,10 +653,10 @@ class EventArtisan(Event):
         return True
 
     def process_decision(self, s: State, response: DecisionResponse):
-        pState = s.player_states[s.player]
+        p_state: PlayerState = s.player_states[s.player]
         if not self.gained_card:
             self.gained_card = response.cards[0]
-            s.events.append(PutOnDeckDownToN(self.source, s.player, len(pState.hand)))
+            s.events.append(PutOnDeckDownToN(self.source, s.player, len(p_state.hand)))
             s.events.append(GainCard(GainZone.GainToHand, s.player, response.cards[0]))
             self.done = True
 
@@ -674,7 +675,7 @@ class EventMine(Event):
     def advance(self, s: State):
         if self.done:
             return True
-        s.decision.gainTreasureFromSupply(s, self.source, 0, s.get_supply_cost(self.trashed_card) + 3)
+        s.decision.gain_treasure_from_supply(s, self.source, 0, s.get_supply_cost(self.trashed_card) + 3)
         if not s.decision.card_choices:
             s.decision.type = DecisionType.DecisionNone
             logging.info(f'Player {s.player} Cannot gain any cards')
@@ -682,7 +683,7 @@ class EventMine(Event):
         return False
 
     def process_decision(self, s: State, response: DecisionResponse):
-        pState = s.player_states[s.player]
+        p_state: PlayerState = s.player_states[s.player]
         if not self.trashed_card:
             self.trashed_card = response.cards[0]
             s.events.append(TrashCard(Zone.Hand, s.player, self.trashed_card))
@@ -701,27 +702,27 @@ class EventLibrary(Event):
         self.library_zone = []
 
     def advance(self, s: State):
-        pState = s.player_states[s.player]
-        current_hand_size = len(pState.hand)
+        p_state: PlayerState = s.player_states[s.player]
+        current_hand_size = len(p_state.hand)
         if current_hand_size < 7 and not self.done_drawing:
             revealed_card = None
-            if not pState.deck:
+            if not p_state._deck:
                 s.shuffle(s.player)
             else:
                 return True
-            if not pState.deck:
+            if not p_state._deck:
                 logging.info(f'Player {s.player} tries to draw, but has no cards left')
                 self.done_drawing = True
             else:
-                revealed_card = pState.deck.pop()
+                revealed_card = p_state._deck.pop()
                 if isinstance(revealed_card, ActionCard):
                     self.decision_card = revealed_card
-                    s.decision.makeDiscreteChoice(self.source, 2)
+                    s.decision.make_discrete_choice(self.source, 2)
                     logging.info(f'Player {s.player} reveals {revealed_card}')
                     s.decision.text = f'Set aside {self.decision_card}? 0. Yes 1. No'
                 else:
                     logging.info(f'Player {s.player} draws {revealed_card}')
-                    pState.hand.append(revealed_card)
+                    p_state.hand.append(revealed_card)
                 return False
         self.done_drawing = True
         for card in self.library_zone:
@@ -733,12 +734,12 @@ class EventLibrary(Event):
         return True
 
     def process_decision(self, s: State, response: DecisionResponse):
-        pState = s.player_states[s.player]
+        p_state: PlayerState = s.player_states[s.player]
         if response.choice == 0:
             self.library_zone.append(self.decision_card)
             logging.info(f'Player {s.player} sets aside {self.decision_card}')
         else:
-            pState.hand.append(self.decision_card)
+            p_state.hand.append(self.decision_card)
             logging.info(f'Player {s.player} puts {self.decision_card} into their hand')
 
     def __str__(self):
@@ -788,14 +789,14 @@ class BureaucratAttack(Event):
         return self.player
 
     def advance(self, s: State):
-        pState = s.player_states[self.player]
-        if pState.get_victory_card_count(Zone.Hand) == 0:
+        p_state: PlayerState = s.player_states[self.player]
+        if p_state.get_victory_card_count(Zone.Hand) == 0:
             logging.info(f'Player {self.player} reveals a hand with no victory cards')
         else:
             s.decision.select_cards(self.source, 1, 1)
             s.decision.controllingPlayer = self.player
 
-            for card in pState.hand:
+            for card in p_state.hand:
                 if isinstance(card, VictoryCard):
                     s.decision.add_unique_card(card)
             s.decision.text = f'Choose a victory card to put on top of your deck'
@@ -824,8 +825,8 @@ class MoatReveal(Event):
         if self.done:
             return True
 
-        s.decision.makeDiscreteChoice(self.source, 2)
-        s.decision.controllingPlayer = self.player
+        s.decision.make_discrete_choice(self.source, 2)
+        s.decision.controlling_player = self.player
         s.decision.text = 'Reveal Moat? 0. Yes 1. No'
         return True
 
@@ -846,13 +847,13 @@ class PutOnDeckDownToN(Event):
         self.handSize = handSize
         self.done = False
         self.annotations = AttackAnnotations if is_attack else None
-        self.is_attack = is_attack
+        self._is_attack = is_attack
 
     def is_attack(self):
-        return self.is_attack
+        return self._is_attack
 
     def attacked_player(self):
-        return self.player if self.is_attack else -1
+        return self.player if self._is_attack else -1
 
     def get_attack_annotations(self):
         return self.annotations
@@ -861,27 +862,27 @@ class PutOnDeckDownToN(Event):
         if self.done:
             return True
 
-        currentHandSize = len(s.player_states[self.player].hand)
-        cardsToDiscard = currentHandSize - self.handSize
+        current_hand_size = len(s.player_states[self.player].hand)
+        cards_to_discard = current_hand_size - self.handSize
 
-        if cardsToDiscard <= 0:
-            logging.info(f'Player {self.player} has {currentHandSize} cards in hand')
+        if cards_to_discard <= 0:
+            logging.info(f'Player {self.player} has {current_hand_size} cards in hand')
             return True
 
-        s.decision.select_cards(self.source, cardsToDiscard, cardsToDiscard)
+        s.decision.select_cards(self.source, cards_to_discard, cards_to_discard)
         s.decision.card_choices = s.player_states[self.player].hand
-        s.decision.controllingPlayer = self.player
-        s.decision.text = f'Choose {cardsToDiscard} card(s) to put on top of your deck:'
+        s.decision.controlling_player = self.player
+        s.decision.text = f'Choose {cards_to_discard} card(s) to put on top of your deck:'
         return False
 
     def can_process_decisions(self):
         return True
 
     def process_decision(self, s: State, response: DecisionResponse):
-        pState = s.player_states[self.player]
+        p_state: PlayerState = s.player_states[self.player]
         for card in response.cards:
             logging.info(f'Player {self.player} puts {card} on top of their deck')
-            move_card(card, pState.hand, pState.deck)
+            move_card(card, p_state.hand, p_state._deck)
         self.done = True
 
     def __str__(self):
@@ -900,32 +901,32 @@ class PlayActionNTimes(Event):
         if self.count == 0:
             return True
 
-        pState = s.player_states[s.player]
+        p_state: PlayerState = s.player_states[s.player]
 
         if not self.target:
-            if pState.getActionCardCount(pState.hand) == 0:
+            if p_state.get_action_card_count(Zone.Hand) == 0:
                 logging.info(f'Player {s.player} has no actions to play')
                 return True
 
             s.decision.select_cards(self.source, 1, 1)
             s.decision.text = "Select an action to play"
 
-            for card in pState.hand:
+            for card in p_state.hand:
                 if isinstance(card, ActionCard):
                     s.decision.add_unique_card(card)
         else:
             logging.info(f'Player {s.player} plays {self.target}')
             self.count -= 1
-            s.processAction(self.target)
+            s.process_action(self.target)
         return False
 
     def process_decision(self, s: State, response: DecisionResponse):
-        pState = s.player_states[s.player]
+        p_state: PlayerState = s.player_states[s.player]
         self.target = response.cards[0]
-        target = remove_first_card(self.target, pState.hand)
+        target = remove_first_card(self.target, p_state.hand)
 
         target.copies = self.count
-        pState.playArea.append(target)
+        p_state._play_area.append(target)
 
     def __str__(self):
         return f'Play{self.count}'

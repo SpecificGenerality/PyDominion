@@ -27,18 +27,18 @@ class MCTSBuyAgenda(BuyAgenda):
 
 class TDEBigMoneyBuyAgenda(BuyAgenda):
     def buy(self, s: State, player: int, choices: List[Card]):
-        pState = s.player_states[player]
+        p_state: PlayerState = s.player_states[player]
         coins = s.player_states[player].coins
         cardIdx = -1
 
-        if pState.get_terminal_draw_density() < TD_DENSITY:
+        if p_state.get_terminal_draw_density() < TD_DENSITY:
             card = get_max_plus_cards_card(choices)
             # print(f'TD Agenda buys {card}')
             if card:
                 return card
 
         # buy one chapel if we don't have one
-        if coins >= 2 and not pState.hasCard(Chapel):
+        if coins >= 2 and not p_state.hasCard(Chapel):
             cardIdx = get_first_index(Chapel(), choices)
             if cardIdx >= 0:
                 return choices[cardIdx]
@@ -86,11 +86,11 @@ class TDEBigMoneyBuyAgenda(BuyAgenda):
 
 class TDBigMoneyBuyAgenda(BuyAgenda):
     def buy(self, s: State, player: int, choices: List[Card]):
-        pState = s.player_states[player]
+        p_state: PlayerState = s.player_states[player]
         coins = s.player_states[player].coins
         cardIdx = -1
 
-        if pState.get_terminal_draw_density() < TD_DENSITY:
+        if p_state.get_terminal_draw_density() < TD_DENSITY:
             card = get_max_plus_cards_card(choices)
             # print(f'TD Agenda buys {card}')
             if card:

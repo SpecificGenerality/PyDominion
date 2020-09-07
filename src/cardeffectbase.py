@@ -134,11 +134,11 @@ class MineEffect(CardEffect):
         self.c = Mine()
 
     def play_action(self, s: State):
-        pState = s.player_states[s.player]
-        if pState.get_treasure_card_count(pState.hand) > 0:
+        p_state: PlayerState = s.player_states[s.player]
+        if p_state.get_treasure_card_count(Zone.Hand) > 0:
             s.decision.select_cards(self.c, 1, 1)
             s.decision.text = 'Select a treasure to trash:'
-            for card in pState.hand:
+            for card in p_state.hand:
                 if isinstance(card, TreasureCard):
                     s.decision.add_unique_card(card)
             s.events.append(EventMine(self.c))
@@ -175,12 +175,12 @@ class PoacherEffect(CardEffect):
         self.c = Poacher()
 
     def play_action(self, s: State):
-        pState = s.player_states[s.player]
-        numEmptySupply = s.numEmptySupply()
-        if numEmptySupply > 0 and pState.hand:
-            numCards = min(len(pState.hand), numEmptySupply)
+        p_state: PlayerState = s.player_states[s.player]
+        num_empty_supply = s.supply.empty_stack_count
+        if num_empty_supply > 0 and p_state.hand:
+            numCards = min(len(p_state.hand), num_empty_supply)
             s.decision.select_cards(self.c, numCards, numCards)
-            s.decision.card_choices = pState.hand
+            s.decision.card_choices = p_state.hand
             s.decision.text = 'Choose card(s) to discard'
 
     def can_process_decisions(self):
@@ -195,10 +195,10 @@ class HarbingerEffect(CardEffect):
         self.c = Harbinger()
 
     def play_action(self, s: State):
-        pState = s.player_states[s.player]
-        if len(pState.discard) > 0:
+        p_state: PlayerState = s.player_states[s.player]
+        if len(p_state._discard) > 0:
             s.decision.select_cards(self.c, 0, 1)
-            s.decision.card_choices = pState.discard
+            s.decision.card_choices = p_state._discard
             s.decision.text = 'Choose a card from discard to move'
         else:
             logging.info(f'Harbinger has no effect: player {s.player} has empty discard')
@@ -207,8 +207,8 @@ class HarbingerEffect(CardEffect):
         return True
 
     def process_decision(self, s: State, response: DecisionResponse):
-        pState = s.player_states[s.player]
-        move_card(pState.discard[response.choice], pState.discard, pState.deck)
+        p_state: PlayerState = s.player_states[s.player]
+        move_card(p_state._discard[response.choice], p_state._discard, p_state._deck)
 
 class BureaucratEffect(CardEffect):
     def __init__(self):
@@ -225,8 +225,8 @@ class BureaucratEffect(CardEffect):
 
     def process_decision(self, s: State, response: DecisionResponse):
         c = response.cards[0]
-        pState = s.player_states[s.decision.controllingPlayer]
-        move_card(c, pState.hand, pState.deck)
+        p_state: PlayerState = s.player_states[s.decision.controllingPlayer]
+        move_card(c, p_state.hand, p_state._deck)
 
 class ThroneRoomEffect(CardEffect):
     def __init__(self):

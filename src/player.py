@@ -40,11 +40,11 @@ class MCTSPlayer(Player):
         '''Return time-varying C tuned for raw score reward'''
         return self.Cfx(self.node.n)
 
-    def reset(self, pState: PlayerState):
+    def reset(self, p_state: PlayerState):
         if self.train:
             self.root.n += 1
         # advance MCTS from virtual root to the correct start position (2/3/4/5 coppers)
-        self.node = self.root.children[pState.get_treasure_card_count(Zone.Hand)-2]
+        self.node = self.root.children[p_state.get_treasure_card_count(Zone.Hand)-2]
         if self.train:
             self.node.n += 1
 
@@ -132,20 +132,18 @@ class HeuristicPlayer(Player):
 class RandomPlayer(Player):
     def makeDecision(self, s: State, response: DecisionResponse):
         d: DecisionState = s.decision
-        d.card_choices.append(None)
+
+        # d.card_choices.append(None)
+        # Do not allow RandomPlayer to purchase curses
         if s.phase == Phase.BuyPhase:
             remove_first_card(Curse(), d.card_choices)
+
         if d.type == DecisionType.DecisionSelectCards:
-            cardsToPick = d.min_cards
+            cards_to_pick = d.min_cards
             if d.max_cards > d.min_cards:
-                cardsToPick = random.randint(d.min_cards, d.max_cards)
-            responseIdxs = []
-            for i in range(0, cardsToPick):
-                choice = random.randint(0, len(d.card_choices)-1)
-                while choice in responseIdxs:
-                    choice = random.randint(0, len(d.card_choices)-1)
-                responseIdxs.append(choice)
-                response.cards.append(d.card_choices[choice])
+                cards_to_pick = random.randint(d.min_cards, d.max_cards)
+
+            response.cards = random.sample(d.card_choices, k=min(cards_to_pick, len(d.card_choices)))
         elif d.type == DecisionType.DecisionDiscreteChoice:
             response.choice = random.randint(0, d.min_cards)
         else:

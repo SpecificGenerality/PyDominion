@@ -74,7 +74,7 @@ def simulate(args: ArgumentParser, split:StartingSplit, n: int, save_data=False)
     players = init_players(args)
 
     for i in tqdm(range(n)):
-        config = GameConfig(split, prosperity=args.prosperity, num_players=args.players)
+        config = GameConfig(split, prosperity=args.prosperity, num_players=args.players, sandbox=args.sandbox)
         data = Supply(config)
         dominion = Game(config, data, players)
         dominion.newGame()
@@ -113,6 +113,7 @@ if __name__=='__main__':
     parser = ArgumentParser('Simulation Chamber for Dominion')
     parser.add_argument('-T', type=int, default=None, help='Upper threshold for number of turns in each game')
     parser.add_argument('--iters', type=int,  required=True, help='Number of games to simulate')
+    parser.add_argument('--sandbox', action='store_true', help='When set, the supply is limited to the 7 basic kingdom supply cards.')
     parser.add_argument('--split', default=0, type=int, help='Starting Copper/Estate split. 0: Random, 1: 25Split, 2: 34Split')
     parser.add_argument('--prosperity', action='store_true', help='Whether the Prosperity settings should be used')
     parser.add_argument('--players', default=2, type=int, help='Number of AI players')
