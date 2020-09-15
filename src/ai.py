@@ -77,7 +77,7 @@ class MCTS:
                     self.player.node = next_node
                     self.player.node.n += 1
                     # Uncomment to track UCT score within the tree
-                    tree_score = self.game.getPlayerScores()[0]
+                    tree_score = self.game.get_player_scores()[0]
                     self.data.update_split_scores(tree_score, False, self.iter)
                 elif self.rollout_model == Rollout.HistoryHeuristic:
                     self.rollout_cards.append(response.single_card)
@@ -87,7 +87,7 @@ class MCTS:
 
 
         player_turns = s.player_states[0]._turns
-        score = self.game.getPlayerScores()[0]
+        score = self.game.get_player_scores()[0]
         # update data
         self.data.update_split_scores(score - tree_score, True, self.iter)
 
@@ -105,16 +105,15 @@ class MCTS:
         elif self.rollout_model == Rollout.LinearRegression:
             self.rollout.update(counts=self.game.state.player_states[0].get_card_counts(),score=score, i=self.iter)
 
-        return self.game.getPlayerScores()[0]
+        return self.game.get_player_scores()[0]
 
     def reset(self, i: int):
         self.expanded = False
         self.rollout_cards = []
         self.iter = i
         self.game_config = GameConfig(StartingSplit.StartingRandomSplit, prosperity=False, num_players=1)
-        self.supply = Supply(self.game_config)
-        self.game = Game(self.game_config, self.supply, [self.player])
-        self.game.newGame()
+        self.game = Game(self.game_config, [self.player])
+        self.game.new_game()
 
         self.player.reset(self.game.state.player_states[0])
 

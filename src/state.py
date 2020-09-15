@@ -17,7 +17,7 @@ from cursecard import *
 
 
 class DecisionResponse:
-    def __init__(self, cards: List[Card]):
+    def __init__(self, cards: List[Card] = []):
         self.cards = cards
         self.choice = -1
         self.single_card = None
@@ -91,13 +91,13 @@ class DecisionState:
             logging.info(f'{i}: {card}')
 
 class State:
-    def __init__(self, config: GameConfig, supply: Supply):
+    def __init__(self, config: GameConfig):
         self.players = [i for i in range(config.num_players)]
         self.player_states = [PlayerState(config) for i in range(config.num_players)]
         self.phase = Phase.ActionPhase
         self.decision = DecisionState()
         self.player = 0
-        self.supply = supply
+        self.supply = Supply(config)
         self.trash = []
         self.events = []
 

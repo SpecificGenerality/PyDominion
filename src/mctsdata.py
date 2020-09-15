@@ -15,9 +15,9 @@ class MCTSData:
 
     def update(self, G: Game, P: MCTSPlayer, i: int):
         '''Update game statistics after game i'''
-        self.scores.append(G.getPlayerScores()[0])
+        self.scores.append(G.get_player_scores()[0])
         data_dict = {}
-        data_dict['score'] = G.getPlayerScores()[0]
+        data_dict['score'] = G.get_player_scores()[0]
         data_dict['rollout'] = str(P.rollout)
         data_dict['i'] = i
 

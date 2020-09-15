@@ -75,9 +75,8 @@ def simulate(args: ArgumentParser, split:StartingSplit, n: int, save_data=False)
 
     for i in tqdm(range(n)):
         config = GameConfig(split, prosperity=args.prosperity, num_players=args.players, sandbox=args.sandbox)
-        data = Supply(config)
-        dominion = Game(config, data, players)
-        dominion.newGame()
+        dominion = Game(config, players)
+        dominion.new_game()
 
         for i, player in enumerate(players):
             if isinstance(player, MCTSPlayer):

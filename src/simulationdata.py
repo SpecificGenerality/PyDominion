@@ -12,7 +12,7 @@ class SimulationData:
         self.summary = {}
 
     def update(self, G: Game, time):
-        scores = G.getPlayerScores()
+        scores = G.get_player_scores()
         winning_score = max(scores)
         game_stats = dict()
         game_stats['MaxScore'] = winning_score
@@ -25,7 +25,7 @@ class SimulationData:
 
         self.game_data.append(game_stats)
 
-        for i in range(G.gameConfig.num_players):
+        for i in range(G.config.num_players):
             sim_stats = dict()
             sim_stats['Turns'] = G.state.player_states[i].turns
             sim_stats['Player'] = i
@@ -38,7 +38,7 @@ class SimulationData:
         self.player_df = pd.DataFrame(self.player_data)
         self.game_df = pd.DataFrame(self.game_data)
 
-        for i in range(G.gameConfig.num_players):
+        for i in range(G.config.num_players):
             self.summary[i] = self.player_df.loc[self.player_df['Player'] == i]['Won'].sum()
 
         self.summary['ProvinceWins'] = self.game_df['ProvinceWin'].sum()
