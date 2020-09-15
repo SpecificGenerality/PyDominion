@@ -14,7 +14,8 @@ from victorycard import *
 class Supply(MutableMapping):
     def __init__(self, config: GameConfig, *args, **kwargs):
         # Gardens, Workshop, Laboratory, Village, Witch, Festival, Mine, Chapel, CouncilRoom, Gardens
-        def init_kingdom_cards(supply: Dict, must_include = []) -> None:
+        def init_kingdom_cards(supply: Dict) -> None:
+            must_include = config.must_include
             for i in range(min(config.kingdom_size, len(must_include))):
                 supply[must_include[i]] = 10
 
@@ -56,7 +57,7 @@ class Supply(MutableMapping):
     def empty_stack_count(self) -> int:
         return sum(1 if count == 0 else 0 for count in self.__dict__.values())
 
-    def is_game_over(self) -> bool: 
+    def is_game_over(self) -> bool:
         if Colony in self._supply and self._supply[Colony] == 0:
             logging.info(f'Game over. Colonies ran out.')
             return True
@@ -77,11 +78,11 @@ class Supply(MutableMapping):
     def __setitem__(self, key: Card, val: int):
         return self._supply.__setitem__(key, val)
 
-    def __delitem__(self, key): 
+    def __delitem__(self, key):
         return self._supply.__delitem__(key)
-    
+
     def __iter__(self):
         return self._supply.__iter__()
-    
+
     def __len__(self):
         return self._supply.__len__()
