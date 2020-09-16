@@ -55,7 +55,7 @@ class Supply(MutableMapping):
 
     @property
     def empty_stack_count(self) -> int:
-        return sum(1 if count == 0 else 0 for count in self.__dict__.values())
+        return sum(1 if count == 0 else 0 for count in self._supply.values())
 
     def is_game_over(self) -> bool:
         if Colony in self._supply and self._supply[Colony] == 0:

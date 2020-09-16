@@ -27,7 +27,7 @@ class Game:
         self.state.new_game()
 
     def get_supply_card_types(self):
-        return [str(c()) for c in self.state.supply.supply.keys()]
+        return [str(c()) for c in self.state.supply.keys()]
 
     def get_winning_players(self):
         scores = [self.state.get_player_score(pInfo.id) for pInfo in self.players]

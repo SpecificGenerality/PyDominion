@@ -73,7 +73,7 @@ class HistoryHeuristicRollout(RolloutModel):
 
 class LinearRegressionRollout(RolloutModel):
     def __init__(self, iters: int, G: Supply, tau=0.5, train=False, eps=10e-10):
-        self.supply: List[str] = G.getSupplyCardTypes() + [str(None)]
+        self.supply: List[str] = G.get_supply_card_types() + [str(None)]
         # Index map for kingdom card
         self.n = len(self.supply)
         self.indices = dict(zip(self.supply, [i for i in range(self.n)]))

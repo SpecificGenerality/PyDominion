@@ -56,7 +56,7 @@ class TDEBigMoneyBuyAgenda(BuyAgenda):
                 return choices[cardIdx]
         elif coins == 5:
             cardIdx = get_first_index(Silver(), choices)
-            if s.supply.supply[Province] <= 4 or cardIdx < 0:
+            if s.supply[Province] <= 4 or cardIdx < 0:
                 return get_highest_VP_card(choices)
             else:
                 return choices[cardIdx]
@@ -66,7 +66,7 @@ class TDEBigMoneyBuyAgenda(BuyAgenda):
                 return get_highest_VP_card(choices)
             else:
                 return choices[cardIdx]
-        elif coins == 2 and s.supply.supply[Province] <= 3:
+        elif coins == 2 and s.supply[Province] <= 3:
             cardIdx = get_first_index(Estate(), choices)
             if cardIdx >= 0:
                 return choices[cardIdx]

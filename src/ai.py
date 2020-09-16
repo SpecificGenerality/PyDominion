@@ -24,7 +24,7 @@ from state import *
 class MCTS:
     def __init__(self, T: int, n: int, tau: float, rollout: Rollout, eps: float):
         # initialize game config
-        self.game_config = GameConfig(StartingSplit.StartingRandomSplit, prosperity=False, num_players=1)
+        self.game_config = GameConfig(StartingSplit.StartingRandomSplit, prosperity=False, num_players=1, sandbox=True)
         self.supply = Supply(self.game_config)
 
         self.game = None
@@ -50,6 +50,7 @@ class MCTS:
         s = self.game.state
         d = s.decision
         tree_score = 0
+        s.advance_next_decision()
         # run the game up to game end or turn limit reached
         while d.type != DecisionType.DecisionGameOver and s.player_states[0]._turns < self.T:
             if d.text:
@@ -111,7 +112,7 @@ class MCTS:
         self.expanded = False
         self.rollout_cards = []
         self.iter = i
-        self.game_config = GameConfig(StartingSplit.StartingRandomSplit, prosperity=False, num_players=1)
+        self.game_config = GameConfig(StartingSplit.StartingRandomSplit, prosperity=False, num_players=1, sandbox=True)
         self.game = Game(self.game_config, [self.player])
         self.game.new_game()
 

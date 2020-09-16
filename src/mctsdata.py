@@ -22,7 +22,7 @@ class MCTSData:
         data_dict['i'] = i
 
         card_counts = G.state.get_player_card_counts(0)
-        supply_cards = G.getSupplyCardTypes()
+        supply_cards = G.get_supply_card_types()
         for k in supply_cards:
             data_dict[k] = card_counts.get(k, 0)
 

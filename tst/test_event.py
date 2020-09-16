@@ -18,8 +18,6 @@ class TestEvent(unittest.TestCase):
         self.game = Game(self.config, self.players)
 
     def test_moat_reveal(self) -> None:
-        r = DecisionResponse()
-
         self.game.new_game()
 
         # Inject necessary cards into players' hands
@@ -31,13 +29,13 @@ class TestEvent(unittest.TestCase):
         self.game.state.advance_next_decision()
 
         # Action Phase decision
-        r = DecisionResponse()
+        r = DecisionResponse([])
         r.cards = [attack_card]
         self.game.state.process_decision(r)
         self.game.state.advance_next_decision()
 
         # MoatReveal reaction
-        r = DecisionResponse()
+        r = DecisionResponse([])
         r.choice = 0
         self.game.state.process_decision(r)
         self.game.state.advance_next_decision()
