@@ -2,6 +2,7 @@ import random
 from collections import Counter
 from typing import List
 
+import utils
 from actioncard import ActionCard, Chapel
 from card import Card
 from config import GameConfig
@@ -127,6 +128,10 @@ class PlayerState:
     def get_total_coin_count(self, zone: Zone) -> int:
         cards = self._get_zone_cards(zone)
         return sum(card.get_plus_coins() for card in cards)
+
+    def contains_card(self, card: Card, zone: Zone) -> bool:
+        cards = self._get_zone_cards(zone)
+        return utils.contains_card(card, cards)
 
     def has_card(self, card_class):
         return any(isinstance(c, card_class) for c in self.cards)

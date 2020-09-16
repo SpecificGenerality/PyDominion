@@ -63,7 +63,7 @@ class MCTSPlayer(Player):
         return next_node
 
     def makeDecision(self, s: State, response: DecisionResponse):
-        player = s.decision.controllingPlayer
+        player = s.decision.controlling_player
         d: DecisionState = s.decision
         if s.phase == Phase.ActionPhase:
             assert False, 'MCTS does not support action cards yet'

@@ -34,7 +34,7 @@ def remove_card(card: Card, cards: List) -> Card:
 
 def move_card(card: Card, src: List, dest: List) -> None:
     x = remove_card(card, src)
-    if x is None: 
+    if x is None:
         raise ValueError(f'{card} not found in source list.')
     dest.append(x)
 

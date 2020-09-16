@@ -43,12 +43,13 @@ class Game:
 
     def run(self, T=None):
         d = self.state.decision
+        self.state.advance_next_decision()
         while d.type != DecisionType.DecisionGameOver:
             if T is not None and all(t.turns >= T for t in self.state.player_states):
                 break
             if d.text:
                 logging.info(d.text)
-            response = DecisionResponse()
+            response = DecisionResponse([])
             player = self.players[self.state.decision.controlling_player]
             player.controller.makeDecision(self.state, response)
             self.state.process_decision(response)

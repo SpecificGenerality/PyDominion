@@ -12,3 +12,29 @@ BASE_CARDS = [Cellar, Chapel, Moat, \
         Bureaucrat, Gardens, Militia, Moneylender, Poacher, Remodel, Smithy, ThroneRoom, \
         CouncilRoom, Festival, Laboratory, Library, Market, Mine, Witch, \
         Artisan]
+
+BASE_CARD_NAME = {
+        'Cellar': Cellar,
+        'Chapel': Chapel,
+        'Moat': Moat,
+        'Harbinger': Harbinger,
+        'Merchant': Merchant,
+        'Village': Village,
+        'Workshop': Workshop,
+        'Bureaucrat': Bureaucrat,
+        'Gardens': Gardens,
+        'Militia': Militia,
+        'Moneylender': Moneylender,
+        'Poacher': Poacher,
+        'Remodel': Remodel,
+        'Smithy': Smithy,
+        'ThroneRoom': ThroneRoom,
+        'CouncilRoom': CouncilRoom,
+        'Festival': Festival,
+        'Laboratory': Laboratory,
+        'Library': Library,
+        'Market': Market,
+        'Mine': Mine,
+        'Witch': Witch,
+        'Artisan': Artisan
+}

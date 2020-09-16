@@ -9,9 +9,9 @@ from state import *
 
 class MCTSState:
     def __init__(self, s: State):
-        self.player = s.decision.controllingPlayer
+        self.player = s.decision.controlling_player
         # In sandbox mode, hand is not important for making decisions
-        # self.hand = Counter([str(c) for c in s.playerStates[self.player].hand])
+        # self.hand = Counter([str(c) for c in s.player_states[self.player].hand])
         self.deck = s.get_player_card_counts(self.player)
         self.supply = s.supply
 

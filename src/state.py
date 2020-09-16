@@ -17,7 +17,7 @@ from cursecard import *
 
 
 class DecisionResponse:
-    def __init__(self, cards: List[Card] = []):
+    def __init__(self, cards: List[Card]):
         self.cards = cards
         self.choice = -1
         self.single_card = None
@@ -215,14 +215,14 @@ class State:
     def process_decision(self, response: DecisionResponse):
         if self.decision.type == DecisionType.DecisionGameOver:
             return
-        assert self.decision.type != DecisionType.DecisionNone, 'No decision active'
+        if self.decision.type == DecisionType.DecisionNone:
+            raise ValueError('No decision active')
 
         single_card = response.single_card
         if self.decision.type == DecisionType.DecisionSelectCards and self.decision.max_cards <= 1:
             if len(response.cards) == 1:
                 single_card = response.cards[0]
-                assert len(response.cards) <= 1, 'Invalid number of cards in response'
-                assert self.decision.min_cards == 0 or single_card != None, 'No response chosen'
+                # assert self.decision.min_cards == 0 or single_card != None, 'No response chosen'
             else:
                 # do some asserts here
                 pass
@@ -308,7 +308,7 @@ class State:
             if p_state.actions == 0 or p_state.get_action_card_count(Zone.Hand) == 0:
                 self.phase = Phase.TreasurePhase
             else:
-                self.decision.text = 'Choose an action to play:'
+                self.decision.text = 'Choose an action to play'
                 self.decision.select_cards(None, 0, 1)
                 for card in p_state.hand:
                     if isinstance(card, ActionCard):
@@ -376,28 +376,35 @@ class State:
         if len(self.events) == 0:
             self.advance_phase()
         else:
+            # Inject a MoatReveal event in response to an attack card
             last_event = self.events[-1]
-            skipEventProcessing = False
+            # skipEventProcessing = False
 
             if last_event.is_attack():
                 attacked_player = last_event.attacked_player()
-                assert attacked_player != -1, 'Invalid Player'
+                if attacked_player == -1:
+                    raise ValueError('Invalid attacked player')
                 p_state: PlayerState = self.player_states[last_event.attacked_player()]
                 annotations = last_event.get_attack_annotations()
 
-                if not annotations.moat_processed and contains_card(Moat(), p_state.hand):
+                if not annotations.moat_processed and p_state.contains_card(Moat(), Zone.Hand):
                     self.events.append(MoatReveal(Moat(), attacked_player))
                     last_event.annotations.moat_processed = True
-                    skipEventProcessing = True
-            if not skipEventProcessing:
-                eventCompleted = last_event.advance(self)
-                if eventCompleted:
-                    destroy_next_event = last_event.destroy_next_event_on_stack()
-                    self.events.pop()
-                    del last_event
-                    if destroy_next_event:
-                        nextEvent = self.events.pop()
-                        del nextEvent
+
+            event_completed = self.events[-1].advance(self)
+            if event_completed:
+                self.events.pop()
+                    # skipEventProcessing = True
+
+            # if not skipEventProcessing:
+            #     eventCompleted = last_event.advance(self)
+            #     if eventCompleted:
+            #         destroy_next_event = last_event.destroy_next_event_on_stack()
+            #         self.events.pop()
+            #         del last_event
+            #         if destroy_next_event:
+            #             nextEvent = self.events.pop()
+            #             del nextEvent
 
         if self.decision.type == DecisionType.DecisionNone:
             self.advance_next_decision()
@@ -405,7 +412,9 @@ class State:
         if self.decision.controlling_player == -1:
             self.decision.controlling_player = self.player
 
-        self.decision.max_cards = min(self.decision.max_cards, len(self.decision.card_choices))
+        if self.decision.type == DecisionType.DecisionSelectCards:
+            self.decision.max_cards = min(self.decision.max_cards, len(self.decision.card_choices))
+
         if self.decision.is_trivial():
             self.process_decision(self.decision.trivial_response())
             self.advance_next_decision()
@@ -417,9 +426,6 @@ class State:
 
         # self.player = random.randint(0, playerCount-1)
         logging.info(f'Player {self.player} starts')
-        self.player_states[self.player]._turns = 1
-
-        self.advance_next_decision()
 
 class AttackAnnotations():
     def __init__(self):
@@ -563,7 +569,7 @@ class DiscardDownToN(Event):
 
     def process_decision(self, s: State, response: DecisionResponse):
         for card in response.cards:
-            s.events.append(DiscardCard(DiscardZone.DiscardFromHand, s.decision.controllingPlayer, card))
+            s.events.append(DiscardCard(DiscardZone.DiscardFromHand, s.decision.controlling_player, card))
         self.done = True
 
     def attacked_player(self) -> int:
@@ -582,7 +588,7 @@ class DiscardDownToN(Event):
 
         s.decision.select_cards(self.card, cards_to_discard, cards_to_discard)
         s.decision.card_choices = s.player_states[self.player].hand
-        s.decision.controllingPlayer = self.player
+        s.decision.controlling_player = self.player
 
         s.decision.text = f'Player {self.player}: choose {cards_to_discard} card(s) to discard:'
         return False
@@ -794,7 +800,7 @@ class BureaucratAttack(Event):
             logging.info(f'Player {self.player} reveals a hand with no victory cards')
         else:
             s.decision.select_cards(self.source, 1, 1)
-            s.decision.controllingPlayer = self.player
+            s.decision.controlling_player = self.player
 
             for card in p_state.hand:
                 if isinstance(card, VictoryCard):
@@ -819,7 +825,7 @@ class MoatReveal(Event):
         return True
 
     def destroy_next_event_on_stack(self):
-        return True
+        return self.revealed
 
     def advance(self, s: State):
         if self.done:
@@ -828,13 +834,16 @@ class MoatReveal(Event):
         s.decision.make_discrete_choice(self.source, 2)
         s.decision.controlling_player = self.player
         s.decision.text = 'Reveal Moat? 0. Yes 1. No'
-        return True
+        return False
 
-    def process_decision(self, s, response):
+    def process_decision(self, s: State, response):
         if response.choice == 0:
             logging.info(f'Player {self.player} reveals Moat')
+            # Pop MoatReveal and Corresponding attack card
+            s.events = s.events[:-2]
         else:
             logging.info(f'Player {self.player} does not reveal Moat')
+        self.revealed = True if response.choice == 0 else False
         self.done = True
 
     def __str__(self):

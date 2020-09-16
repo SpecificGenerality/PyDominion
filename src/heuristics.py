@@ -81,15 +81,15 @@ class PlayerHeuristic():
     def makeBaseDecision(self, s: State, response: DecisionResponse):
         d: DecisionState = s.decision
         card = d.active_card
-        player = s.decision.controllingPlayer
-        p_state: PlayerState = s.playerStates[player]
+        player = s.decision.controlling_player
+        p_state: PlayerState = s.player_states[player]
         if isinstance(card, Cellar):
             l = 0
             for c in d.card_choices:
                 if isinstance(c, VictoryCard) or c.get_coin_cost() < 2:
                     response.cards.append(c)
         elif isinstance(card, Chapel):
-            treasureValue = s.playerStates[player].getTotalTreasureValue()
+            treasureValue = s.player_states[player].getTotalTreasureValue()
             trashCoppers = (treasureValue >= 7)
             l = 0
             for c in d.card_choices:
@@ -110,7 +110,7 @@ class PlayerHeuristic():
         elif isinstance(card, ThroneRoom):
             makeCopyDecision(s, response)
         elif isinstance(card, Library):
-            if s.playerStates[s.player].actions == 0:
+            if s.player_states[s.player].actions == 0:
                 response.choice = 0
             else:
                 response.choice = 1

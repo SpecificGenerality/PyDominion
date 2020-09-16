@@ -225,7 +225,7 @@ class BureaucratEffect(CardEffect):
 
     def process_decision(self, s: State, response: DecisionResponse):
         c = response.cards[0]
-        p_state: PlayerState = s.player_states[s.decision.controllingPlayer]
+        p_state: PlayerState = s.player_states[s.decision.controlling_player]
         move_card(c, p_state.hand, p_state._deck)
 
 class ThroneRoomEffect(CardEffect):
