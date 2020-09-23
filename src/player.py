@@ -25,7 +25,7 @@ class Player(ABC):
 
 # TODO: Expand MCTS to work outside of sandbox games
 class MCTSPlayer(Player):
-    def __init__(self, rollout, root=Node(), train=False, C=lambda x: max(1, min(5, 5 / np.sqrt(x)))):
+    def __init__(self, rollout, root=Node(), train=False, C=lambda x: max(1, min(25, 25 / np.sqrt(x)))):
         self.train = train
         self.root = root
         self.root.parent = self.root

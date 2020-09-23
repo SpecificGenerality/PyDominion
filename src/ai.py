@@ -6,17 +6,17 @@ from argparse import ArgumentParser
 import numpy as np
 from tqdm import tqdm
 
-from aiconfig import model_dir, data_dir
+from aiconfig import data_dir, model_dir
 from aiutils import *
 from config import GameConfig
 from enums import *
 from game import Game
-from supply import Supply
 from mcts import *
 from mctsdata import MCTSData
 from player import MCTSPlayer
 from rollout import *
 from state import *
+from supply import Supply
 
 # define first k turns, and then plot the expected value
 # of the random rollout
