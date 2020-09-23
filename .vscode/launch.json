@@ -10,7 +10,7 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-            "args" : ["-rollout", "3", "-n", "2"]
+            "args" : ["--strategy", "BM", "BM", "--sandbox"]
         }
     ]
 }

@@ -2,17 +2,22 @@ import logging
 import random
 import sys
 from abc import ABC, abstractmethod
+from typing import List
 
 import numpy as np
 
 from actioncard import ActionCard
-from cursecard import *
+from buyagenda import BuyAgenda
+from card import Card
+from cursecard import Curse
 from enums import *
-from heuristics import *
-from mcts import *
+from heuristics import PlayerHeuristic
+from mcts import Node
 from playerstate import PlayerState
-from rollout import *
-from state import DecisionResponse, State
+from rollout import (HistoryHeuristicRollout, LinearRegressionRollout,
+                     RandomRollout)
+from state import DecisionResponse, DecisionState, State
+from utils import remove_first_card
 
 # feature decks as counts of each card, least squares regress each against scores + offset
 # try random + greedy

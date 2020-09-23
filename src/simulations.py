@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import time
 from argparse import ArgumentParser
@@ -7,18 +8,17 @@ from typing import Dict, List
 import numpy as np
 from tqdm import tqdm
 
-from ai import *
-from aiconfig import *
-from aiutils import *
-from buyagenda import *
+from ai import MCTS
+from aiconfig import data_dir, model_dir
+from aiutils import load, save
+from buyagenda import BigMoneyBuyAgenda, TDBigMoneyBuyAgenda
 from config import GameConfig
 from enums import StartingSplit
 from game import Game
+from player import HeuristicPlayer, MCTSPlayer, RandomPlayer
+from simulationdata import SimulationData
 from supply import Supply
-from player import *
-from simulationdata import *
 from victorycard import *
-import logging
 
 
 def test_tau(taus: List, trials=100, iters=500):

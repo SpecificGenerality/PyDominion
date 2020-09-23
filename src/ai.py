@@ -7,15 +7,16 @@ import numpy as np
 from tqdm import tqdm
 
 from aiconfig import data_dir, model_dir
-from aiutils import *
 from config import GameConfig
+from cursecard import Curse
 from enums import *
 from game import Game
-from mcts import *
+from mcts import Node
 from mctsdata import MCTSData
 from player import MCTSPlayer
-from rollout import *
-from state import *
+from rollout import (HistoryHeuristicRollout, LinearRegressionRollout,
+                     RandomRollout)
+from state import DecisionResponse, DecisionState, State
 from supply import Supply
 
 # define first k turns, and then plot the expected value
@@ -48,7 +49,7 @@ class MCTS:
 
     def run(self):
         s = self.game.state
-        d = s.decision
+        d: DecisionState = s.decision
         tree_score = 0
         # run the game up to game end or turn limit reached
         while d.type != DecisionType.DecisionGameOver and s.player_states[0]._turns < self.T:
