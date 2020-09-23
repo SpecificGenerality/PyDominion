@@ -2,9 +2,12 @@ from abc import ABC, abstractmethod
 from typing import List
 
 from card import Card
-from heuristics import *
 from heuristicsutils import *
-from state import *
+from playerstate import PlayerState
+from state import State
+from treasurecard import *
+from utils import get_first_index
+from victorycard import *
 
 TD_DENSITY = 0.1
 
