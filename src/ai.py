@@ -6,17 +6,17 @@ from argparse import ArgumentParser
 import numpy as np
 from tqdm import tqdm
 
-from aiconfig import *
+from aiconfig import data_dir, model_dir
 from aiutils import *
 from config import GameConfig
 from enums import *
 from game import Game
-from gamedata import GameData
 from mcts import *
 from mctsdata import MCTSData
 from player import MCTSPlayer
 from rollout import *
 from state import *
+from supply import Supply
 
 # define first k turns, and then plot the expected value
 # of the random rollout
@@ -24,8 +24,8 @@ from state import *
 class MCTS:
     def __init__(self, T: int, n: int, tau: float, rollout: Rollout, eps: float):
         # initialize game config
-        self.game_config = GameConfig(StartingSplit.StartingRandomSplit, prosperity=False, numPlayers=1)
-        self.game_data = GameData(self.game_config)
+        self.game_config = GameConfig(StartingSplit.StartingRandomSplit, prosperity=False, num_players=1, sandbox=True)
+        self.supply = Supply(self.game_config)
 
         self.game = None
         # max number of turns in a game
@@ -43,7 +43,7 @@ class MCTS:
             self.rollout_cards = []
             self.rollout = HistoryHeuristicRollout(tau=tau, train=True)
         elif rollout == Rollout.LinearRegression:
-            self.rollout= LinearRegressionRollout(self.iters, self.game_data, tau=tau, train=True, eps=eps)
+            self.rollout= LinearRegressionRollout(self.iters, self.supply, tau=tau, train=True, eps=eps)
         self.player = MCTSPlayer(rollout=self.rollout, train=True)
 
     def run(self):
@@ -51,11 +51,11 @@ class MCTS:
         d = s.decision
         tree_score = 0
         # run the game up to game end or turn limit reached
-        while d.type != DecisionType.DecisionGameOver and s.playerStates[0].turns < self.T:
+        while d.type != DecisionType.DecisionGameOver and s.player_states[0]._turns < self.T:
             if d.text:
                 logging.info(d.text)
             response = DecisionResponse([])
-            player = self.game.players[d.controllingPlayer]
+            player = self.game.players[d.controlling_player]
             next_node = player.controller.makeDecision(s, response)
 
             if s.phase == Phase.BuyPhase:
@@ -64,30 +64,24 @@ class MCTS:
                     assert next_node == self.player.node
                     self.player.node.n += 1
                 elif not self.expanded:
-                # expand one node
-                    for c in d.cardChoices + [None]:
-                        if isinstance(c, Curse):
-                            continue
-                        leaf = Node(self.player.node)
-                        leaf.card = c
-                        self.player.node.children.append(leaf)
-                        if c == response.singleCard:
-                            next_node = leaf
+                    # expand one node
+                    cards = list(filter(lambda x: not isinstance(x, Curse), d.card_choices + [None]))
+                    self.player.node.add_unique_children(cards)
                     self.expanded = True
-                    self.player.node = next_node
+                    self.player.node = self.player.node.get_child_node(response.single_card)
                     self.player.node.n += 1
                     # Uncomment to track UCT score within the tree
-                    tree_score = self.game.getPlayerScores()[0]
+                    tree_score = self.game.get_player_scores()[0]
                     self.data.update_split_scores(tree_score, False, self.iter)
                 elif self.rollout_model == Rollout.HistoryHeuristic:
-                    self.rollout_cards.append(response.singleCard)
+                    self.rollout_cards.append(response.single_card)
 
-            s.processDecision(response)
-            s.advanceNextDecision()
+            s.process_decision(response)
+            s.advance_next_decision()
 
 
-        player_turns = s.playerStates[0].turns
-        score = self.game.getPlayerScores()[0]
+        player_turns = s.player_states[0]._turns
+        score = self.game.get_player_scores()[0]
         # update data
         self.data.update_split_scores(score - tree_score, True, self.iter)
 
@@ -103,20 +97,21 @@ class MCTS:
         if self.rollout_model == Rollout.HistoryHeuristic:
             self.rollout.update(cards=self.rollout_cards, score=score)
         elif self.rollout_model == Rollout.LinearRegression:
-            self.rollout.update(counts=get_card_counts(self.game.getAllCards(0)),score=score, i=self.iter)
+            counts = self.game.state.player_states[0].get_card_counts()
+            self.rollout.update(counts=counts,score=score, i=self.iter)
 
-        return self.game.getPlayerScores()[0]
+        return self.game.get_player_scores()[0]
 
     def reset(self, i: int):
         self.expanded = False
         self.rollout_cards = []
         self.iter = i
-        self.game_config = GameConfig(StartingSplit.StartingRandomSplit, prosperity=False, numPlayers=1)
-        self.game_data = GameData(self.game_config)
-        self.game = Game(self.game_config, self.game_data, [self.player])
-        self.game.newGame()
+        self.game_config = GameConfig(StartingSplit.StartingRandomSplit, prosperity=False, num_players=1, sandbox=True)
+        self.game = Game(self.game_config, [self.player])
+        self.game.new_game()
+        self.game.state.advance_next_decision()
 
-        self.player.reset(self.game.state.playerStates[0])
+        self.player.reset(self.game.state.player_states[0])
 
     def train(self, n: int, output_iters: int,
         save_model=False, model_dir=model_dir, model_name='mcts',
@@ -155,7 +150,7 @@ if __name__ == '__main__':
     parser.add_argument('-eps', default=10e-4, type=float, help='When to stop updating rollout models')
     parser.add_argument('--save_model', action='store_true')
     parser.add_argument('--model_dir', type=str, help='Where to save the model', default=model_dir)
-    parser.add_argument('--model_name', type=str, help='What to name the model')
+    parser.add_argument('--model_name', type=str, help='What to name the model', default='model')
     parser.add_argument('--save_data', action='store_true')
     parser.add_argument('--data_dir', type=str, help='Where to save the data', default=data_dir)
     parser.add_argument('--data_name', type=str, help='Name of the data file')

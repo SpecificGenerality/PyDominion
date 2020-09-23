@@ -5,7 +5,7 @@ import numpy as np
 from card import Card
 
 
-def getFirstIndex(card: Card, cards: List[Card]):
+def get_first_index(card: Card, cards: List[Card]):
     '''Return the first index of card in cards if it exists, else -1.'''
     cardName = str(card)
     for i, c in enumerate(cards):
@@ -13,12 +13,12 @@ def getFirstIndex(card: Card, cards: List[Card]):
             return i
     return -1
 
-def containsCard(card: Card, cards: List[Card]):
+def contains_card(card: Card, cards: List[Card]):
     '''Returns if cards contains any instance of card.'''
     cardName = str(card)
     return any(str(c) == cardName for c in cards)
 
-def removeFirstCard(card: Card, cards: List[Card]):
+def remove_first_card(card: Card, cards: List[Card]):
     '''Remove and return first occurrence of card in cards if it exists, else return None'''
     cardName = str(card)
     for i, c in enumerate(cards):
@@ -26,15 +26,15 @@ def removeFirstCard(card: Card, cards: List[Card]):
             return cards.pop(i)
     return None
 
-def removeCard(card: Card, cards: List) -> Card:
+def remove_card(card: Card, cards: List) -> Card:
     for i, c in enumerate(cards):
         if c == card:
             return cards.pop(i)
     return None
 
-def moveCard(card: Card, src: List, dest: List) -> None:
-    x = removeCard(card, src)
-    if x is None: 
+def move_card(card: Card, src: List, dest: List) -> None:
+    x = remove_card(card, src)
+    if x is None:
         raise ValueError(f'{card} not found in source list.')
     dest.append(x)
 

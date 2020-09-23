@@ -1,6 +1,6 @@
 import sys
 from collections import Counter
-from typing import Dict, List
+from typing import Callable, Dict, List
 
 import numpy as np
 
@@ -9,11 +9,11 @@ from state import *
 
 class MCTSState:
     def __init__(self, s: State):
-        self.player = s.decision.controllingPlayer
+        self.player = s.decision.controlling_player
         # In sandbox mode, hand is not important for making decisions
-        # self.hand = Counter([str(c) for c in s.playerStates[self.player].hand])
-        self.deck = Counter([str(c) for c in s.playerStates[self.player].getAllCards()])
-        self.supply = Counter(s.data.supply)
+        # self.hand = Counter([str(c) for c in s.player_states[self.player].hand])
+        self.deck = s.get_player_card_counts(self.player)
+        self.supply = s.supply
 
     # Two MCTS states are equal if
     #   1) The hands are equal up to multiplicity
@@ -26,7 +26,7 @@ class MCTSState:
         return self.deck == other.deck and self.supply == other.supply
 
 class Node:
-    def __init__(self, parent=None, card=None, n=0, v=0, children=[]):
+    def __init__(self, parent=None, card=None, n=0, v=0):
         # TODO: For non-sandbox, maybe states should be stored?
         # self.state = s
         # the card played to get from parent to current
@@ -36,13 +36,13 @@ class Node:
         self.n = n
         # node value
         self.v = v
-        self.children = children
+        self.children = []
 
     # UCB1 formula
     def score(self, C):
         return self.v + C * np.sqrt(np.log(self.parent.n) / self.n) if self.n > 0 else sys.maxsize
 
-    def update_v(self, f):
+    def update_v(self, f: Callable[[List], float]):
         vals = [n.v for n in self.children if n.n > 0]
         self.v = f(vals)
 
@@ -55,7 +55,12 @@ class Node:
                 if str(c) == str(child.card):
                     found = True
             if not found:
-                self.children.append(Node(self, c))
+                self.children.append(Node(parent=self, card=c))
+
+    def get_child_node(self, card: Card):
+        for child in self.children:
+            if str(child.card) == str(card):
+                return child
 
     def is_leaf(self) -> bool:
         if not self.children:
@@ -74,7 +79,7 @@ class Node:
         return acc
 
     def __str__(self):
-        return f'{self.parent.card}<--n: {self.n}, v: {self.v}, c: {self.card}-->{[str(c.card) for c in self.children]}'
+        return f'{self.parent.card}<--n: {self.n}, v: {self.v}, c: {self.card}-->{[str(c.card) for c in self.children]}\n'
 
     def __repr__(self):
         return str(self)

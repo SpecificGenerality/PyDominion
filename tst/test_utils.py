@@ -1,80 +1,81 @@
 import unittest
-from utils import getFirstIndex, containsCard, removeCard, removeFirstCard, moveCard, running_mean
+import numpy as np
+from utils import get_first_index, contains_card, remove_card, remove_first_card, move_card, running_mean
 from victorycard import Estate, Province, Colony
 
 class TestUtils(unittest.TestCase):
-    def testGetFirstIndex(self):
+    def test_get_first_index(self):
         card = Colony()
 
         cards = []
-        self.assertEqual(getFirstIndex(card, cards), -1)
+        self.assertEqual(get_first_index(card, cards), -1)
 
         cards = [Estate(), Province()]
 
-        self.assertEqual(getFirstIndex(card, cards), -1)
+        self.assertEqual(get_first_index(card, cards), -1)
 
         cards = [Colony(), Estate(), Province()]
-         
-        self.assertEqual(getFirstIndex(card, cards), 0)
+
+        self.assertEqual(get_first_index(card, cards), 0)
 
         cards = [Estate(), Colony(), Province(), Colony()]
 
-        self.assertEqual(getFirstIndex(card, cards), 1) 
+        self.assertEqual(get_first_index(card, cards), 1)
 
-    def testContainsCard(self): 
+    def test_contains_card(self):
         card = Colony()
         cards = []
 
-        self.assertFalse(containsCard(card, cards))
+        self.assertFalse(contains_card(card, cards))
 
         cards = [Colony() for i in range(2)]
 
-        self.assertTrue(containsCard(card, cards))
+        self.assertTrue(contains_card(card, cards))
 
-    def testRemoveFirstCard(self):
+    def test_remove_first_card(self):
         card = Colony()
 
         cards = []
 
-        self.assertIsNone(removeFirstCard(card, cards))
-        
+        self.assertIsNone(remove_first_card(card, cards))
+
         cards = [card]
 
-        self.assertEqual(removeFirstCard(card, cards), card)
+        self.assertEqual(remove_first_card(card, cards), card)
 
         cards = [Estate(), card, Province(), Colony()]
 
-        self.assertEqual(removeFirstCard(card, cards), card)
+        self.assertEqual(remove_first_card(card, cards), card)
 
-    def testRemoveCard(self):
+    def test_remove_card(self):
         card = Colony()
 
         cards = []
 
-        self.assertIsNone(removeCard(card, cards), card)
+        self.assertIsNone(remove_card(card, cards), card)
 
         cards = [card]
 
-        self.assertEqual(removeCard(card, cards), card)
-        
+        self.assertEqual(remove_card(card, cards), card)
+
         cards = [Colony(), Colony(), card]
 
-        self.assertEqual(removeCard(card, cards), card)
+        self.assertEqual(remove_card(card, cards), card)
 
-    def testMoveCard(self):
+    def test_move_card(self):
         card = Colony()
 
         src, dst = [], []
 
-        self.assertRaises(ValueError, moveCard, card, src, dst)
+        self.assertRaises(ValueError, move_card, card, src, dst)
 
         src = [Colony()]
 
-        self.assertRaises(ValueError, moveCard, card, src, dst)
+        self.assertRaises(ValueError, move_card, card, src, dst)
 
         src = [card]
-        
-        moveCard(card, src, dst)
+
+        move_card(card, src, dst)
         self.assertEqual(src, [])
         self.assertEqual(dst, [card])
 

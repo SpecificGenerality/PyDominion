@@ -15,14 +15,14 @@ class MCTSData:
 
     def update(self, G: Game, P: MCTSPlayer, i: int):
         '''Update game statistics after game i'''
-        self.scores.append(G.getPlayerScores()[0])
+        self.scores.append(G.get_player_scores()[0])
         data_dict = {}
-        data_dict['score'] = G.getPlayerScores()[0]
+        data_dict['score'] = G.get_player_scores()[0]
         data_dict['rollout'] = str(P.rollout)
         data_dict['i'] = i
 
-        card_counts = get_card_counts(G.getAllCards(0))
-        supply_cards = G.getSupplyCardTypes()
+        card_counts = G.state.get_player_card_counts(0)
+        supply_cards = G.get_supply_card_types()
         for k in supply_cards:
             data_dict[k] = card_counts.get(k, 0)
 

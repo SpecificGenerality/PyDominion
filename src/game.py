@@ -5,16 +5,16 @@ import numpy as np
 
 from config import GameConfig
 from enums import StartingSplit
-from gamedata import GameData
+from supply import Supply
 from player import *
 from playerstate import PlayerState
 from state import State
 
 
 class Game:
-    def __init__(self, config: GameConfig, data: GameData, players: List[Player]):
-        self.gameConfig = config
-        self.state = State(config, data)
+    def __init__(self, config: GameConfig, players: List[Player]):
+        self.config = config
+        self.state = State(config)
         self.players = [PlayerInfo(i, player) for i, player in enumerate(players)]
 
         if any(isinstance(player, HumanPlayer) for player in players):
@@ -22,59 +22,35 @@ class Game:
         else:
             logging.basicConfig(level=logging.WARNING)
 
-    def newGame(self):
-        self.state.newGame()
+    def new_game(self):
+        self.state = State(self.config)
+        self.state.new_game()
 
-    def getSupplyCardTypes(self):
-        return [str(c()) for c in self.state.data.supply.keys()]
+    def get_supply_card_types(self):
+        return [str(c()) for c in self.state.supply.keys()]
 
-    def getWinningPlayers(self):
-        scores = [self.state.getPlayerScore(pInfo.id) for pInfo in self.players]
+    def get_winning_players(self):
+        scores = [self.state.get_player_score(pInfo.id) for pInfo in self.players]
         m = max(scores)
         return [i for i, j in enumerate(scores) if j == m]
 
-    def getPlayerStats(self, player):
-        score = self.state.getPlayerScore(player)
-        counter = self.state.getCardCounts(player)
-        return {'Score': score, 'Cards': counter}
-
-    def getAllCards(self, player):
-        return self.state.playerStates[player].getAllCards()
-
-    def getPlayerScores(self):
+    def get_player_scores(self):
         scores = np.zeros(len(self.players))
         for i, pInfo in enumerate(self.players):
-            scores[i] = self.state.getPlayerScore(pInfo.id)
+            scores[i] = self.state.get_player_score(pInfo.id)
 
         return scores
 
-    def getStats(self):
-        stats = {}
-        for pInfo in self.players:
-            player = pInfo.id
-            stats[player] = self.getPlayerStats(player)
-            stats['EmptyPiles'] = []
-            for k, v in self.state.data.supply.items():
-                if v == 0:
-                    stats['EmptyPiles'].append(k())
-            stats['Winners'] = self.getWinningPlayers()
-        return stats
-
     def run(self, T=None):
         d = self.state.decision
+        self.state.advance_next_decision()
         while d.type != DecisionType.DecisionGameOver:
-            if T and all(t.turns >= T for t in self.state.playerStates):
+            if T is not None and all(t.turns >= T for t in self.state.player_states):
                 break
             if d.text:
                 logging.info(d.text)
             response = DecisionResponse([])
-            player = self.players[self.state.decision.controllingPlayer]
+            player = self.players[self.state.decision.controlling_player]
             player.controller.makeDecision(self.state, response)
-            self.state.processDecision(response)
-            self.state.advanceNextDecision()
-
-        for pInfo in self.players:
-            player = pInfo.id
-            score, counter = self.getPlayerStats(player)
-            logging.info(f'====Player {player} Stats====\nScore: {score}\nCards: {counter}')
-
+            self.state.process_decision(response)
+            self.state.advance_next_decision()

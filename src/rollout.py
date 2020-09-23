@@ -8,7 +8,7 @@ import numpy as np
 from sklearn.linear_model import LinearRegression
 
 from card import Card
-from gamedata import *
+from supply import Supply
 
 
 class RolloutModel(ABC):
@@ -72,8 +72,8 @@ class HistoryHeuristicRollout(RolloutModel):
         return 'HistoryHeuristicRollout'
 
 class LinearRegressionRollout(RolloutModel):
-    def __init__(self, iters: int, G: GameData, tau=0.5, train=False, eps=10e-10):
-        self.supply: List[str] = G.getSupplyCardTypes() + [str(None)]
+    def __init__(self, iters: int, G: Supply, tau=0.5, train=False, eps=10e-10):
+        self.supply: List[str] = G.get_supply_card_types() + [str(None)]
         # Index map for kingdom card
         self.n = len(self.supply)
         self.indices = dict(zip(self.supply, [i for i in range(self.n)]))
@@ -123,7 +123,7 @@ class LinearRegressionRollout(RolloutModel):
         D /= sum(D)
         return np.random.choice(choices, p=D)
 
-    def augment_data(self, data):
+    def augment_data(self, data: dict):
         '''Add tau parameter and regression weights to dict'''
         data['tau'] = self.tau
         for i, b in enumerate(self.betas):
