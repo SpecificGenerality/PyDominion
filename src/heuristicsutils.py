@@ -3,17 +3,17 @@ from typing import List
 
 from actioncard import ActionCard
 from card import Card
-from state import *
 from treasurecard import TreasureCard
 from victorycard import VictoryCard
 
 
-def heuristic_select_cards(s: State, response: DecisionResponse, scoringFunction):
-        choices = s.decision.card_choices
+def heuristic_select_cards(choices: List[Card], k: int, scoringFunction) -> List[Card]:
         random.shuffle(choices)
         choices.sort(key=scoringFunction, reverse=True)
-        for i in range(max(1, s.decision.min_cards)):
-            response.cards.append(choices[i])
+        cards = []
+        for i in range(max(1, k+1)):
+            cards.append(choices[i])
+        return cards
 
 def heuristic_best_card(choices: List[Card], scoringFunction):
         v = choices

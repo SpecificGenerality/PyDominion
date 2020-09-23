@@ -125,7 +125,7 @@ class HeuristicPlayer(Player):
                         elif isinstance(card, VictoryCard):
                             return -200 + card.get_coin_cost()
                         return -card.get_coin_cost()
-                    heuristic_select_cards(s, response, scoringFunction)
+                    response.cards = heuristic_select_cards(d.card_choices, d.min_cards, scoringFunction)
                 else:
                     response.cards.append(self.heuristic.agenda.forceBuy(s, player, d.card_choices))
             else:

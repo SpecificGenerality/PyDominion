@@ -5,15 +5,15 @@ from typing import List
 from buyagenda import *
 from card import Card
 from heuristicsutils import *
-from state import *
+from state import State, DecisionResponse, DecisionState
 
 
-class PlayerHeuristic():
+class PlayerHeuristic:
     def __init__(self, agenda: BuyAgenda):
         self.agenda = agenda
 
     def makePutDownOnDeckDecision(self, s: State, response: DecisionResponse):
-        d = s.decision
+        d: DecisionState = s.decision
         def scoringFunction(card: Card):
             if has_excess_actions(s.decision.card_choices):
                 if isinstance(card, ActionCard):
@@ -25,10 +25,11 @@ class PlayerHeuristic():
                 return -card.get_coin_cost()
             else:
                 return -card.get_coin_cost()
-        heuristic_select_cards(s, response, scoringFunction)
+
+        response.cards = heuristic_select_cards(d.card_choices, d.min_cards, scoringFunction)
 
     def makeDiscardDownDecision(self, s: State, response: DecisionResponse):
-        d = s.decision
+        d: DecisionState = s.decision
         def scoringFunction(card: Card):
             if isinstance(card, VictoryCard):
                 return 20
@@ -38,15 +39,17 @@ class PlayerHeuristic():
                 return 18
             return -card.get_coin_cost()
 
-        heuristic_select_cards(s, response, scoringFunction)
+        response.cards = heuristic_select_cards(d.card_choices, d.min_cards, scoringFunction)
 
     def makeCopyDecision(self, s: State, response: DecisionResponse):
+        d: DecisionState = s.decision
         def scoringFunction(card: Card):
             return card.get_coin_cost()
-        heuristic_select_cards(s, response, scoringFunction)
+
+        response.cards = heuristic_select_cards(d.card_choices, d.min_cards, scoringFunction)
 
     def makeTrashDecision(self, s: State, response: DecisionResponse):
-        d = s.decision
+        d: DecisionState = s.decision
         def scoringFunction(card: Card):
             if isinstance(card, Curse):
                 return 20
@@ -58,7 +61,7 @@ class PlayerHeuristic():
                 return -100-card.get_coin_cost()
             return -card.get_coin_cost()
 
-        heuristic_select_cards(s, response, scoringFunction)
+        response.cards = heuristic_select_cards(d.card_choices, d.min_cards, scoringFunction)
 
     # plays +Action first, then card with most +Card, then randomly
     def makeGreedyActionDecision(self, s: State, response: DecisionResponse):
@@ -70,7 +73,9 @@ class PlayerHeuristic():
                 score += 100
             score += card.get_coin_cost()
             return score
-        heuristic_select_cards(s, response, scoringFunction)
+
+        cards = heuristic_select_cards(d.card_choices, d.min_cards, scoringFunction)
+        response.cards = cards
 
     # plays all treasures
     def makeGreedyTreasureDecision(self, s: State, response: DecisionResponse):
@@ -125,7 +130,7 @@ class PlayerHeuristic():
                     if isinstance(card, Copper) and s.supply[Copper] > 0:
                         return 18
                     return -card.get_coin_cost()
-                heuristic_select_cards(s, response, scoringFunction)
+                    response.cards = heuristic_select_cards(d.card_choices, d.min_cards, scoringFunction)
             else:
                 response.cards.append(self.agenda.forceBuy(s, player, d.card_choices))
         elif isinstance(card, Harbinger):
@@ -137,7 +142,7 @@ class PlayerHeuristic():
                         return card.get_coin_cost()
                 else:
                     return card.get_coin_cost()
-            heuristic_select_cards(s, response, scoringFunction)
+            response.cards = heuristic_select_cards(d.card_choices, d.min_cards, scoringFunction)
         elif isinstance(card, Artisan):
             event = s.events[-1]
             if not event.gained_card:
