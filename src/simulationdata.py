@@ -1,6 +1,7 @@
 import pandas as pd
 
-from game import *
+from game import Game
+from victorycard import *
 
 
 class SimulationData:

@@ -4,7 +4,9 @@ from typing import Callable, Dict, List
 
 import numpy as np
 
-from state import *
+from card import Card
+from cursecard import Curse
+from state import State
 
 
 class MCTSState:
