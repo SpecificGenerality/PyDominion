@@ -37,13 +37,13 @@ def best_path(root: Node) -> List[Node]:
 
 def update_mean(n: int, prev_mean: float, x: float):
     '''Incremental update mean'''
-    return (n - 1) / n * prev_mean + x / n 
+    return (n - 1) / n * prev_mean + x / n
 
 def update_var(n: int, prev_var: float, prev_mean: float, x: float):
     '''Incremental update variance'''
-    if n == 1: 
+    if n == 1:
         return 0
-    else: 
+    else:
         return (n - 2) / (n - 1) * prev_var + 1 / n * (x - prev_mean) ** 2
 
 def get_branching_factor_stats(root: Node) -> List[int]:
@@ -55,9 +55,9 @@ def get_branching_factor_stats(root: Node) -> List[int]:
         k = 1
         N = len(Q)
         for i in range(N):
-            n = Q.popleft()
+            n: Node = Q.popleft()
             x = sum(1 if not n.is_leaf() else 0 for c in n.children)
-            prev_mean = mean 
+            prev_mean = mean
             mean = update_mean(k, prev_mean, x)
             var = update_var(k, var, prev_mean, x)
             Q = Q + deque(list(filter(lambda x: not x.is_leaf(), n.children)))
@@ -72,7 +72,7 @@ def get_path(root: Node, leaf: Node):
         path.append(curr)
         curr = curr.parent
 
-    if curr == root: 
+    if curr == root:
         path.append(root)
 
     path.reverse()

@@ -31,7 +31,7 @@ class MCTSPlayer(Player):
         self.root.parent = self.root
         # To prevent clobbering trees loaded from file
         if not root.children:
-            self.root.children = [Node(self.root) for i in range(GameConstants.StartingHands)]
+            self.root.children = [Node(parent=self.root) for i in range(GameConstants.StartingHands)]
         self.node = None
         self.rollout = rollout
         self.Cfx = C
@@ -70,8 +70,9 @@ class MCTSPlayer(Player):
         elif s.phase == Phase.TreasurePhase:
             response.single_card = d.card_choices[0]
         else:
+            choices = list(filter(lambda x: not isinstance(x, Curse), d.card_choices + [None]))
             if not self.node.children:
-                response.single_card = self.rollout.select([card for card in d.card_choices if not isinstance(card, Curse)] + [None])
+                response.single_card = self.rollout.select(choices)
                 return None
 
             if self.train:
@@ -79,8 +80,9 @@ class MCTSPlayer(Player):
             # the next node in the tree is the one that maximizes the UCB1 score
             next_node = self.get_next_node(d.card_choices, self.get_C())
             if not next_node:
-                response.single_card = self.rollout.select([card for card in d.card_choices if not isinstance(card, Curse)] + [None])
+                response.single_card = self.rollout.select(choices)
                 return None
+
             self.node = next_node
             response.single_card = next_node.card
             return next_node
@@ -133,7 +135,6 @@ class RandomPlayer(Player):
     def makeDecision(self, s: State, response: DecisionResponse):
         d: DecisionState = s.decision
 
-        # d.card_choices.append(None)
         # Do not allow RandomPlayer to purchase curses
         if s.phase == Phase.BuyPhase:
             remove_first_card(Curse(), d.card_choices)

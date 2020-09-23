@@ -15,14 +15,14 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(get_first_index(card, cards), -1)
 
         cards = [Colony(), Estate(), Province()]
-         
+
         self.assertEqual(get_first_index(card, cards), 0)
 
         cards = [Estate(), Colony(), Province(), Colony()]
 
-        self.assertEqual(get_first_index(card, cards), 1) 
+        self.assertEqual(get_first_index(card, cards), 1)
 
-    def test_contains_card(self): 
+    def test_contains_card(self):
         card = Colony()
         cards = []
 
@@ -38,7 +38,7 @@ class TestUtils(unittest.TestCase):
         cards = []
 
         self.assertIsNone(remove_first_card(card, cards))
-        
+
         cards = [card]
 
         self.assertEqual(remove_first_card(card, cards), card)
@@ -57,7 +57,7 @@ class TestUtils(unittest.TestCase):
         cards = [card]
 
         self.assertEqual(remove_card(card, cards), card)
-        
+
         cards = [Colony(), Colony(), card]
 
         self.assertEqual(remove_card(card, cards), card)
@@ -74,7 +74,7 @@ class TestUtils(unittest.TestCase):
         self.assertRaises(ValueError, move_card, card, src, dst)
 
         src = [card]
-        
+
         move_card(card, src, dst)
         self.assertEqual(src, [])
         self.assertEqual(dst, [card])

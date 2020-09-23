@@ -123,7 +123,7 @@ class LinearRegressionRollout(RolloutModel):
         D /= sum(D)
         return np.random.choice(choices, p=D)
 
-    def augment_data(self, data):
+    def augment_data(self, data: dict):
         '''Add tau parameter and regression weights to dict'''
         data['tau'] = self.tau
         for i, b in enumerate(self.betas):
