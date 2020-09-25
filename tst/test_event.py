@@ -1,11 +1,12 @@
 import unittest
 from unittest.mock import Mock
 
-from actioncard import Militia, Moat
+from actioncard import Militia, Moat, Sentry
 from config import GameConfig
 from enums import StartingSplit
 from game import Game
 from player import Player
+from playerstate import PlayerState
 from state import DecisionResponse, DecisionState, MoatReveal
 from supply import Supply
 from treasurecard import Copper
@@ -41,3 +42,42 @@ class TestEvent(unittest.TestCase):
         self.game.state.advance_next_decision()
 
         self.assertEqual(self.game.state.events, [])
+
+    def test_event_sentry(self) -> None:
+        self.game.new_game()
+
+        # Inject Sentry in player's hand
+        sentry = Sentry()
+
+        self.game.state.player_states[0].hand[0] = sentry
+
+        self.game.state.advance_next_decision()
+
+        # Action Phase Decision
+        r = DecisionResponse([])
+        r.cards = [sentry]
+        self.game.state.process_decision(r)
+        self.game.state.advance_next_decision()
+
+        # Choose to trash one card
+        d = self.game.state.decision
+        trashed = d.card_choices[0]
+        r = DecisionResponse([trashed])
+        self.game.state.process_decision(r)
+        # Trash card
+        self.game.state.advance_next_decision()
+
+        self.assertEqual(self.game.state.trash, [trashed])
+
+        # Choose to discard one card
+        d = self.game.state.decision
+        discarded = d.card_choices[0]
+        r = DecisionResponse([discarded])
+        self.game.state.process_decision(r)
+        # Discard card
+        self.game.state.advance_next_decision()
+
+        d = self.game.state.decision
+        p_state: PlayerState = self.game.state.player_states[0]
+        self.assertEqual(p_state._discard, [discarded])
+        self.assertIsNone(d.active_card)

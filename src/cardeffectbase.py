@@ -20,23 +20,16 @@ class SentryEffect(CardEffect):
         self.c = Sentry()
 
     def play_action(self, s: State):
-        deck = s.player_states[s.player].deck
-        if not deck:
+        player: int = s.player
+        p_state: PlayerState = s.player_states[player]
+        zone_size = p_state.zone_size(Zone.Deck)
+
+        if zone_size == 0:
             return
 
-        numCards = min(2, len(deck))
-        s.decision.select_cards(self.c, 0, numCards)
-        s.decision.card_choices = deck[-numCards:]
-        s.decision.text = 'Select cards to discard'
-
-    def can_process_decisions(self):
-        return True
-
-    def process_decision(self, s: State, response: DecisionResponse):
-        for card in response.cards:
-            s.events.append(DiscardCard(DiscardZone.DiscardFromDeck, s.player, card))
-        s.events.append(EventSentry(self.c, s.player, response.cards.copy()))
-
+        n_choices = min(2, zone_size)
+        card_choices = p_state._deck[-n_choices:]
+        s.events.append(EventSentry(self.c, card_choices))
 
 class CellarEffect(CardEffect):
     def __init__(self):
@@ -251,7 +244,8 @@ BASE_EFFECT_MAP = {
     Mine: MineEffect,
     Poacher: PoacherEffect,
     Witch: WitchEffect,
-    Gardens: GardensEffect
+    Gardens: GardensEffect,
+    Sentry: SentryEffect
 }
 
 def get_card_effect(card: Card) -> CardEffect:

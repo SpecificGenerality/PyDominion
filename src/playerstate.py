@@ -76,6 +76,9 @@ class PlayerState:
     def num_cards(self):
         return len(self.hand) + len(self._deck) + len(self._discard) + len(self._play_area) + len(self._island)
 
+    def zone_size(self, zone: Zone):
+        return len(self._get_zone_cards(zone))
+
     def shuffle(self) -> None:
         random.shuffle(self._discard)
         self._deck = self._deck + self._discard

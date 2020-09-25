@@ -11,7 +11,7 @@ from enums import *
 from supply import Supply
 from playerstate import PlayerState
 from treasurecard import *
-from utils import get_first_index, move_card, remove_first_card, contains_card
+from utils import get_first_index, move_card, remove_first_card, contains_card, remove_card
 from victorycard import *
 from cursecard import *
 
@@ -517,7 +517,7 @@ class GainCard(Event):
 
     def advance(self, s: State):
         p_state: PlayerState = s.player_states[self.player]
-        supply = s.supply
+        supply: Supply = s.supply
         # TODO: Refactor
 
         if supply[type(self.card)] > 0:
@@ -549,6 +549,18 @@ class GainCard(Event):
 
     def __str__(self):
         return f'Gain'
+
+class ReorderCards(Event):
+    def __init__(self, cards: List[Card], player: int):
+        self._cards = cards
+        self._player = player
+
+    def advance(self, s: State):
+        p_state: PlayerState = s.player_states[self._player]
+        _n = len(self._cards)
+        p_state._deck[-n:] = self._cards
+
+        return True
 
 class DiscardDownToN(Event):
     def __init__(self, card: Card, player: int, hand_size: int):
@@ -752,32 +764,52 @@ class EventLibrary(Event):
         return f'EventLibrary'
 
 class EventSentry(Event):
-    def __init__(self, source: Card, player: int, discarded: List[Card]):
+    def __init__(self, source: Card, choices: List[Card]):
         self.source = source
-        self.player = player
-        self.discarded = discarded
-        self.once = False
+        self.trashed = False
+        self.discarded = False
         self.done = False
+        self.choices = choices
+
     def advance(self, s: State):
         if self.done:
             return True
 
-        if len(self.discarded) < len(s.decision.card_choices) and not self.once:
-            card_choices = list(set(s.decision.card_choices) - set(self.discarded))
-            s.decision.select_cards(self.source, 0, len(s.decision.card_choices) - len(self.discarded))
-            s.decision.card_choices = card_choices
+        if not self.trashed:
+            s.decision.select_cards(self.source, 0, len(self.choices))
             s.decision.text = 'Select cards to trash'
-            self.once = True
+        elif not self.discarded:
+            s.decision.select_cards(self.source, 0, len(self.choices))
+            s.decision.text = 'Select cards to discard'
+        elif len(self.choices) == 2:
+            s.decision.text = 'Select cards to reorder'
+            s.decision.select_cards(self.source, len(self.choices), len(self.choices))
+        else:
+            return True
 
-        return True
+        s.decision.card_choices = self.choices
+        return False
 
     def can_process_decisions(self):
         return True
 
     def process_decision(self, s: State, response: DecisionResponse):
-        for card in response.cards:
-            s.events.append(TrashCard(Zone.Deck, s.player, card))
-        self.done = True
+        if not self.trashed:
+            for card in response.cards:
+                s.events.append(TrashCard(Zone.Deck, s.player, card))
+                remove_card(card, self.choices)
+            self.trashed = True
+        elif not self.discarded:
+            for card in response.cards:
+                s.events.append(DiscardCard(DiscardZone.DiscardFromDeck, s.player, card))
+                remove_card(card, self.choices)
+            self.discarded = True
+        else:
+            s.events.append(ReorderCards(cards, s.player))
+            self.done = True
+
+        if not self.choices:
+            self.done = True
 
     def __str__(self):
         return 'EventSentry'
