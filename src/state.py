@@ -1,19 +1,21 @@
 import logging
 import random
-from abc import ABC
+from abc import ABC, abstractmethod
 from collections import Counter
 from typing import Dict, List
 
-from actioncard import *
+from actioncard import ActionCard, Merchant, Moat
 from card import Card
 from config import GameConfig
-from enums import *
-from supply import Supply
-from playerstate import PlayerState
-from treasurecard import *
-from utils import get_first_index, move_card, remove_first_card, contains_card, remove_card
-from victorycard import *
 from cursecard import *
+from enums import (DecisionType, DiscardZone, GainZone, Phase, TriggerState,
+                   Zone)
+from playerstate import PlayerState
+from supply import Supply
+from treasurecard import Copper, Silver, TreasureCard
+from utils import (contains_card, get_first_index, move_card, remove_card,
+                   remove_first_card)
+from victorycard import VictoryCard
 
 
 class DecisionResponse:
@@ -113,7 +115,7 @@ class State:
 
     def draw_hand(self, player: int):
         num_cards_to_draw = 5
-        for i in range(num_cards_to_draw):
+        for _ in range(num_cards_to_draw):
             self.draw_card(player)
         logging.info(f'Player {player} draws a new hand.')
 
@@ -141,7 +143,7 @@ class State:
         # print(f'Trashing {card}')
         if zone == Zone.Hand:
             if p_state.hand:
-                trashed_card = remove_first_card(card, p_state.hand)
+                trashed_card = remove_card(card, p_state.hand)
                 if trashed_card:
                     self.trash.append(trashed_card)
                     logging.info(f'Player {player} trashes {card} from hand.')
@@ -152,13 +154,15 @@ class State:
                 logging.info(f'Player {player} hand is empty, trashing nothing.')
         elif zone == Zone.Deck:
             if p_state._deck:
-                topCard = p_state._deck.pop()
-                logging.info(f'Player trashes {topCard}')
+                trashed_card = remove_card(card, p_state._deck)
+                if trashed_card:
+                    self.trash.append(trashed_card)
+                    logging.info(f'Player trashes {trashed_card}')
             else:
                 logging.info(f'Player {player} deck is empty, trashing nothing')
         elif zone == Zone.Play:
             if p_state._play_area:
-                trashed_card = remove_first_card(p_state._play_area, card)
+                trashed_card = remove_card(p_state._play_area, card)
                 if trashed_card:
                     self.trash.append(trashed_card)
                     logging.info(f'Player {player} trashes {card} from play.')
@@ -178,7 +182,7 @@ class State:
         p_state.buys += card.get_plus_buys()
         p_state.coins += card.get_plus_coins()
 
-        for i in range(card.get_plus_cards()):
+        for _ in range(card.get_plus_cards()):
             self.draw_card(self.player)
 
         effect = cardeffectbase.get_card_effect(card)
@@ -282,7 +286,6 @@ class State:
         allCards = p_state.cards
 
         for card in allCards:
-            points = card.get_victory_points()
             score += card.get_victory_points()
             effect = cardeffectbase.get_card_effect(card)
             if isinstance(card, VictoryCard) and effect:
@@ -558,7 +561,7 @@ class ReorderCards(Event):
     def advance(self, s: State):
         p_state: PlayerState = s.player_states[self._player]
         _n = len(self._cards)
-        p_state._deck[-n:] = self._cards
+        p_state._deck[-_n:] = self._cards
 
         return True
 
@@ -632,7 +635,6 @@ class RemodelExpand(Event):
         return True
 
     def process_decision(self, s: State, response: DecisionResponse):
-        p_state: PlayerState = s.player_states[s.player]
         if not self.trashed_card:
             self.trashed_card = response.cards[0]
             s.events.append(TrashCard(Zone.Hand, s.player, self.trashed_card))
@@ -701,7 +703,6 @@ class EventMine(Event):
         return False
 
     def process_decision(self, s: State, response: DecisionResponse):
-        p_state: PlayerState = s.player_states[s.player]
         if not self.trashed_card:
             self.trashed_card = response.cards[0]
             s.events.append(TrashCard(Zone.Hand, s.player, self.trashed_card))
@@ -805,7 +806,7 @@ class EventSentry(Event):
                 remove_card(card, self.choices)
             self.discarded = True
         else:
-            s.events.append(ReorderCards(cards, s.player))
+            s.events.append(ReorderCards(response.cards, s.player))
             self.done = True
 
         if not self.choices:

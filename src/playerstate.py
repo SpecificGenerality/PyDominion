@@ -7,7 +7,7 @@ from actioncard import ActionCard, Chapel
 from card import Card
 from config import GameConfig
 from enums import StartingSplit, Zone
-from treasurecard import *
+from treasurecard import Copper, TreasureCard
 from victorycard import Estate, VictoryCard
 
 

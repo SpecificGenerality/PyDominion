@@ -1,13 +1,15 @@
 from abc import ABC, abstractmethod
 from typing import List
 
+from actioncard import Chapel
 from card import Card
-from heuristicsutils import *
+from heuristicsutils import (get_highest_VP_card, get_max_plus_cards_card,
+                             heuristic_best_card)
 from playerstate import PlayerState
 from state import State
-from treasurecard import *
+from treasurecard import Gold, Silver
 from utils import get_first_index
-from victorycard import *
+from victorycard import Estate, Province, VictoryCard
 
 TD_DENSITY = 0.1
 

@@ -1,9 +1,7 @@
 from actioncard import *
 from card import Card
-from cursecard import *
-from treasurecard import *
-from victorycard import *
-
+from cursecard import Curse
+from victorycard import Gardens
 
 '''List of the Base set kingdom cards'''
 # TODO: Implement Sentry, Bandit, Vassal, Merchant
@@ -36,5 +34,6 @@ BASE_CARD_NAME = {
         'Market': Market,
         'Mine': Mine,
         'Witch': Witch,
-        'Artisan': Artisan
+        'Artisan': Artisan,
+        'Sentry': Sentry
 }
