@@ -116,6 +116,10 @@ class PlayerState:
         else:
             raise ValueError(f'Playerstate does not have list corresponding to zone: {zone}.')
 
+    def play_card(self, card: Card, zone: Zone) -> None:
+        src = self._get_zone_cards(zone)
+        utils.move_card(card, src, self._play_area)
+
     def get_action_card_count(self, zone: Zone) -> int:
         cards = self._get_zone_cards(zone)
         return sum(isinstance(card, ActionCard) for card in cards)
