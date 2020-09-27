@@ -7,7 +7,7 @@ from enums import StartingSplit
 from game import Game
 from player import Player
 from playerstate import PlayerState
-from state import DecisionResponse, DecisionState, MoatReveal
+from state import DecisionResponse, DecisionState, MoatReveal, ReorderCards
 from supply import Supply
 from treasurecard import Copper
 
@@ -81,3 +81,21 @@ class TestEvent(unittest.TestCase):
         p_state: PlayerState = self.game.state.player_states[0]
         self.assertEqual(p_state._discard, [discarded])
         self.assertIsNone(d.active_card)
+
+    def test_event_reorder_cards(self) -> None:
+        p_state: PlayerState = self.game.state.player_states[0]
+        deck = p_state._deck
+        first = deck[-2]
+        second = deck[-1]
+
+        event = ReorderCards([], player=0)
+
+        self.assertEqual(deck[-2], first)
+        self.assertEqual(deck[-1], second)
+
+        event = ReorderCards([second, first], player=0)
+
+        event.advance(self.game.state)
+
+        self.assertEqual(deck[-1], first)
+        self.assertEqual(deck[-2], second)

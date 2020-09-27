@@ -561,7 +561,8 @@ class ReorderCards(Event):
     def advance(self, s: State):
         p_state: PlayerState = s.player_states[self._player]
         _n = len(self._cards)
-        p_state._deck[-_n:] = self._cards
+        if _n > 0:
+            p_state._deck[-_n:] = self._cards
 
         return True
 
