@@ -35,5 +35,6 @@ BASE_CARD_NAME = {
         'Mine': Mine,
         'Witch': Witch,
         'Artisan': Artisan,
-        'Sentry': Sentry
+        'Sentry': Sentry,
+        'Bandit': Bandit
 }
