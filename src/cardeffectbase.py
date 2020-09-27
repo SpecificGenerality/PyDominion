@@ -1,6 +1,6 @@
 import logging
 
-from actioncard import (Artisan, Bureaucrat, Cellar, Chapel, Harbinger,
+from actioncard import (Artisan, Bandit, Bureaucrat, Cellar, Chapel, Harbinger,
                         Library, Militia, Mine, Moneylender, Poacher, Remodel,
                         Sentry, ThroneRoom, Witch, Workshop)
 from card import Card
@@ -8,11 +8,11 @@ from cardeffect import CardEffect
 from cursecard import Curse
 from enums import DecisionType, DiscardZone, GainZone, Zone
 from playerstate import PlayerState
-from state import (BureaucratAttack, DecisionResponse, DiscardCard,
-                   DiscardDownToN, DrawCard, EventArtisan, EventLibrary,
-                   EventMine, EventSentry, GainCard, PlayActionNTimes,
-                   RemodelExpand, State, TrashCard)
-from treasurecard import Copper, Silver, TreasureCard
+from state import (BanditAttack, BureaucratAttack, DecisionResponse,
+                   DiscardCard, DiscardDownToN, DrawCard, EventArtisan,
+                   EventLibrary, EventMine, EventSentry, GainCard,
+                   PlayActionNTimes, RemodelExpand, State, TrashCard)
+from treasurecard import Copper, Gold, Silver, TreasureCard
 from utils import contains_card, get_first_index, move_card
 from victorycard import Gardens
 
@@ -23,6 +23,18 @@ class ArtisanEffect(CardEffect):
 
     def play_action(self, s: State):
         s.events.append(EventArtisan(self.c))
+
+class BanditEffect(CardEffect):
+    def __init__(self):
+        self.c = Bandit()
+
+    # TODO: Allow player to choose which treasure to trash
+    def play_action(self, s: State):
+        for player in s.players:
+            if player != s.player:
+                s.events.append(BanditAttack(self.c, player))
+
+        s.events.append(GainCard(GainZone.GainToDiscard, s.player, Gold()))
 
 class SentryEffect(CardEffect):
     def __init__(self):
