@@ -1,15 +1,17 @@
 import unittest
 from unittest.mock import Mock
 
-from actioncard import Militia, Moat, Sentry
+from actioncard import Bandit, Militia, Moat, Sentry
 from config import GameConfig
 from enums import StartingSplit
 from game import Game
 from player import Player
 from playerstate import PlayerState
-from state import DecisionResponse, DecisionState, MoatReveal, ReorderCards
+from state import (DecisionResponse, DecisionState, MoatReveal,
+                   ReorderCards)
 from supply import Supply
-from treasurecard import Copper
+from treasurecard import Copper, Gold, Silver
+from victorycard import Estate
 
 
 class TestEvent(unittest.TestCase):
