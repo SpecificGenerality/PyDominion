@@ -7,7 +7,7 @@ from enums import StartingSplit
 from game import Game
 from player import Player
 from playerstate import PlayerState
-from state import (BanditAttack, DecisionResponse, DecisionState, MoatReveal,
+from state import (DecisionResponse, DecisionState, MoatReveal,
                    ReorderCards)
 from supply import Supply
 from treasurecard import Copper, Gold, Silver
@@ -101,34 +101,3 @@ class TestEvent(unittest.TestCase):
 
         self.assertEqual(deck[-1], first)
         self.assertEqual(deck[-2], second)
-
-    def test_bandit_attack(self) -> None:
-        p_state: PlayerState = self.game.state.player_states[0]
-        deck = p_state._deck
-        top = Silver()
-        second = Gold()
-        deck[-1] = top
-        deck[-2] = second
-
-        event = BanditAttack(Bandit(), 0)
-
-        event.advance(self.game.state)
-        self.game.state.advance_next_decision()
-        self.assertEquals(self.game.state.trash, [top])
-        self.assertEquals(p_state._discard, [second])
-
-    def test_bandit_attack_discard_only(self) -> None:
-        p_state: PlayerState = self.game.state.player_states[0]
-        deck = p_state._deck
-        not_treasure = Estate()
-        not_valuable = Copper()
-        deck[-1] = not_treasure
-        deck[-2] = not_valuable
-
-        event = BanditAttack(Bandit(), 0)
-
-        event.advance(self.game.state)
-        self.game.state.advance_next_decision()
-        self.assertEquals(self.game.state.trash, [])
-        self.assertEquals(p_state._discard, [not_treasure, not_valuable])
-

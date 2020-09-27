@@ -8,7 +8,7 @@ from cardeffect import CardEffect
 from cursecard import Curse
 from enums import DecisionType, DiscardZone, GainZone, Zone
 from playerstate import PlayerState
-from state import (BanditAttack, BureaucratAttack, DecisionResponse,
+from state import (BureaucratAttack, DecisionResponse,
                    DiscardCard, DiscardDownToN, DrawCard, EventArtisan,
                    EventLibrary, EventMine, EventSentry, GainCard,
                    PlayActionNTimes, RemodelExpand, State, TrashCard)
@@ -32,7 +32,22 @@ class BanditEffect(CardEffect):
     def play_action(self, s: State):
         for player in s.players:
             if player != s.player:
-                s.events.append(BanditAttack(self.c, player))
+                p_state: PlayerState = s.player_states[player]
+
+                stolen = p_state._deck[-2:]
+
+                if not stolen:
+                    return True
+
+                trashable = list(filter(lambda x: isinstance(x, TreasureCard) and not isinstance(x, Copper), stolen))
+
+                trashed = None if not trashable else min(trashable, key=lambda x: x.get_treasure())
+                for card in stolen:
+                    if card != trashed:
+                        s.events.append(DiscardCard(DiscardZone.DiscardFromDeck, player, card))
+
+                if trashed:
+                    s.events.append(TrashCard(Zone.Deck, player, trashed))
 
         s.events.append(GainCard(GainZone.GainToDiscard, s.player, Gold()))
 

@@ -816,39 +816,6 @@ class EventSentry(Event):
     def __str__(self):
         return 'EventSentry'
 
-class BanditAttack(Event):
-    def __init__(self, source: Card, player: int):
-        self.source = source
-        self.player = player
-        self.annotations = AttackAnnotations()
-
-    def is_attack(self):
-        return True
-
-    def attacked_player(self):
-        return self.player
-
-    def advance(self, s: State):
-        p_state: PlayerState = s.player_states[self.player]
-
-        stolen = p_state._deck[-2:]
-
-        if not stolen:
-            return True
-
-        trashable = list(filter(lambda x: isinstance(x, TreasureCard) and not isinstance(x, Copper), stolen))
-
-        trashed = None if not trashable else min(trashable, key=lambda x: x.get_treasure())
-        for card in stolen:
-            if card != trashed:
-                s.events.append(DiscardCard(DiscardZone.DiscardFromDeck, self.player, card))
-
-        if trashed:
-            s.events.append(TrashCard(Zone.Deck, self.player, trashed))
-
-        return True
-
-
 class BureaucratAttack(Event):
     def __init__(self, source: Card, player: int):
         self.source = source
