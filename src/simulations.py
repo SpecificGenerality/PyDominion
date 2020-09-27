@@ -13,12 +13,12 @@ from aiconfig import data_dir, model_dir
 from aiutils import load, save
 from buyagenda import BigMoneyBuyAgenda, TDBigMoneyBuyAgenda
 from config import GameConfig
-from enums import StartingSplit
+from enums import Rollout, StartingSplit
 from game import Game
 from player import HeuristicPlayer, MCTSPlayer, RandomPlayer
+from rollout import LinearRegressionRollout, RandomRollout
 from simulationdata import SimulationData
 from supply import Supply
-from victorycard import *
 
 
 def test_tau(taus: List, trials=100, iters=500):

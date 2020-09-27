@@ -2,10 +2,18 @@ import logging
 from random import shuffle
 from typing import List
 
-from buyagenda import *
+from actioncard import (ActionCard, Artisan, Bureaucrat, Cellar, Chapel,
+                        Harbinger, Library, Militia, Mine, Moat, Poacher,
+                        ThroneRoom)
+from buyagenda import BuyAgenda
 from card import Card
-from heuristicsutils import *
-from state import State, DecisionResponse, DecisionState
+from cursecard import Curse
+from heuristicsutils import (has_excess_actions, has_treasure_cards,
+                             heuristic_best_card, heuristic_select_cards)
+from playerstate import PlayerState
+from state import DecisionResponse, DecisionState, State
+from treasurecard import Copper, Gold, Silver, TreasureCard
+from victorycard import Duchy, Estate, Province, VictoryCard
 
 
 class PlayerHeuristic:
@@ -111,9 +119,9 @@ class PlayerHeuristic:
         elif isinstance(card, Bureaucrat):
             response.cards.append(d.card_choices[0])
         elif isinstance(card, Militia):
-            makeDiscardDownDecision(s, response)
+            self.makeDiscardDownDecision(s, response)
         elif isinstance(card, ThroneRoom):
-            makeCopyDecision(s, response)
+            self.makeCopyDecision(s, response)
         elif isinstance(card, Library):
             if s.player_states[s.player].actions == 0:
                 response.choice = 0
@@ -130,7 +138,7 @@ class PlayerHeuristic:
                     if isinstance(card, Copper) and s.supply[Copper] > 0:
                         return 18
                     return -card.get_coin_cost()
-                    response.cards = heuristic_select_cards(d.card_choices, d.min_cards, scoringFunction)
+                response.cards = heuristic_select_cards(d.card_choices, d.min_cards, scoringFunction)
             else:
                 response.cards.append(self.agenda.forceBuy(s, player, d.card_choices))
         elif isinstance(card, Harbinger):

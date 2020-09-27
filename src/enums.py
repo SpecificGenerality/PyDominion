@@ -22,6 +22,7 @@ class Zone(Enum):
     Play = auto()
     Island = auto()
 
+# TODO: Unify these enums into Zone?
 class GainZone(Enum):
     GainToDiscard = auto()
     GainToHand = auto()

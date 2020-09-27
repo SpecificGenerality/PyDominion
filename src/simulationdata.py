@@ -1,7 +1,7 @@
 import pandas as pd
 
 from game import Game
-from victorycard import *
+from victorycard import Colony, Province
 
 
 class SimulationData:

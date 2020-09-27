@@ -16,7 +16,7 @@ from mcts import Node
 from playerstate import PlayerState
 from rollout import (HistoryHeuristicRollout, LinearRegressionRollout,
                      RandomRollout)
-from state import DecisionResponse, DecisionState, State
+from state import DecisionResponse, DecisionState, State, PutOnDeckDownToN, DiscardDownToN, RemodelExpand
 from utils import remove_first_card
 
 # feature decks as counts of each card, least squares regress each against scores + offset

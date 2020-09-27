@@ -3,12 +3,10 @@ from collections.abc import MutableMapping
 from random import shuffle
 from typing import Dict, List
 
-from actioncard import *
 from config import GameConfig
 from cursecard import *
-from enums import *
-from treasurecard import *
-from victorycard import *
+from treasurecard import Copper, Gold, Silver
+from victorycard import Colony, Duchy, Estate, Province
 
 
 class Supply(MutableMapping):

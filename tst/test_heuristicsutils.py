@@ -1,7 +1,10 @@
 import unittest
 
 from actioncard import Festival, Merchant, Smithy
-from heuristicsutils import *
+from heuristicsutils import (get_best_TD_card, get_first_no_action_card,
+                             get_first_plus_action_card, get_highest_VP_card,
+                             get_lowest_treasure_card, has_excess_actions,
+                             has_plus_action_cards, has_treasure_cards)
 from treasurecard import Gold, Silver
 from victorycard import Estate
 
