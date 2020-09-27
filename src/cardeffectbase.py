@@ -1,8 +1,10 @@
 import logging
+from typing import List
 
-from actioncard import (Artisan, Bandit, Bureaucrat, Cellar, Chapel, Harbinger,
-                        Library, Militia, Mine, Moneylender, Poacher, Remodel,
-                        Sentry, ThroneRoom, Witch, Workshop)
+from actioncard import (ActionCard, Artisan, Bandit, Bureaucrat, Cellar,
+                        Chapel, Harbinger, Library, Militia, Mine, Moneylender,
+                        Poacher, Remodel, Sentry, ThroneRoom, Vassal, Witch,
+                        Workshop)
 from card import Card
 from cardeffect import CardEffect
 from cursecard import Curse
@@ -238,6 +240,35 @@ class ThroneRoomEffect(CardEffect):
     def play_action(self, s: State):
         s.events.append(PlayActionNTimes(self.c, 2))
 
+class VassalEffect(CardEffect):
+    def __init__(self):
+        self.c = Vassal()
+
+    def play_action(self, s: State):
+        p_state: PlayerState = s.player_states[s.player]
+        deck: List[Card] = p_state._deck
+        n_choices = 1 if (not deck or not isinstance(deck[-1], ActionCard)) else 2
+        s.decision.make_discrete_choice(self.c, n_choices)
+        s.decision.controlling_player = s.player
+        s.decision.text = '0. Discard' if n_choices == 1 else f'0. Discard 1. Play {deck[-1]}'
+
+    def can_process_decisions(self):
+        return True
+
+    def process_decision(self, s: State, response: DecisionResponse):
+        p_state: PlayerState = s.player_states[s.player]
+        deck: List[Card] = p_state._deck
+
+        if not deck:
+            return
+
+        card: Card = deck[-1]
+        if response.choice == 0:
+            s.events.append(DiscardCard(DiscardZone.DiscardFromDeck, s.player, card))
+        else:
+            s.play_card(s.player, card, zone=Zone.Deck)
+            s.process_action(card)
+
 class WitchEffect(CardEffect):
     def __init__(self):
         self.c = Witch()
@@ -267,6 +298,7 @@ class WorkshopEffect(CardEffect):
 # TODO: Implement Sentry, Bandit
 BASE_EFFECT_MAP = {
     Artisan: ArtisanEffect,
+    Bandit: BanditEffect,
     Bureaucrat: BureaucratEffect,
     Cellar: CellarEffect,
     Chapel: ChapelEffect,
@@ -280,6 +312,7 @@ BASE_EFFECT_MAP = {
     Remodel: RemodelEffect,
     Sentry: SentryEffect,
     ThroneRoom: ThroneRoomEffect,
+    Vassal: VassalEffect,
     Witch: WitchEffect,
     Workshop: WorkshopEffect,
 }

@@ -19,9 +19,9 @@ from victorycard import VictoryCard
 
 
 class DecisionResponse:
-    def __init__(self, cards: List[Card]):
+    def __init__(self, cards: List[Card], choice=-1):
         self.cards = cards
-        self.choice = -1
+        self.choice = choice
         self.single_card = None
 
     def __str__(self) -> str:
@@ -40,10 +40,10 @@ class DecisionState:
     def is_trivial(self) -> bool:
         return (self.type == DecisionType.DecisionSelectCards \
             and len(self.card_choices) == 1 and self.min_cards == 1 \
-            and self.max_cards == 1)
+            and self.max_cards == 1) or (self.type == DecisionType.DecisionDiscreteChoice and self.min_cards == self.max_cards == 1)
 
     def trivial_response(self) -> DecisionResponse:
-        return DecisionResponse([self.card_choices[0]])
+        return DecisionResponse([self.card_choices[0]]) if self.type == DecisionType.DecisionSelectCards else DecisionResponse([], 0)
 
     def select_cards(self, card: Card, min_cards: int, max_cards: int):
         self.active_card = card
@@ -171,9 +171,9 @@ class State:
         else:
             logging.error(f'Player {player} attemped to trash card from un-recognized zone.')
 
-    def play_card(self, player: int, card: Card) -> None:
+    def play_card(self, player: int, card: Card, zone: Zone = Zone.Hand) -> None:
         p_state: PlayerState = self.player_states[player]
-        move_card(card, p_state.hand, p_state._play_area)
+        p_state.play_card(card, zone)
 
     def process_action(self, card: Card):
         import cardeffectbase
