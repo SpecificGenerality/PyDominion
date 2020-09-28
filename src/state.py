@@ -193,7 +193,7 @@ class State:
         p_state: PlayerState = self.player_states[self.player]
         def get_merchant_coins() -> int:
             if isinstance(card, Silver) and sum([1 if isinstance(c, Silver) else 0 for c in p_state._play_area]) == 1:
-                return sum([1 if isinstance(card, Merchant) else 0 for card in p_state._play_area])
+                return sum([card.copies if isinstance(card, Merchant) else 0 for card in p_state._play_area])
             else:
                 return 0
 
