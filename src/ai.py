@@ -7,9 +7,10 @@ import numpy as np
 from tqdm import tqdm
 
 from aiconfig import data_dir, model_dir
+from aiutils import save
 from config import GameConfig
 from cursecard import Curse
-from enums import *
+from enums import DecisionType, Phase, Rollout, StartingSplit
 from game import Game
 from mcts import Node
 from mctsdata import MCTSData
@@ -81,7 +82,6 @@ class MCTS:
             s.advance_next_decision()
 
 
-        player_turns = s.player_states[0]._turns
         score = self.game.get_player_scores()[0]
         # update data
         self.data.update_split_scores(score - tree_score, True, self.iter)
@@ -119,7 +119,6 @@ class MCTS:
         save_data=False, data_dir=data_dir, data_name='data'):
 
         avg = 0
-        last_avg = 0
         for i in tqdm(range(n)):
             # initialize new game
             self.reset(i)
