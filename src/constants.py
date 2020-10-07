@@ -1,9 +1,12 @@
 from actioncard import *
 from card import Card
 from cursecard import Curse
-from victorycard import Gardens
+from treasurecard import Copper, Gold, Silver
+from victorycard import Duchy, Estate, Gardens, Province
 
 '''List of the Base set kingdom cards'''
+
+SANDBOX_CARDS = [Copper, Silver, Gold, Estate, Duchy, Province, Curse]
 
 BASE_CARD_NAME = {
         'Artisan': Artisan,

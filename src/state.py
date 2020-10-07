@@ -293,6 +293,9 @@ class State:
 
         return score
 
+    def is_winner(self, player: int) -> bool:
+        return self.get_player_score(player) == max(self.get_player_score(p) for p in self.players)
+
     def get_player_card_counts(self, player: int) -> Counter:
         p_state: PlayerState = self.player_states[player]
 
