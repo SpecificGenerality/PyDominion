@@ -30,7 +30,7 @@ def main(strategies: List[str], must_include: List[str], prosperity: bool, sandb
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--strategy', nargs='+', choices=['H', 'R', 'BM'], help='Strategy of players.')
+    parser.add_argument('--strategy', nargs='+', choices=['H', 'R', 'BM', 'MLP'], help='Strategy of players.')
     parser.add_argument('--must-include', default=[], nargs='+', help='Cards that must be in the kingdom (up to 10). See constants.py for supported cards.')
     parser.add_argument('--prosperity', action='store_true', help='When set, enables the prosperity rules.')
     parser.add_argument('--sandbox', action='store_true', help='When set, includes only the 7 basic kingdom supply cards.')

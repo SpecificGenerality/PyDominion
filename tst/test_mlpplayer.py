@@ -25,7 +25,7 @@ class TestMLPPlayer(unittest.TestCase):
         self.game.new_game()
 
         x = self.mlp_player.featurize(self.game.state)
-        tgt_x = torch.zeros(self.mlp.D_in)
+        tgt_x = torch.zeros(self.mlp.D_in).cuda()
         tgt_x[self.mlp_player.idxs[str(Copper())]] = 7
         tgt_x[self.mlp_player.idxs[str(Estate())]] = 3
         tgt_x[7] = 0

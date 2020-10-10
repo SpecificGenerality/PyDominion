@@ -46,10 +46,10 @@ class MLPPlayer(Player):
     def reset(self):
         self.counts = dict((i, Counter({str(Copper()): 7, str(Estate()): 3})) for i in range(self.n_players))
 
-    def featurize(self, s: State, lookahead_card: Card=None) -> torch.Tensor:
+    def featurize(self, s: State, lookahead_card: Card=None, dtype=torch.cuda.FloatTensor) -> torch.Tensor:
         p: int = s.player
         counts: Counter = self.counts[p]
-        p_features = torch.zeros(self.mlp.D_in)
+        p_features = torch.zeros(self.mlp.D_in).type(torch.FloatTensor)
 
         for k,v in counts.items():
             p_features[self.idxs[k]] = v
@@ -57,8 +57,8 @@ class MLPPlayer(Player):
         p_features[8] = s.get_player_score(p)
 
         if lookahead_card is not None:
-            p_features[self.idxs[str(lookahead_card)]] += 1
-            p_features[8] += lookahead_card.get_victory_points()
+            p_features[self.idxs[str(lookahead_card)]] = p_features[self.idxs[str(lookahead_card)]] + 1
+            p_features[8] = p_features[8] + lookahead_card.get_victory_points()
 
         p = 1 if s.player == 0 else 0
         counts = self.counts[p]
@@ -66,7 +66,7 @@ class MLPPlayer(Player):
             p_features[self.idxs[k]+9] = v
         p_features[-2] = s.player_states[p].turns
         p_features[-1] = s.get_player_score(p)
-        return p_features
+        return p_features.type(dtype)
 
     def makeDecision(self, s: State, response: DecisionResponse):
         d: DecisionState = s.decision
