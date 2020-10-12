@@ -15,12 +15,12 @@ from state import DecisionResponse, DecisionState, State
 
 
 class MLP:
-    def __init__(self, n: int, l: int, dtype, **kwargs):
+    def __init__(self, n: int, l: int, tol: float, dtype, **kwargs):
         n_players = 2
         # None option, number of turns, and score
         n_extra = 3
         D_in, D_out = n_players * (len(SANDBOX_CARDS) + n_extra), 1
-        H = 2 * D_in
+        H = (D_in + D_out) // 2
         # Setup network
         self.model = SandboxMLP(D_in, H, D_out)
         self.model.cuda()
@@ -30,9 +30,10 @@ class MLP:
         self.game = Game(self.config, self.players)
         self.n = n
         self.l = l
+        self.tol = tol
         self.dtype = dtype 
 
-        self.criterion = torch.nn.BCELoss()
+        self.criterion = torch.nn.L1Loss()
         self.optimizer = torch.optim.SGD(self.model.parameters(), **kwargs)
 
     def reset(self):
@@ -57,14 +58,14 @@ class MLP:
                 p.makeDecision(s, response)
                 s.process_decision(response)
                 s.advance_next_decision()
+
                 x = p.featurize(s, lookahead_card=None)
                 tgt = self.model(x)
-                X, Y = Variable(x, requires_grad=True).cuda(), Variable(tgt, requires_grad=False).cuda()
 
                 if last_x is not None:
                     self.optimizer.zero_grad()
                     y = self.model(last_x)
-                    loss = self.criterion(y, Y)
+                    loss = self.criterion(y, tgt)
                     loss.backward()
                     self.optimizer.step()
 
@@ -72,8 +73,7 @@ class MLP:
 
             p: MLPPlayer = self.game.players[d.controlling_player].controller
             x = p.featurize(s, lookahead_card=None)
-            p_id: int = self.game.players[d.controlling_player].id
-            tgt = torch.FloatTensor([1]).cuda() if s.is_winner(p_id) else torch.FloatTensor([0]).cuda()
+            tgt = torch.FloatTensor([1]).cuda() if s.is_winner(0) else torch.FloatTensor([0]).cuda()
             self.optimizer.zero_grad()
             y = self.model.forward(x)
             loss = self.criterion(y, tgt)
@@ -88,18 +88,19 @@ if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('-n', default=1000, type=int, help='Number of training iterations')
     parser.add_argument('-l', default=10, type=int, help='Number of iterations before logging')
-    parser.add_argument('--lr', default=1e-4, type=float, help='Learning rate')
+    parser.add_argument('--lr', default=1e-3, type=float, help='Learning rate')
     parser.add_argument('--momentum', type=float, default=0.01)
     parser.add_argument('--decay', type=float, default=1e-4)
     parser.add_argument('--cuda', action='store_true', help='Whether or not to use GPU')
     parser.add_argument('--save', action='store_true', help='Whether or not to save the model.')
     parser.add_argument('--path', type=str, help='Where to save the model', default=model_dir)
+    parser.add_argument('--tol', type=float, default=1e-10, help='Min difference in loss to stop training')
 
 
     args = parser.parse_args()
 
     dtype = torch.cuda.FloatTensor if args.cuda else torch.FloatTensor
-    mlp = MLP(args.n, args.l, dtype, momentum=args.momentum, lr=args.lr, weight_decay=args.decay)
+    mlp = MLP(args.n, args.l, args.tol, dtype, momentum=args.momentum, lr=args.lr, weight_decay=args.decay)
     mlp.train()
 
     if args.save: 

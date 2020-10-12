@@ -57,19 +57,23 @@ class MLPPlayer(Player):
         p_features[8] = s.player_states[p].turns
         p_features[9] = s.get_player_score(p)
 
+        offset = 0 if s.player == 0 else 10 
         # Construct the lookahead state by updating the lookahead card count, turn count, VP count
         if lookahead_card is not None:
-            p_features[self.idxs[str(lookahead_card)]] = p_features[self.idxs[str(lookahead_card)]] + 1
-            p_features[8] = p_features[8] + 1
-            p_features[9] = p_features[9] + lookahead_card.get_victory_points()
+            p_features[self.idxs[str(lookahead_card)]+offset] = p_features[self.idxs[str(lookahead_card)]+offset] + 1
+            p_features[8+offset] = p_features[8+offset] + 1
+            p_features[9+offset] = p_features[9+offset] + lookahead_card.get_victory_points()
 
         # p = 1 if s.player == 0 else 0
         p = 1
         counts = self.counts[p]
         for k, v in counts.items():
-            p_features[self.idxs[k]+10] = v
+            p_features[self.idxs[k]+offset] = v
         p_features[-2] = s.player_states[p].turns
         p_features[-1] = s.get_player_score(p)
+        # Normalize card counts -> card ratios
+        p_features[:8] = p_features[:8] / sum(p_features[:8])
+        p_features[10:-2] = p_features[10:-2] / sum(p_features[10:-2])
         return p_features.type(dtype)
 
     def makeDecision(self, s: State, response: DecisionResponse):
