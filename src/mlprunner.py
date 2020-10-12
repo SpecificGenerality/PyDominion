@@ -17,8 +17,8 @@ from state import DecisionResponse, DecisionState, State
 class MLP:
     def __init__(self, n: int, lr: float, l: int, momentum: float, dtype):
         n_players = 2
-        # number of turns and score
-        n_extra = 2
+        # None option, number of turns, and score
+        n_extra = 3
         D_in, D_out = n_players * (len(SANDBOX_CARDS) + n_extra), 1
         H = 2 * D_in
         # Setup network

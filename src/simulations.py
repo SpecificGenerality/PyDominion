@@ -131,7 +131,7 @@ if __name__=='__main__':
     parser.add_argument('--data_dir', default=data_dir, type=str, help='Where the data should be saved')
     parser.add_argument('--data_name', default='data', type=str, help='Name of the data file')
     parser.add_argument('--debug', action='store_true', help='Turn logging settings to DEBUG')
-    parser.add_argument('--path', help='Path to MLP model')
+    parser.add_argument('--path', default='../models/firstmlp', help='Path to MLP model')
 
     args = parser.parse_args()
     main(args)

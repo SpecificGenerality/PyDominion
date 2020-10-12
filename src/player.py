@@ -53,17 +53,19 @@ class MLPPlayer(Player):
 
         for k,v in counts.items():
             p_features[self.idxs[k]] = v
-        p_features[7] = s.player_states[p].turns
-        p_features[8] = s.get_player_score(p)
+        p_features[8] = s.player_states[p].turns
+        p_features[9] = s.get_player_score(p)
 
+        # Construct the lookahead state by updating the lookahead card count, turn count, VP count
         if lookahead_card is not None:
             p_features[self.idxs[str(lookahead_card)]] = p_features[self.idxs[str(lookahead_card)]] + 1
-            p_features[8] = p_features[8] + lookahead_card.get_victory_points()
+            p_features[8] = p_features[8] + 1
+            p_features[9] = p_features[9] + lookahead_card.get_victory_points()
 
         p = 1 if s.player == 0 else 0
         counts = self.counts[p]
         for k, v in counts.items():
-            p_features[self.idxs[k]+9] = v
+            p_features[self.idxs[k]+10] = v
         p_features[-2] = s.player_states[p].turns
         p_features[-1] = s.get_player_score(p)
         return p_features.type(dtype)

@@ -28,21 +28,22 @@ class TestMLPPlayer(unittest.TestCase):
         tgt_x = torch.zeros(self.mlp.D_in).cuda()
         tgt_x[self.mlp_player.idxs[str(Copper())]] = 7
         tgt_x[self.mlp_player.idxs[str(Estate())]] = 3
-        tgt_x[7] = 0
-        tgt_x[8] = 3
-        tgt_x[self.mlp_player.idxs[str(Copper())]+9] = 7
-        tgt_x[self.mlp_player.idxs[str(Estate())]+9] = 3
+        tgt_x[8] = 0
+        tgt_x[9] = 3
+        tgt_x[self.mlp_player.idxs[str(Copper())]+10] = 7
+        tgt_x[self.mlp_player.idxs[str(Estate())]+10] = 3
         tgt_x[-2] = 0
         tgt_x[-1] = 3
         self.assertTrue(torch.equal(x, tgt_x))
 
         x = self.mlp_player.featurize(self.game.state, Copper())
         tgt_x[self.mlp_player.idxs[str(Copper())]] += 1
+        tgt_x[8] += 1
         self.assertTrue(torch.equal(x, tgt_x))
         tgt_x[self.mlp_player.idxs[str(Copper())]] -= 1
 
 
         x = self.mlp_player.featurize(self.game.state, Estate())
         tgt_x[self.mlp_player.idxs[str(Estate())]] += 1
-        tgt_x[8] += 1
+        tgt_x[9] += 1
         self.assertTrue(torch.equal(x, tgt_x))
