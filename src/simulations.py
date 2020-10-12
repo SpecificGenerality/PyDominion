@@ -15,11 +15,13 @@ from buyagenda import BigMoneyBuyAgenda, TDBigMoneyBuyAgenda
 from config import GameConfig
 from enums import Rollout, StartingSplit
 from game import Game
-from player import HeuristicPlayer, MCTSPlayer, RandomPlayer
+from player import HeuristicPlayer, MCTSPlayer, RandomPlayer, MLPPlayer
+from mlp import SandboxMLP
 from rollout import LinearRegressionRollout, RandomRollout
 from simulationdata import SimulationData
 from supply import Supply
-
+import torch 
+from constants import SANDBOX_CARDS
 
 def test_tau(taus: List, trials=100, iters=500):
     '''Test the UCT for varying values of tau'''
@@ -64,6 +66,11 @@ def init_players(args: ArgumentParser):
             players.append(HeuristicPlayer(BigMoneyBuyAgenda()))
         elif args.strategy[i] == 'TDBM':
             players.append(HeuristicPlayer(TDBigMoneyBuyAgenda()))
+        elif args.strategy[i] == 'MLP': 
+            model = SandboxMLP(20,10,1)
+            model.load_state_dict(torch.load(args.path))
+            model.cuda()
+            players.append(MLPPlayer(model, [card_class() for card_class in SANDBOX_CARDS], 2))
 
     return players
 
@@ -124,6 +131,7 @@ if __name__=='__main__':
     parser.add_argument('--data_dir', default=data_dir, type=str, help='Where the data should be saved')
     parser.add_argument('--data_name', default='data', type=str, help='Name of the data file')
     parser.add_argument('--debug', action='store_true', help='Turn logging settings to DEBUG')
+    parser.add_argument('--path', default='../models/mlp_l1_default', help='Path to MLP model')
 
     args = parser.parse_args()
     main(args)

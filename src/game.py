@@ -5,10 +5,10 @@ import numpy as np
 
 from config import GameConfig
 from enums import StartingSplit
-from supply import Supply
-from player import *
+from player import HumanPlayer, Player, PlayerInfo
 from playerstate import PlayerState
-from state import State
+from state import DecisionResponse, DecisionType, State
+from supply import Supply
 
 
 class Game:

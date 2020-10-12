@@ -2,9 +2,12 @@ import logging
 import random
 import sys
 from abc import ABC, abstractmethod
+from collections import Counter
 from typing import List
 
 import numpy as np
+import torch
+import torch.nn as nn
 
 from actioncard import ActionCard
 from buyagenda import BuyAgenda
@@ -12,12 +15,17 @@ from card import Card
 from cursecard import Curse
 from enums import *
 from heuristics import PlayerHeuristic
+from heuristicsutils import heuristic_select_cards
 from mcts import Node
+from mlp import SandboxMLP
 from playerstate import PlayerState
 from rollout import (HistoryHeuristicRollout, LinearRegressionRollout,
                      RandomRollout)
-from state import DecisionResponse, DecisionState, State, PutOnDeckDownToN, DiscardDownToN, RemodelExpand
+from state import (DecisionResponse, DecisionState, DiscardDownToN,
+                   PutOnDeckDownToN, RemodelExpand, State)
+from treasurecard import Copper
 from utils import remove_first_card
+from victorycard import Estate, VictoryCard
 
 # feature decks as counts of each card, least squares regress each against scores + offset
 # try random + greedy
@@ -27,6 +35,65 @@ class Player(ABC):
     def makeDecision(self, s: State, response: DecisionResponse):
         '''Given the current state s of the game, make a decision given the choices in s and modify response.'''
         pass
+
+class MLPPlayer(Player):
+    def __init__(self, mlp: SandboxMLP, cards: List[Card], n_players: int):
+        self.mlp = mlp
+        self.n_players = n_players
+        self.idxs = dict([(str(x), i) for i, x in enumerate(cards + [None])])
+        self.counts = dict((i, Counter({str(Copper()): 7, str(Estate()): 3})) for i in range(n_players))
+
+    def reset(self):
+        self.counts = dict((i, Counter({str(Copper()): 7, str(Estate()): 3})) for i in range(self.n_players))
+
+    def featurize(self, s: State, lookahead_card: Card=None, dtype=torch.cuda.FloatTensor) -> torch.Tensor:
+        # p: int = s.player
+        p = 0
+        counts: Counter = self.counts[p]
+        p_features = torch.zeros(self.mlp.D_in).type(torch.FloatTensor)
+
+        for k,v in counts.items():
+            p_features[self.idxs[k]] = v
+        p_features[8] = s.player_states[p].turns
+        p_features[9] = s.get_player_score(p)
+
+        # Construct the lookahead state by updating the lookahead card count, turn count, VP count
+        if lookahead_card is not None:
+            offset = 0 if s.player == 0 else 10 
+            p_features[self.idxs[str(lookahead_card)]+offset] = p_features[self.idxs[str(lookahead_card)]+offset] + 1
+            p_features[8+offset] = p_features[8+offset] + 1
+            p_features[9+offset] = p_features[9+offset] + lookahead_card.get_victory_points()
+
+        # p = 1 if s.player == 0 else 0
+        p = 1
+        counts = self.counts[p]
+        for k, v in counts.items():
+            p_features[self.idxs[k]+10] = v
+        p_features[-2] = s.player_states[p].turns
+        p_features[-1] = s.get_player_score(p)
+        # Normalize card counts -> card ratios
+        p_features[:8] = p_features[:8] / sum(p_features[:8])
+        p_features[10:-2] = p_features[10:-2] / sum(p_features[10:-2])
+        return p_features.type(dtype)
+
+    def makeDecision(self, s: State, response: DecisionResponse):
+        d: DecisionState = s.decision
+        p: int = s.player
+        if s.phase == Phase.ActionPhase:
+            assert False, 'MCTS does not support action cards yet'
+        elif s.phase == Phase.TreasurePhase:
+            response.single_card = d.card_choices[0]
+        else:
+            vals = []
+            choices = d.card_choices + [None]
+            for card in choices:
+                x = self.featurize(s, lookahead_card=card)
+                vals.append(self.mlp.forward(x))
+
+            choice = choices[np.argmax(vals)] if p == 0 else choices[np.argmin(vals)]
+            # print(choice)
+            self.counts[p][str(choice)] += 1
+            response.single_card = choice
 
 # TODO: Expand MCTS to work outside of sandbox games
 class MCTSPlayer(Player):
@@ -68,7 +135,6 @@ class MCTSPlayer(Player):
         return next_node
 
     def makeDecision(self, s: State, response: DecisionResponse):
-        player = s.decision.controlling_player
         d: DecisionState = s.decision
         if s.phase == Phase.ActionPhase:
             assert False, 'MCTS does not support action cards yet'
@@ -191,7 +257,7 @@ class HumanPlayer(Player):
                 d.print_card_choices()
             response.choice = choice
         else:
-            logging.error(f'Player {self.id} given invalid decision type.')
+            logging.error(f'Player {s.player} given invalid decision type.')
 
     def __str__(self):
         return f"Human Player"
