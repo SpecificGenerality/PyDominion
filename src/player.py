@@ -47,7 +47,8 @@ class MLPPlayer(Player):
         self.counts = dict((i, Counter({str(Copper()): 7, str(Estate()): 3})) for i in range(self.n_players))
 
     def featurize(self, s: State, lookahead_card: Card=None, dtype=torch.cuda.FloatTensor) -> torch.Tensor:
-        p: int = s.player
+        # p: int = s.player
+        p = 0
         counts: Counter = self.counts[p]
         p_features = torch.zeros(self.mlp.D_in).type(torch.FloatTensor)
 
@@ -62,7 +63,8 @@ class MLPPlayer(Player):
             p_features[8] = p_features[8] + 1
             p_features[9] = p_features[9] + lookahead_card.get_victory_points()
 
-        p = 1 if s.player == 0 else 0
+        # p = 1 if s.player == 0 else 0
+        p = 1
         counts = self.counts[p]
         for k, v in counts.items():
             p_features[self.idxs[k]+10] = v
@@ -84,7 +86,8 @@ class MLPPlayer(Player):
                 x = self.featurize(s, lookahead_card=card)
                 vals.append(self.mlp.forward(x))
 
-            choice = choices[np.argmax(vals)]
+            choice = choices[np.argmax(vals)] if p == 0 else choices[np.argmin(vals)]
+            # print(choice)
             self.counts[p][str(choice)] += 1
             response.single_card = choice
 

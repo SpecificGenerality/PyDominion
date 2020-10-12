@@ -15,7 +15,7 @@ from state import DecisionResponse, DecisionState, State
 
 
 class MLP:
-    def __init__(self, n: int, lr: float, l: int, momentum: float, dtype):
+    def __init__(self, n: int, l: int, dtype, **kwargs):
         n_players = 2
         # None option, number of turns, and score
         n_extra = 3
@@ -29,13 +29,11 @@ class MLP:
         self.players = [MLPPlayer(self.model, self.cards, 2), MLPPlayer(self.model, self.cards, 2)]
         self.game = Game(self.config, self.players)
         self.n = n
-        self.lr = lr
         self.l = l
-        self.momentum = momentum
         self.dtype = dtype 
 
         self.criterion = torch.nn.BCELoss()
-        self.optimizer = torch.optim.SGD(self.model.parameters(), momentum=self.momentum, lr=self.lr)
+        self.optimizer = torch.optim.SGD(self.model.parameters(), **kwargs)
 
     def reset(self):
         self.game = Game(self.config, self.players)
@@ -88,18 +86,20 @@ class MLP:
 
 if __name__ == '__main__':
     parser = ArgumentParser()
-    parser.add_argument('-n', default=10000, type=int, help='Number of training iterations')
+    parser.add_argument('-n', default=1000, type=int, help='Number of training iterations')
     parser.add_argument('-l', default=10, type=int, help='Number of iterations before logging')
     parser.add_argument('--lr', default=1e-4, type=float, help='Learning rate')
+    parser.add_argument('--momentum', type=float, default=0.01)
+    parser.add_argument('--decay', type=float, default=1e-4)
     parser.add_argument('--cuda', action='store_true', help='Whether or not to use GPU')
     parser.add_argument('--save', action='store_true', help='Whether or not to save the model.')
     parser.add_argument('--path', type=str, help='Where to save the model', default=model_dir)
-    parser.add_argument('--momentum', type=float, default=0.1)
+
 
     args = parser.parse_args()
 
     dtype = torch.cuda.FloatTensor if args.cuda else torch.FloatTensor
-    mlp = MLP(args.n, args.lr, args.l, args.momentum, dtype)
+    mlp = MLP(args.n, args.l, dtype, momentum=args.momentum, lr=args.lr, weight_decay=args.decay)
     mlp.train()
 
     if args.save: 

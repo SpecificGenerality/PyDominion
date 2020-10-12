@@ -67,7 +67,7 @@ def init_players(args: ArgumentParser):
         elif args.strategy[i] == 'TDBM':
             players.append(HeuristicPlayer(TDBigMoneyBuyAgenda()))
         elif args.strategy[i] == 'MLP': 
-            model = SandboxMLP(18,36,1)
+            model = SandboxMLP(20,40,1)
             model.load_state_dict(torch.load(args.path))
             model.cuda()
             players.append(MLPPlayer(model, [card_class() for card_class in SANDBOX_CARDS], 2))
@@ -131,7 +131,7 @@ if __name__=='__main__':
     parser.add_argument('--data_dir', default=data_dir, type=str, help='Where the data should be saved')
     parser.add_argument('--data_name', default='data', type=str, help='Name of the data file')
     parser.add_argument('--debug', action='store_true', help='Turn logging settings to DEBUG')
-    parser.add_argument('--path', default='../models/firstmlp', help='Path to MLP model')
+    parser.add_argument('--path', default='../models/thirdmlp', help='Path to MLP model')
 
     args = parser.parse_args()
     main(args)
