@@ -7,7 +7,7 @@ from tqdm import tqdm
 from aiconfig import model_dir
 from config import GameConfig
 from constants import SANDBOX_CARDS
-from enums import DecisionType, StartingSplit
+from enums import DecisionType, StartingSplit, Phase
 from game import Game
 from mlp import SandboxMLP
 from player import MLPPlayer, Player
@@ -18,8 +18,8 @@ class MLP:
     def __init__(self, n: int, l: int, tol: float, dtype, **kwargs):
         n_players = 2
         # None option, number of turns, and score
-        n_extra = 3
-        D_in, D_out = n_players * (len(SANDBOX_CARDS) + n_extra), 1
+        n_extra = 2
+        D_in, D_out = n_players * (len(SANDBOX_CARDS) + n_extra) + len(SANDBOX_CARDS), 1
         H = (D_in + D_out) // 2
         # Setup network
         self.model = SandboxMLP(D_in, H, D_out)
@@ -55,25 +55,27 @@ class MLP:
             while d.type != DecisionType.DecisionGameOver:
                 response = DecisionResponse([])
                 p: MLPPlayer = self.game.players[d.controlling_player].controller
+                train = s.phase == Phase.BuyPhase
+
                 p.makeDecision(s, response)
                 s.process_decision(response)
                 s.advance_next_decision()
 
-                x = p.featurize(s, lookahead_card=None)
-                tgt = self.model(x)
+                if train:
+                    x = p.featurize(s)
+                    tgt = self.model(x)
 
-                if last_x is not None:
-                    self.optimizer.zero_grad()
-                    y = self.model(last_x)
-                    loss = self.criterion(y, tgt)
-                    loss.backward()
-                    self.optimizer.step()
+                    if last_x is not None:
+                        self.optimizer.zero_grad()
+                        y = self.model(last_x)
+                        loss = self.criterion(y, tgt)
+                        loss.backward()
+                        self.optimizer.step()
 
-                last_x = x
+                    last_x = x
 
-            p: MLPPlayer = self.game.players[d.controlling_player].controller
-            x = p.featurize(s, lookahead_card=None)
-            tgt = torch.FloatTensor([1]).cuda() if s.is_winner(0) else torch.FloatTensor([0]).cuda()
+            x = p.featurize(s)
+            tgt = torch.FloatTensor([1]).cuda() if s.is_winner(s.player) else torch.FloatTensor([0]).cuda()
             self.optimizer.zero_grad()
             y = self.model.forward(x)
             loss = self.criterion(y, tgt)

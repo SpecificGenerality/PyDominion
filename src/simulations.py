@@ -67,7 +67,7 @@ def init_players(args: ArgumentParser):
         elif args.strategy[i] == 'TDBM':
             players.append(HeuristicPlayer(TDBigMoneyBuyAgenda()))
         elif args.strategy[i] == 'MLP': 
-            model = SandboxMLP(20,10,1)
+            model = SandboxMLP(25,13,1)
             model.load_state_dict(torch.load(args.path))
             model.cuda()
             players.append(MLPPlayer(model, [card_class() for card_class in SANDBOX_CARDS], 2))

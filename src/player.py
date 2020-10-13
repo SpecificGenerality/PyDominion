@@ -40,40 +40,78 @@ class MLPPlayer(Player):
     def __init__(self, mlp: SandboxMLP, cards: List[Card], n_players: int):
         self.mlp = mlp
         self.n_players = n_players
-        self.idxs = dict([(str(x), i) for i, x in enumerate(cards + [None])])
-        self.counts = dict((i, Counter({str(Copper()): 7, str(Estate()): 3})) for i in range(n_players))
+        self.num_cards = len(cards)
+        self.idxs = dict([(str(x), i) for i, x in enumerate(cards)])
+        self.counts = dict((i, Counter({str(Copper()): 7, str(Estate()): 3})) for i in range(self.n_players))
 
     def reset(self):
         self.counts = dict((i, Counter({str(Copper()): 7, str(Estate()): 3})) for i in range(self.n_players))
 
-    def featurize(self, s: State, lookahead_card: Card=None, dtype=torch.cuda.FloatTensor) -> torch.Tensor:
-        # p: int = s.player
-        p = 0
+    def get_expected_hand(self, deck: List[Card], HAND_SIZE = 5) -> np.array:
+        expected_hand = np.zeros(len(self.idxs))
+        for card in deck: 
+            expected_hand[self.idxs[str(card)]] += 1
+        expected_hand = expected_hand / sum(expected_hand) * HAND_SIZE
+        return expected_hand
+
+    def featurize(self, s: State, lookahead=False, lookahead_card: Card=None, dtype=torch.cuda.FloatTensor) -> torch.Tensor:
+        """
+            Given the current game state s and possible lookahead card, return a Tensor x representing the feature vector
+            with the following structure: 
+                x[0:7] - Current player card ratios 
+                x[7] - Current player # turns
+                x[8] - Current player # VP
+                x[9:16] - Current player hand counts (expectation if lookahead)
+                x[16:23] - Opponent player card ratios
+                x[23] - Opponent player # turns
+                x[24] - Opponent player # VP
+        """
+        p: int = s.player
+        p_state: PlayerState = s.player_states[p]
+        # p = 0
         counts: Counter = self.counts[p]
-        p_features = torch.zeros(self.mlp.D_in).type(torch.FloatTensor)
+        p_features = torch.zeros(self.mlp.D_in)
 
         for k,v in counts.items():
             p_features[self.idxs[k]] = v
-        p_features[8] = s.player_states[p].turns
-        p_features[9] = s.get_player_score(p)
+        p_features[self.num_cards] = s.player_states[p].turns
+        p_features[self.num_cards + 1] = s.get_player_score(p)
 
-        # Construct the lookahead state by updating the lookahead card count, turn count, VP count
-        if lookahead_card is not None:
-            offset = 0 if s.player == 0 else 10 
-            p_features[self.idxs[str(lookahead_card)]+offset] = p_features[self.idxs[str(lookahead_card)]+offset] + 1
-            p_features[8+offset] = p_features[8+offset] + 1
-            p_features[9+offset] = p_features[9+offset] + lookahead_card.get_victory_points()
+        # Construct the lookahead state by updating the lookahead card count, turn count, VP count, and expected value hand
+        if lookahead:
+            # offset = 0 if s.player == 0 else 10 
+            offset = 0
+            if lookahead_card is not None: 
+                p_features[self.idxs[str(lookahead_card)]+offset] = p_features[self.idxs[str(lookahead_card)]+offset] + 1
+                p_features[self.num_cards+1+offset] = p_features[self.num_cards+1+offset] + lookahead_card.get_victory_points()
+            p_features[self.num_cards+offset] = p_features[self.num_cards+offset] + 1
 
-        # p = 1 if s.player == 0 else 0
-        p = 1
+            # update expected value hand
+            if p_state._deck:
+                cards_list = p_state._deck
+            elif p_state._discard:
+                cards_list = p_state._discard
+            else:
+                cards_list = p_state.hand + p_state._play_area
+
+            expected_hand = self.get_expected_hand(cards_list)
+            p_features[self.num_cards+2:2*self.num_cards+2] = torch.from_numpy(expected_hand).to(p_features)
+
+        else:
+            # expected hand is equal to current hand
+            expected_hand = self.get_expected_hand(p_state.hand + p_state._play_area)
+            p_features[self.num_cards+2:2*self.num_cards+2] = torch.from_numpy(expected_hand).to(p_features)
+        
+        p = 1 if s.player == 0 else 0
+        # p = 1
         counts = self.counts[p]
         for k, v in counts.items():
-            p_features[self.idxs[k]+10] = v
+            p_features[self.idxs[k]+2*self.num_cards+2] = v
         p_features[-2] = s.player_states[p].turns
         p_features[-1] = s.get_player_score(p)
         # Normalize card counts -> card ratios
-        p_features[:8] = p_features[:8] / sum(p_features[:8])
-        p_features[10:-2] = p_features[10:-2] / sum(p_features[10:-2])
+        p_features[:self.num_cards] = p_features[:self.num_cards] / sum(p_features[:self.num_cards])
+        p_features[-2-self.num_cards:-2] = p_features[-2-self.num_cards:-2] / sum(p_features[-2-self.num_cards:-2])
         return p_features.type(dtype)
 
     def makeDecision(self, s: State, response: DecisionResponse):
@@ -87,12 +125,14 @@ class MLPPlayer(Player):
             vals = []
             choices = d.card_choices + [None]
             for card in choices:
-                x = self.featurize(s, lookahead_card=card)
+                x = self.featurize(s, lookahead=True, lookahead_card=card)
                 vals.append(self.mlp.forward(x))
 
-            choice = choices[np.argmax(vals)] if p == 0 else choices[np.argmin(vals)]
-            # print(choice)
-            self.counts[p][str(choice)] += 1
+            # choice = choices[np.argmax(vals)] if p == 0 else choices[np.argmin(vals)]
+            choice = choices[np.argmax(vals)]
+            print(choice)
+            if choice is not None:
+                self.counts[p][str(choice)] += 1
             response.single_card = choice
 
 # TODO: Expand MCTS to work outside of sandbox games
