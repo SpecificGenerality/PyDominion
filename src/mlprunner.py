@@ -7,7 +7,7 @@ from tqdm import tqdm
 from aiconfig import model_dir
 from config import GameConfig
 from constants import SANDBOX_CARDS
-from enums import DecisionType, StartingSplit, Phase
+from enums import DecisionType, Phase, StartingSplit
 from game import Game
 from mlp import SandboxMLP
 from player import MLPPlayer, Player
@@ -26,7 +26,8 @@ class MLP:
         self.model.cuda()
         self.config = GameConfig(split=StartingSplit.StartingRandomSplit, prosperity=False, num_players=2, sandbox=True)
         self.cards = [card_class() for card_class in SANDBOX_CARDS]
-        self.players = [MLPPlayer(self.model, self.cards, 2), MLPPlayer(self.model, self.cards, 2)]
+        player = MLPPlayer(self.model, self.cards, 2)
+        self.players = [player, player]
         self.game = Game(self.config, self.players)
         self.n = n
         self.l = l
@@ -51,39 +52,42 @@ class MLP:
             s: State = self.game.state
             d: DecisionState = s.decision
 
-            last_x = None
+            last_x = torch.randn(self.model.D_in).cuda()
             while d.type != DecisionType.DecisionGameOver:
                 response = DecisionResponse([])
                 p: MLPPlayer = self.game.players[d.controlling_player].controller
                 train = s.phase == Phase.BuyPhase
 
-                p.makeDecision(s, response)
-                s.process_decision(response)
-                s.advance_next_decision()
-
-                if train:
+                if train: 
                     x = p.featurize(s)
                     tgt = self.model(x)
 
-                    if last_x is not None:
-                        self.optimizer.zero_grad()
-                        y = self.model(last_x)
-                        loss = self.criterion(y, tgt)
-                        loss.backward()
-                        self.optimizer.step()
+                    self.optimizer.zero_grad()
+                    y = self.model(last_x)
+                    loss = self.criterion(y, tgt)
+                    loss.backward()
+                    self.optimizer.step()
 
                     last_x = x
 
-            x = p.featurize(s)
+                # Player 0(1) makes decision
+                p.makeDecision(s, response)
+                s.process_decision(response)
+
+                # Player 1(0)'s turn
+                s.advance_next_decision()
+
             tgt = torch.FloatTensor([1]).cuda() if s.is_winner(s.player) else torch.FloatTensor([0]).cuda()
+
             self.optimizer.zero_grad()
-            y = self.model.forward(x)
+            y = self.model(last_x)
             loss = self.criterion(y, tgt)
             loss.backward()
             self.optimizer.step()
 
             if i > 0 and i % self.l == 0:
                 print(f'Epoch {i} loss: {loss}')
+                # print(f'Epoch {i} loss: {loss} | P0: {s.get_player_score(0)} | P1: {s.get_player_score(1)} | {y.item()} | {tgt.item()}\n {x}')
 
 
 if __name__ == '__main__':

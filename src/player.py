@@ -37,12 +37,14 @@ class Player(ABC):
         pass
 
 class MLPPlayer(Player):
-    def __init__(self, mlp: SandboxMLP, cards: List[Card], n_players: int):
+    def __init__(self, mlp: SandboxMLP, cards: List[Card], n_players: int, train: bool=True, tau=0.5):
         self.mlp = mlp
         self.n_players = n_players
         self.num_cards = len(cards)
         self.idxs = dict([(str(x), i) for i, x in enumerate(cards)])
         self.counts = dict((i, Counter({str(Copper()): 7, str(Estate()): 3})) for i in range(self.n_players))
+        self.train = train
+        self.tau = tau
 
     def reset(self):
         self.counts = dict((i, Counter({str(Copper()): 7, str(Estate()): 3})) for i in range(self.n_players))
@@ -74,7 +76,7 @@ class MLPPlayer(Player):
 
         for k,v in counts.items():
             p_features[self.idxs[k]] = v
-        p_features[self.num_cards] = s.player_states[p].turns
+        # p_features[self.num_cards] = s.player_states[p].turns
         p_features[self.num_cards + 1] = s.get_player_score(p)
 
         # Construct the lookahead state by updating the lookahead card count, turn count, VP count, and expected value hand
@@ -102,17 +104,24 @@ class MLPPlayer(Player):
             expected_hand = self.get_expected_hand(p_state.hand + p_state._play_area)
             p_features[self.num_cards+2:2*self.num_cards+2] = torch.from_numpy(expected_hand).to(p_features)
         
-        p = 1 if s.player == 0 else 0
+        p = 1 if p == 0 else 0
         # p = 1
         counts = self.counts[p]
         for k, v in counts.items():
             p_features[self.idxs[k]+2*self.num_cards+2] = v
-        p_features[-2] = s.player_states[p].turns
+        # p_features[-2] = s.player_states[p].turns
         p_features[-1] = s.get_player_score(p)
         # Normalize card counts -> card ratios
         p_features[:self.num_cards] = p_features[:self.num_cards] / sum(p_features[:self.num_cards])
         p_features[-2-self.num_cards:-2] = p_features[-2-self.num_cards:-2] / sum(p_features[-2-self.num_cards:-2])
         return p_features.type(dtype)
+
+    def select(self, choices: List[Card], vals: List[float]):
+        '''Create Gibbs distribution over choices given mast and return card choice'''
+        D = [np.exp(v / self.tau) for v in vals]
+        D /= sum(D)
+
+        return np.random.choice(choices, p=D)
 
     def makeDecision(self, s: State, response: DecisionResponse):
         d: DecisionState = s.decision
@@ -126,11 +135,10 @@ class MLPPlayer(Player):
             choices = d.card_choices + [None]
             for card in choices:
                 x = self.featurize(s, lookahead=True, lookahead_card=card)
-                vals.append(self.mlp.forward(x))
+                vals.append(self.mlp.forward(x).item())
 
             # choice = choices[np.argmax(vals)] if p == 0 else choices[np.argmin(vals)]
-            choice = choices[np.argmax(vals)]
-            print(choice)
+            choice = self.select(choices, vals) if self.train else choices[np.argmax(vals)]
             if choice is not None:
                 self.counts[p][str(choice)] += 1
             response.single_card = choice

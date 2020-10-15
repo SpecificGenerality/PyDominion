@@ -70,7 +70,7 @@ def init_players(args: ArgumentParser):
             model = SandboxMLP(25,13,1)
             model.load_state_dict(torch.load(args.path))
             model.cuda()
-            players.append(MLPPlayer(model, [card_class() for card_class in SANDBOX_CARDS], 2))
+            players.append(MLPPlayer(model, [card_class() for card_class in SANDBOX_CARDS], 2, train=False))
 
     return players
 
