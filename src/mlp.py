@@ -3,11 +3,12 @@ import torch.nn as nn
 
 
 class SandboxMLP(nn.Module):
-    def __init__(self, D_in: int, H: int, D_out: int, lr=1e-3, gamma=1, lambd=0.5):
+    def __init__(self, D_in: int, H: int, D_out: int, lr=1e-3, gamma=1, lambd=0.7):
         super(SandboxMLP, self).__init__()
         self.D_in = D_in
         self.D_out = D_out
-        self.fc1 = nn.Linear(D_in, D_out)
+        self.fc1 = nn.Linear(D_in, H)
+        self.fc2 = nn.Linear(H, D_out)
         self.sigmoid = nn.Sigmoid()
 
         self.eligibility_traces = None
@@ -17,6 +18,8 @@ class SandboxMLP(nn.Module):
 
     def forward(self, x):
         x = self.fc1(x)
+        x = self.sigmoid(x)
+        x = self.fc2(x)
         x = self.sigmoid(x)
         return x
 

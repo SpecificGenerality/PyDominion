@@ -42,7 +42,7 @@ class MLPPlayer(Player):
         self.counts = dict((i, Counter({str(Copper()): 7, str(Estate()): 3})) for i in range(self.n_players))
         self.train = train
         self.tau = tau
-        self.eps = 1e-2
+        self.eps = 5e-2
         self.state_feature = torch.zeros(self.mlp.D_in).cuda()
 
         # initialize feature vector

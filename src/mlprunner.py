@@ -18,13 +18,15 @@ class MLP:
     def __init__(self, n: int, dtype, **kwargs):
         # Define network parameters
         self.D_in, self.D_out = 2 * (len(SANDBOX_CARDS)), 1
-        self.H = (self.D_in + self.D_out) * 2
+        # self.H = (self.D_in + self.D_out) // 2
+        self.H = 30
 
         # Initialize network
         self.model = SandboxMLP(self.D_in, self.H, self.D_out, **kwargs)
         self.model.cuda()
         torch.nn.init.xavier_uniform_(self.model.fc1.weight)
         self.model.init_eligibility_traces(device='cuda')
+        self.criterion = torch.nn.MSELoss()
 
         # Configure game
         self.config = GameConfig(split=StartingSplit.StartingRandomSplit, prosperity=False, num_players=2, sandbox=True)
@@ -64,7 +66,7 @@ class MLP:
                     tgt = self.model(x)
 
                     y = self.model(last_x)
-                    error = self.model.update_weights(y, tgt)
+                    self.model.update_weights(y, tgt)
                     last_x = x
 
                 # Player 0(1) makes decision
@@ -83,8 +85,9 @@ class MLP:
 
             # self.optimizer.zero_grad()
             y = self.model(last_x)
-            error = self.model.update_weights(y, tgt)
-            self.writer.add_scalar("Loss/train", error, i)
+            self.model.update_weights(y, tgt)
+            loss = self.criterion(y, tgt)
+            self.writer.add_scalar("Loss/train", loss, i)
 
 
 if __name__ == '__main__':
