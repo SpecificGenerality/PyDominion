@@ -1,10 +1,10 @@
-from typing import Dict
 
 import pandas as pd
 
 from game import Game
 from player import MCTSPlayer
 from utils import running_mean
+
 
 class MCTSData:
     def __init__(self):

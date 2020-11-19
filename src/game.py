@@ -4,11 +4,8 @@ from typing import List
 import numpy as np
 
 from config import GameConfig
-from enums import StartingSplit
 from player import HumanPlayer, Player, PlayerInfo
-from playerstate import PlayerState
 from state import DecisionResponse, DecisionType, State
-from supply import Supply
 
 
 class Game:

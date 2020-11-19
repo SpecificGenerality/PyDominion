@@ -1,6 +1,5 @@
 import sys
-from collections import Counter
-from typing import Callable, Dict, List
+from typing import Callable, List
 
 import numpy as np
 
@@ -26,6 +25,7 @@ class MCTSState:
         # if self.hand != other.hand:
         #     return False
         return self.deck == other.deck and self.supply == other.supply
+
 
 class Node:
     def __init__(self, parent=None, card=None, n=0, v=0):

@@ -13,6 +13,7 @@ from victorycard import Estate, Province, VictoryCard
 
 TD_DENSITY = 0.1
 
+
 class BuyAgenda(ABC):
     @abstractmethod
     def buy(self, s: State, player: int, choices: List[Card]):
@@ -22,6 +23,7 @@ class BuyAgenda(ABC):
     def forceBuy(self, s: State, player: int, choices: List[Card]):
         pass
 
+
 # TODO: Do we need this?
 class MCTSBuyAgenda(BuyAgenda):
     def buy(self, s: State, player: int, choices: List[Card]):
@@ -29,6 +31,7 @@ class MCTSBuyAgenda(BuyAgenda):
 
     def forceBuy(self, s, player, choices):
         return super().forceBuy(s, player, choices)
+
 
 class TDEBigMoneyBuyAgenda(BuyAgenda):
     def buy(self, s: State, player: int, choices: List[Card]):
@@ -89,6 +92,7 @@ class TDEBigMoneyBuyAgenda(BuyAgenda):
             return score
         return heuristic_best_card(choices, scoringFunction)
 
+
 class TDBigMoneyBuyAgenda(BuyAgenda):
     def buy(self, s: State, player: int, choices: List[Card]):
         p_state: PlayerState = s.player_states[player]
@@ -141,6 +145,7 @@ class TDBigMoneyBuyAgenda(BuyAgenda):
                 score -= 0.5
             return score
         return heuristic_best_card(choices, scoringFunction)
+
 
 # implements the Big Money Optimized Buy Strategy: http://wiki.dominionstrategy.com/index.php/Big_money
 class BigMoneyBuyAgenda(BuyAgenda):

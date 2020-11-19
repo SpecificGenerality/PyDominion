@@ -26,6 +26,7 @@ class VictoryCard(Card):
     def get_treasure(self):
         return 0
 
+
 class Estate(VictoryCard):
     def get_coin_cost(self):
         return 2
@@ -35,6 +36,7 @@ class Estate(VictoryCard):
 
     def __str__(self):
         return "Estate"
+
 
 class Duchy(VictoryCard):
     def get_coin_cost(self):
@@ -46,6 +48,7 @@ class Duchy(VictoryCard):
     def __str__(self):
         return "Duchy"
 
+
 class Province(VictoryCard):
     def get_coin_cost(self):
         return 8
@@ -56,6 +59,7 @@ class Province(VictoryCard):
     def __str__(self):
         return "Province"
 
+
 class Colony(VictoryCard):
     def get_coin_cost(self):
         return 11
@@ -65,6 +69,7 @@ class Colony(VictoryCard):
 
     def __str__(self):
         return "Colony"
+
 
 class Gardens(VictoryCard):
     def get_coin_cost(self) -> int:

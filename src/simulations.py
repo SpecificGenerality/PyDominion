@@ -1,11 +1,11 @@
-import json
 import logging
 import os
 import time
 from argparse import ArgumentParser
-from typing import Dict, List
+from typing import List
 
 import numpy as np
+import torch
 from tqdm import tqdm
 
 from ai import MCTS
@@ -13,15 +13,15 @@ from aiconfig import data_dir, model_dir
 from aiutils import load, save
 from buyagenda import BigMoneyBuyAgenda, TDBigMoneyBuyAgenda
 from config import GameConfig
+from constants import SANDBOX_CARDS
 from enums import Rollout, StartingSplit
 from game import Game
-from player import HeuristicPlayer, MCTSPlayer, RandomPlayer, MLPPlayer
 from mlp import SandboxMLP
+from player import HeuristicPlayer, MCTSPlayer, MLPPlayer, RandomPlayer
 from rollout import LinearRegressionRollout, RandomRollout
 from simulationdata import SimulationData
 from supply import Supply
-import torch 
-from constants import SANDBOX_CARDS
+
 
 def test_tau(taus: List, trials=100, iters=500):
     '''Test the UCT for varying values of tau'''
@@ -29,11 +29,12 @@ def test_tau(taus: List, trials=100, iters=500):
     for tau in taus:
         for _ in range(trials):
             agent.rollout = LinearRegressionRollout(iters, agent.supply, tau, train=True, eps=0)
-            agent.player=MCTSPlayer(rollout=agent.rollout, train=True)
+            agent.player = MCTSPlayer(rollout=agent.rollout, train=True)
             agent.train(n=iters, output_iters=iters)
             agent.data.update_dataframes()
             agent.data.augment_avg_scores(100)
     save(os.path.join(data_dir, 'taus-lr'), agent.data)
+
 
 def test_C(trials=10, iters=500):
     agent = MCTS(T=30, n=iters, tau=0.5, rollout=Rollout.LinearRegression, eps=0)
@@ -41,13 +42,14 @@ def test_C(trials=10, iters=500):
     for C in L:
         for _ in range(trials):
             agent.rollout = LinearRegressionRollout(iters, agent.supply, train=True, eps=0)
-            agent.player=MCTSPlayer(rollout=agent.rollout, train=True, C=C)
+            agent.player = MCTSPlayer(rollout=agent.rollout, train=True, C=C)
             agent.train(n=iters, output_iters=100)
             agent.data.update_dataframes()
             agent.data.augment_avg_scores(100)
     save(os.path.join(data_dir, 'C-lr'), agent.data)
 
-def init_players(args: ArgumentParser):
+
+def init_players(args: ArgumentParser, **kwargs):
     players = []
     j = 0
     for i in range(args.players):
@@ -56,7 +58,7 @@ def init_players(args: ArgumentParser):
         elif args.strategy[i] == 'UCT':
             try:
                 rollout_model = load(os.path.join(args.model_dir, args.rollouts[j]))
-            except:
+            except ImportError:
                 rollout_model = RandomRollout()
             root = load(os.path.join(args.model_dir, args.roots[j]))
             j += 1
@@ -66,22 +68,23 @@ def init_players(args: ArgumentParser):
             players.append(HeuristicPlayer(BigMoneyBuyAgenda()))
         elif args.strategy[i] == 'TDBM':
             players.append(HeuristicPlayer(TDBigMoneyBuyAgenda()))
-        elif args.strategy[i] == 'MLP': 
-            model = SandboxMLP(20,10,1)
+        elif args.strategy[i] == 'MLP':
+            model = SandboxMLP(14, 7, 1)
             model.load_state_dict(torch.load(args.path))
             model.cuda()
-            players.append(MLPPlayer(model, [card_class() for card_class in SANDBOX_CARDS], 2))
+            players.append(MLPPlayer(model, [card_class() for card_class in SANDBOX_CARDS], 2, train=False))
 
     return players
 
-def simulate(args: ArgumentParser, split:StartingSplit, n: int, save_data=False):
+
+def simulate(args: ArgumentParser, split: StartingSplit, n: int, save_data=False):
 
     sim_data = SimulationData()
-
-    players = init_players(args)
+    config = GameConfig(split, prosperity=args.prosperity, num_players=args.players, sandbox=args.sandbox)
+    supply = Supply(config)
+    players = init_players(args, supply=supply)
 
     for i in tqdm(range(n)):
-        config = GameConfig(split, prosperity=args.prosperity, num_players=args.players, sandbox=args.sandbox)
         dominion = Game(config, players)
         dominion.new_game()
 
@@ -102,6 +105,7 @@ def simulate(args: ArgumentParser, split:StartingSplit, n: int, save_data=False)
     print('===SUMMARY===')
     print(sim_data.summary)
 
+
 def main(args: ArgumentParser):
     if args.debug:
         logging.basicConfig(level=logging.INFO)
@@ -115,10 +119,10 @@ def main(args: ArgumentParser):
     simulate(args, split, args.iters, args.save_data)
 
 
-if __name__=='__main__':
+if __name__ == '__main__':
     parser = ArgumentParser('Simulation Chamber for Dominion')
     parser.add_argument('-T', type=int, default=None, help='Upper threshold for number of turns in each game')
-    parser.add_argument('--iters', type=int,  required=True, help='Number of games to simulate')
+    parser.add_argument('--iters', type=int, required=True, help='Number of games to simulate')
     parser.add_argument('--sandbox', action='store_true', help='When set, the supply is limited to the 7 basic kingdom supply cards.')
     parser.add_argument('--split', default=0, type=int, help='Starting Copper/Estate split. 0: Random, 1: 25Split, 2: 34Split')
     parser.add_argument('--prosperity', action='store_true', help='Whether the Prosperity settings should be used')

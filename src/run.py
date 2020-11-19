@@ -25,8 +25,8 @@ def main(strategies: List[str], must_include: List[str], prosperity: bool, sandb
             players.append(RandomPlayer())
         elif strategy == 'BM':
             players.append(HeuristicPlayer(BigMoneyBuyAgenda()))
-        elif strategy == 'MLP': 
-            model = SandboxMLP(20,40,1)
+        elif strategy == 'MLP':
+            model = SandboxMLP(14, 7, 1)
             model.load_state_dict(torch.load(kwargs['path']))
             model.cuda()
             players.append(MLPPlayer(model, [card_class() for card_class in SANDBOX_CARDS], 2))
@@ -35,6 +35,7 @@ def main(strategies: List[str], must_include: List[str], prosperity: bool, sandb
 
     dominion.new_game()
     dominion.run()
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

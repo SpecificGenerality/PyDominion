@@ -1,6 +1,5 @@
 import random
 from collections import Counter
-from typing import List
 
 import utils
 from actioncard import ActionCard, Chapel
@@ -24,12 +23,12 @@ class PlayerState:
         self._play_area = []
 
         if (game_config.starting_split == StartingSplit.Starting34Split):
-        	self._deck = [Copper() for i in range(3)] + [Estate() for i in range(2)] + [Copper() for i in range(4)] + [Estate()]
+            self._deck = [Copper() for i in range(3)] + [Estate() for i in range(2)] + [Copper() for i in range(4)] + [Estate()]
         elif (game_config.starting_split == StartingSplit.Starting25Split):
-        	self._deck = [Copper() for i in range(5)] + [Estate() for i in range(3)] + [Copper() for i in range(2)]
+            self._deck = [Copper() for i in range(5)] + [Estate() for i in range(3)] + [Copper() for i in range(2)]
         else:
-        	self._deck = [Copper() for i in range(7)] + [Estate() for i in range(3)]
-        	random.shuffle(self._deck)
+            self._deck = [Copper() for i in range(7)] + [Estate() for i in range(3)]
+            random.shuffle(self._deck)
 
     @property
     def actions(self):

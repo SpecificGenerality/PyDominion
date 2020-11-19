@@ -1,10 +1,11 @@
 import logging
 from collections.abc import MutableMapping
 from random import shuffle
-from typing import Dict, List
+from typing import Dict
 
+from card import Card
 from config import GameConfig
-from cursecard import *
+from cursecard import Curse
 from treasurecard import Copper, Gold, Silver
 from victorycard import Colony, Duchy, Estate, Province
 
@@ -26,19 +27,19 @@ class Supply(MutableMapping):
                 supply[Copper] = 46
                 supply[Curse] = 10
                 supply[Estate] = 8
-                supply[Duchy]= 8
+                supply[Duchy] = 8
                 supply[Province] = 8
             elif config.num_players == 3:
                 supply[Copper] = 39
                 supply[Curse] = 20
                 supply[Estate] = 12
-                supply[Duchy]= 12
+                supply[Duchy] = 12
                 supply[Province] = 12
             else:
                 supply[Copper] = 32
                 supply[Curse] = 30
                 supply[Estate] = 12
-                supply[Duchy]= 12
+                supply[Duchy] = 12
                 supply[Province] = 12
             supply[Silver] = 40
             supply[Gold] = 30
@@ -57,13 +58,13 @@ class Supply(MutableMapping):
 
     def is_game_over(self) -> bool:
         if Colony in self._supply and self._supply[Colony] == 0:
-            logging.info(f'Game over. Colonies ran out.')
+            logging.info('Game over. Colonies ran out.')
             return True
         elif self._supply[Province] == 0:
-            logging.info(f'Game over. Provinces ran out.')
+            logging.info('Game over. Provinces ran out.')
             return True
         elif self.empty_stack_count >= 3:
-            logging.info(f'Game over. Three supply piles ran out.')
+            logging.info('Game over. Three supply piles ran out.')
             return True
         return False
 
