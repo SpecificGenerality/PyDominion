@@ -15,13 +15,16 @@ def load(checkpoint: str):
     node = pickle.load(open(checkpoint, 'rb'))
     return node
 
+
 def save(file: str, obj):
     '''Save obj to pickled file'''
-    with open (file, 'wb') as output:
+    with open(file, 'wb') as output:
         pickle.dump(obj, output, 4)
+
 
 def print_path(path: List[Node]):
     print('-->'.join([str(node.card) for node in path]))
+
 
 def path_helper(curr: Node, acc: List[Node], key):
     if curr.n > 0 and curr.children:
@@ -29,15 +32,18 @@ def path_helper(curr: Node, acc: List[Node], key):
         acc.append(child)
         path_helper(child, acc, key=key)
 
+
 def best_path(root: Node) -> List[Node]:
     '''Return the max-valued path from root to leaf'''
     path = [root]
     path_helper(root, path, lambda x: x.v)
     return path
 
+
 def update_mean(n: int, prev_mean: float, x: float):
     '''Incremental update mean'''
     return (n - 1) / n * prev_mean + x / n
+
 
 def update_var(n: int, prev_var: float, prev_mean: float, x: float):
     '''Incremental update variance'''
@@ -45,6 +51,7 @@ def update_var(n: int, prev_var: float, prev_mean: float, x: float):
         return 0
     else:
         return (n - 2) / (n - 1) * prev_var + 1 / n * (x - prev_mean) ** 2
+
 
 def get_branching_factor_stats(root: Node) -> List[int]:
     '''Calculate the mean and variance of tree branching factor'''
@@ -64,6 +71,7 @@ def get_branching_factor_stats(root: Node) -> List[int]:
             k += 1
     return mean, var
 
+
 def get_path(root: Node, leaf: Node):
     '''Get the path from leaf to root'''
     path = []
@@ -78,13 +86,14 @@ def get_path(root: Node, leaf: Node):
     path.reverse()
     return path
 
+
 def get_most_visited_paths_at_depth(root: Node, k: int, p: int):
     '''Return the p most traversed length-k path from game start nodes (not virtual root).'''
     Q = deque(root.children)
     # find the level-k nodes via bfs
-    for i in range(1, k+1):
-        l = len(Q)
-        for j in range(l):
+    for i in range(1, k + 1):
+        level_length = len(Q)
+        for j in range(level_length):
             n = Q.popleft()
             Q = Q + deque(list(filter(lambda x: x and x.n > 0, n.children)))
 
@@ -94,9 +103,11 @@ def get_most_visited_paths_at_depth(root: Node, k: int, p: int):
 
     return paths[:p]
 
+
 def get_buy_sequence(path: List[Node]) -> List[Card]:
     '''Given a path, return the associated list of card buys.'''
     return [n.card for n in path]
+
 
 def plot_card_counts_stacked(decks: List[Counter], limit=None, skip=1, trim=None):
     '''Produce a stacked plot of card counts every skip number of iterations,
@@ -118,6 +129,7 @@ def plot_card_counts_stacked(decks: List[Counter], limit=None, skip=1, trim=None
     plt.xlabel('Iterations')
     plt.ylabel('Card count')
     plt.show()
+
 
 def plot_card_counts(decks: List[Counter], limit=None, skip=1, trim=None):
     '''Produce a line plot of card counts every skip number of iterations,
@@ -145,6 +157,7 @@ def plot_card_counts(decks: List[Counter], limit=None, skip=1, trim=None):
     plt.ylabel('Card count')
     plt.show()
 
+
 def plot_card_counts_scatter(decks: List[Counter], limit=None, skip=1):
     '''Produce a scatter plot of card counts every skip number of iterations,
     including only cards in limit'''
@@ -168,6 +181,7 @@ def plot_card_counts_scatter(decks: List[Counter], limit=None, skip=1):
     plt.xlabel('Iterations')
     plt.ylabel('Card count')
     plt.show()
+
 
 def plot_scores(score: np.array):
     '''Produce a line plot of final score every skip number of iterations'''

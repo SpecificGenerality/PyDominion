@@ -1,5 +1,6 @@
 from card import Card
 
+
 class Curse(Card):
     def get_plus_victory_points(self) -> int:
         return 0

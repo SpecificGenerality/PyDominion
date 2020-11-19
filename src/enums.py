@@ -5,6 +5,7 @@ class GameConstants(IntEnum):
     KingdomSize = 10
     StartingHands = 4
 
+
 # TODO: Use auto() after upgrading pygame and running python3.7
 class Phase(Enum):
     ActionPhase = auto()
@@ -14,6 +15,7 @@ class Phase(Enum):
     # NightPhase = auto()
     CleanupPhase = auto()
 
+
 class Zone(Enum):
     Discard = auto()
     Deck = auto()
@@ -22,6 +24,7 @@ class Zone(Enum):
     Play = auto()
     Island = auto()
 
+
 # TODO: Unify these enums into Zone?
 class GainZone(Enum):
     GainToDiscard = auto()
@@ -29,16 +32,19 @@ class GainZone(Enum):
     GainToDeckTop = auto()
     GainToTrash = auto()
 
+
 class DiscardZone(Enum):
     DiscardFromHand = auto()
     # E.g. Draw k until <condition>, then discard. (library, saboteur)
     DiscardFromSideZone = auto()
     DiscardFromDeck = auto()
 
+
 class StartingSplit(Enum):
     Starting25Split = auto()
     Starting34Split = auto()
     StartingRandomSplit = auto()
+
 
 class DecisionType(Enum):
     DecisionNone = auto()
@@ -46,11 +52,13 @@ class DecisionType(Enum):
     DecisionDiscreteChoice = auto()
     DecisionGameOver = auto()
 
+
 class TriggerState(Enum):
     TriggerNone = auto()
     TriggerProcessed = auto()
     TriggerProcessingRoyalSeal = auto()
     TriggerProcessingWatchtower = auto()
+
 
 class Rollout(Enum):
     Random = auto()

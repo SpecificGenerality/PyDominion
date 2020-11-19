@@ -7,10 +7,10 @@ from enums import GameConstants, StartingSplit
 
 class GameConfig:
     def __init__(self, split: StartingSplit,
-                        prosperity: bool,
-                        num_players:int,
-                        sandbox=False,
-                        must_include: List[Card] = []):
+                 prosperity: bool,
+                 num_players: int,
+                 sandbox=False,
+                 must_include: List[Card] = []):
         self.starting_split = split
         self.prosperity = prosperity
         self.num_players = num_players

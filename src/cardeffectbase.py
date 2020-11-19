@@ -15,7 +15,7 @@ from state import (BureaucratAttack, DecisionResponse, DiscardCard,
                    EventMine, EventSentry, GainCard, PlayActionNTimes,
                    RemodelExpand, State, TrashCard)
 from treasurecard import Copper, Gold, Silver, TreasureCard
-from utils import contains_card, get_first_index, move_card
+from utils import get_first_index, move_card
 from victorycard import Gardens
 
 
@@ -25,6 +25,7 @@ class ArtisanEffect(CardEffect):
 
     def play_action(self, s: State):
         s.events.append(EventArtisan(self.c))
+
 
 class BanditEffect(CardEffect):
     def __init__(self):
@@ -53,6 +54,7 @@ class BanditEffect(CardEffect):
 
         s.events.append(GainCard(GainZone.GainToDiscard, s.player, Gold()))
 
+
 class BureaucratEffect(CardEffect):
     def __init__(self):
         self.c = Bureaucrat()
@@ -70,6 +72,7 @@ class BureaucratEffect(CardEffect):
         c = response.cards[0]
         p_state: PlayerState = s.player_states[s.decision.controlling_player]
         move_card(c, p_state.hand, p_state._deck)
+
 
 class CellarEffect(CardEffect):
     def __init__(self):
@@ -92,11 +95,12 @@ class CellarEffect(CardEffect):
         for card in response.cards:
             s.events.append(DiscardCard(DiscardZone.DiscardFromHand, s.player, card))
 
+
 class ChapelEffect(CardEffect):
     def __init__(self):
         self.c = Chapel()
 
-    def play_action(self, s:State):
+    def play_action(self, s: State):
         if s.player_states[s.player].hand:
             s.decision.select_cards(self.c, 0, 4)
             s.decision.text = "Select up to 4 cards to trash"
@@ -111,11 +115,14 @@ class ChapelEffect(CardEffect):
         for card in response.cards:
             s.events.append(TrashCard(Zone.Hand, s.player, card))
 
+
 class GardensEffect(CardEffect):
     def play_action(self, s):
         return
+
     def victory_points(self, s: State, player: int):
         return s.player_states[player].num_cards // 10
+
 
 class HarbingerEffect(CardEffect):
     def __init__(self):
@@ -137,6 +144,7 @@ class HarbingerEffect(CardEffect):
         p_state: PlayerState = s.player_states[s.player]
         move_card(p_state._discard[response.choice], p_state._discard, p_state._deck)
 
+
 class LibraryEffect(CardEffect):
     def __init__(self):
         self.c = Library()
@@ -147,6 +155,7 @@ class LibraryEffect(CardEffect):
         else:
             logging.info(f'Player {s.player} already has 7 cards in hand')
 
+
 class MilitiaEffect(CardEffect):
     def __init__(self):
         self.c = Militia()
@@ -155,6 +164,7 @@ class MilitiaEffect(CardEffect):
         for player in s.players:
             if player != s.player:
                 s.events.append(DiscardDownToN(self.c, player, 3))
+
 
 class MineEffect(CardEffect):
     def __init__(self):
@@ -172,6 +182,7 @@ class MineEffect(CardEffect):
         else:
             logging.info(f'Player {s.player} has no treasures to trash')
 
+
 class MoneylenderEffect(CardEffect):
     def __init__(self):
         self.c = Moneylender()
@@ -183,6 +194,7 @@ class MoneylenderEffect(CardEffect):
             s.player_states[s.player].coins += 3
         else:
             logging.info(f'Player {s.player} has no coppers to trash')
+
 
 class PoacherEffect(CardEffect):
     def __init__(self):
@@ -204,6 +216,7 @@ class PoacherEffect(CardEffect):
         for card in response.cards:
             s.events.append(DiscardCard(DiscardZone.DiscardFromHand, s.player, card))
 
+
 class RemodelEffect(CardEffect):
     def __init__(self):
         self.c = Remodel()
@@ -216,6 +229,7 @@ class RemodelEffect(CardEffect):
             s.events.append(RemodelExpand(self.c, 2))
         else:
             logging.info(f'Player {s.player} has no cards to trash')
+
 
 class SentryEffect(CardEffect):
     def __init__(self):
@@ -233,12 +247,14 @@ class SentryEffect(CardEffect):
         card_choices = p_state._deck[-n_choices:]
         s.events.append(EventSentry(self.c, card_choices))
 
+
 class ThroneRoomEffect(CardEffect):
     def __init__(self):
         self.c = ThroneRoom()
 
     def play_action(self, s: State):
         s.events.append(PlayActionNTimes(self.c, 2))
+
 
 class VassalEffect(CardEffect):
     def __init__(self):
@@ -269,6 +285,7 @@ class VassalEffect(CardEffect):
             s.play_card(s.player, card, zone=Zone.Deck)
             s.process_action(card)
 
+
 class WitchEffect(CardEffect):
     def __init__(self):
         self.c = Witch()
@@ -277,6 +294,7 @@ class WitchEffect(CardEffect):
         for player in s.players:
             if player != s.player:
                 s.events.append(GainCard(GainZone.GainToDiscard, player, Curse(), False, True))
+
 
 class WorkshopEffect(CardEffect):
     def __init__(self):
@@ -294,6 +312,7 @@ class WorkshopEffect(CardEffect):
     def process_decision(self, s: State, response: DecisionResponse):
         # TODO: record buy in ledger
         s.events.append(GainCard(GainZone.GainToDiscard, s.player, response.cards[0]))
+
 
 # TODO: Implement Sentry, Bandit
 BASE_EFFECT_MAP = {
@@ -316,6 +335,7 @@ BASE_EFFECT_MAP = {
     Witch: WitchEffect,
     Workshop: WorkshopEffect,
 }
+
 
 def get_card_effect(card: Card) -> CardEffect:
     for k, v in BASE_EFFECT_MAP.items():

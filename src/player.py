@@ -11,14 +11,12 @@ import numpy.random
 from buyagenda import BuyAgenda
 from card import Card
 from cursecard import Curse
-from enums import *
+from enums import Phase, DecisionType, GameConstants, Zone
 from heuristics import PlayerHeuristic
 from heuristicsutils import heuristic_select_cards
 from mcts import Node
 from mlp import SandboxMLP
 from playerstate import PlayerState
-from rollout import (HistoryHeuristicRollout, LinearRegressionRollout,
-                     RandomRollout)
 from state import (DecisionResponse, DecisionState, DiscardDownToN,
                    PutOnDeckDownToN, RemodelExpand, State)
 from treasurecard import Copper
@@ -167,7 +165,7 @@ class MCTSPlayer(Player):
         if self.train:
             self.root.n += 1
         # advance MCTS from virtual root to the correct start position (2/3/4/5 coppers)
-        self.node = self.root.children[p_state.get_treasure_card_count(Zone.Hand)-2]
+        self.node = self.root.children[p_state.get_treasure_card_count(Zone.Hand) - 2]
         if self.train:
             self.node.n += 1
 
@@ -208,6 +206,7 @@ class MCTSPlayer(Player):
             self.node = next_node
             response.single_card = next_node.card
             return next_node
+
 
 class HeuristicPlayer(Player):
     def __init__(self, agenda: BuyAgenda):
@@ -253,6 +252,7 @@ class HeuristicPlayer(Player):
             else:
                 self.heuristic.makeBaseDecision(s, response)
 
+
 class RandomPlayer(Player):
     def makeDecision(self, s: State, response: DecisionResponse):
         d: DecisionState = s.decision
@@ -270,10 +270,11 @@ class RandomPlayer(Player):
         elif d.type == DecisionType.DecisionDiscreteChoice:
             response.choice = random.randint(0, d.min_cards)
         else:
-            logging.error(f'Invalid decision type')
+            logging.error('Invalid decision type')
 
     def __str__(self):
-        return f'Random Player'
+        return 'Random Player'
+
 
 class HumanPlayer(Player):
     def makeDecision(self, s: State, response: DecisionResponse):
@@ -294,7 +295,7 @@ class HumanPlayer(Player):
                     d.print_card_choices()
                     text = ''
                     while not text:
-                        text = input(f'Choose another card:\n')
+                        text = input('Choose another card:\n')
                     cardIdx = int(text)
                 responseIdxs.append(cardIdx)
                 response.cards.append(d.card_choices[cardIdx])
@@ -303,7 +304,7 @@ class HumanPlayer(Player):
             while choice == -1 or choice > d.min_cards:
                 text = ''
                 while not text:
-                    text = input(f'Please make a discrete choice from the above cards:\n')
+                    text = input('Please make a discrete choice from the above cards:\n')
                 choice = int(text)
                 d.print_card_choices()
             response.choice = choice
@@ -311,7 +312,7 @@ class HumanPlayer(Player):
             logging.error(f'Player {s.player} given invalid decision type.')
 
     def __str__(self):
-        return f"Human Player"
+        return "Human Player"
 
 
 class PlayerInfo:

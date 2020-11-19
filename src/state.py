@@ -1,19 +1,18 @@
 import logging
-import random
 from abc import ABC, abstractmethod
 from collections import Counter
-from typing import Dict, List
+from typing import List
 
 from actioncard import ActionCard, Merchant, Moat
 from card import Card
 from config import GameConfig
-from cursecard import *
+from cursecard import Curse
 from enums import (DecisionType, DiscardZone, GainZone, Phase, TriggerState,
                    Zone)
 from playerstate import PlayerState
 from supply import Supply
 from treasurecard import Copper, Silver, TreasureCard
-from utils import (contains_card, get_first_index, move_card, remove_card,
+from utils import (move_card, remove_card,
                    remove_first_card)
 from victorycard import VictoryCard
 
@@ -27,6 +26,7 @@ class DecisionResponse:
     def __str__(self) -> str:
         return f'Choices: {self.cards}\nChoice: {self.choice}\nSingle Card: {self.single_card}'
 
+
 class DecisionState:
     def __init__(self):
         self.type = DecisionType.DecisionNone
@@ -39,8 +39,8 @@ class DecisionState:
 
     def is_trivial(self) -> bool:
         return (self.type == DecisionType.DecisionSelectCards \
-            and len(self.card_choices) == 1 and self.min_cards == 1 \
-            and self.max_cards == 1) or (self.type == DecisionType.DecisionDiscreteChoice and self.min_cards == self.max_cards == 1)
+                and len(self.card_choices) == 1 and self.min_cards == 1 \
+                and self.max_cards == 1) or (self.type == DecisionType.DecisionDiscreteChoice and self.min_cards == self.max_cards == 1)
 
     def trivial_response(self) -> DecisionResponse:
         return DecisionResponse([self.card_choices[0]]) if self.type == DecisionType.DecisionSelectCards else DecisionResponse([], 0)
@@ -91,6 +91,7 @@ class DecisionState:
     def print_card_choices(self):
         for i, card in enumerate(self.card_choices):
             logging.info(f'{i}: {card}')
+
 
 class State:
     def __init__(self, config: GameConfig):
@@ -191,6 +192,7 @@ class State:
 
     def process_treasure(self, card: Card):
         p_state: PlayerState = self.player_states[self.player]
+
         def get_merchant_coins() -> int:
             if isinstance(card, Silver) and sum([1 if isinstance(c, Silver) else 0 for c in p_state._play_area]) == 1:
                 return sum([card.copies if isinstance(card, Merchant) else 0 for card in p_state._play_area])
@@ -310,7 +312,7 @@ class State:
     def advance_phase(self):
         p_state: PlayerState = self.player_states[self.player]
         if self.phase == Phase.ActionPhase:
-            logging.info(f'====ACTION PHASE====')
+            logging.info('====ACTION PHASE====')
             if p_state.actions == 0 or p_state.get_action_card_count(Zone.Hand) == 0:
                 self.phase = Phase.TreasurePhase
             else:
@@ -320,7 +322,7 @@ class State:
                     if isinstance(card, ActionCard):
                         self.decision.add_unique_card(card)
         if self.phase == Phase.TreasurePhase:
-            logging.info(f'====TREASURE PHASE====')
+            logging.info('====TREASURE PHASE====')
             if p_state.get_treasure_card_count(Zone.Hand) == 0:
                 self.phase = Phase.BuyPhase
             else:
@@ -331,7 +333,7 @@ class State:
                     if (isinstance(card, TreasureCard)):
                         self.decision.add_unique_card(card)
         if self.phase == Phase.BuyPhase and len(self.events) == 0:
-            logging.info(f'====BUY PHASE====')
+            logging.info('====BUY PHASE====')
             if p_state.buys == 0:
                 self.phase = Phase.CleanupPhase
             else:
@@ -351,7 +353,7 @@ class State:
                     self.phase = Phase.CleanupPhase
                     logging.info(f'Player {self.player} cannot afford to buy any cards')
         if self.phase == Phase.CleanupPhase:
-            logging.debug(f'====CLEANUP PHASE====')
+            logging.debug('====CLEANUP PHASE====')
             self.update_play_area(self.player)
             self.discard_hand(self.player)
             self.draw_hand(self.player)
@@ -400,7 +402,7 @@ class State:
             event_completed = self.events[-1].advance(self)
             if event_completed:
                 self.events.pop()
-                    # skipEventProcessing = True
+                # skipEventProcessing = True
 
             # if not skipEventProcessing:
             #     eventCompleted = last_event.advance(self)
@@ -433,9 +435,11 @@ class State:
         # self.player = random.randint(0, playerCount-1)
         logging.info(f'Player {self.player} starts')
 
-class AttackAnnotations():
+
+class AttackAnnotations:
     def __init__(self):
         self.moat_processed = False
+
 
 class Event(ABC):
     @abstractmethod
@@ -457,11 +461,12 @@ class Event(ABC):
     def destroy_next_event_on_stack(self) -> bool:
         return False
 
-    def process_decision(self, s: State,  response: DecisionResponse):
-        logging.warning(f'Event does not support decisions')
+    def process_decision(self, s: State, response: DecisionResponse):
+        logging.warning('Event does not support decisions')
 
     def __repr__(self):
         return str(self)
+
 
 class DrawCard(Event):
     def __init__(self, player: int) -> None:
@@ -472,7 +477,8 @@ class DrawCard(Event):
         return True
 
     def __str__(self):
-        return f'Draw'
+        return 'Draw'
+
 
 class DiscardCard(Event):
     def __init__(self, zone: DiscardZone, player: int, card: Card) -> None:
@@ -489,11 +495,12 @@ class DiscardCard(Event):
         elif self.zone == DiscardZone.DiscardFromSideZone:
             p_state._discard.append(self.card)
         else:
-            logging.warning(f'Attempted to discard from non-hand zone')
+            logging.warning('Attempted to discard from non-hand zone')
         return True
 
     def __str__(self):
-        return f'DiscardCard'
+        return 'DiscardCard'
+
 
 class GainCard(Event):
     def __init__(self, zone: GainZone, player: int, card: Card, bought=False, is_attack=False):
@@ -554,7 +561,8 @@ class GainCard(Event):
         return True
 
     def __str__(self):
-        return f'Gain'
+        return 'Gain'
+
 
 class ReorderCards(Event):
     def __init__(self, cards: List[Card], player: int):
@@ -568,6 +576,7 @@ class ReorderCards(Event):
             p_state._deck[-_n:] = self._cards
 
         return True
+
 
 class DiscardDownToN(Event):
     def __init__(self, card: Card, player: int, hand_size: int):
@@ -615,6 +624,7 @@ class DiscardDownToN(Event):
     def __str__(self):
         return f'DD{self.hand_size}'
 
+
 class TrashCard(Event):
     def __init__(self, zone: Zone, player: int, card: Card) -> None:
         self.zone = zone
@@ -626,7 +636,8 @@ class TrashCard(Event):
         return True
 
     def __str__(self):
-        return f'Trash'
+        return 'Trash'
+
 
 class RemodelExpand(Event):
     def __init__(self, source: Card, gained_value: int):
@@ -658,7 +669,8 @@ class RemodelExpand(Event):
         return False
 
     def __str__(self):
-        return f'RemodelExpand'
+        return 'RemodelExpand'
+
 
 class EventArtisan(Event):
     def __init__(self, source: Card):
@@ -686,6 +698,7 @@ class EventArtisan(Event):
 
     def __str__(self):
         return 'EventArtisan'
+
 
 class EventMine(Event):
     def __init__(self, source: Card):
@@ -715,7 +728,8 @@ class EventMine(Event):
             self.done = True
 
     def __str__(self):
-        return f'EventMine'
+        return 'EventMine'
+
 
 class EventLibrary(Event):
     def __init__(self, source: Card):
@@ -766,7 +780,8 @@ class EventLibrary(Event):
             logging.info(f'Player {s.player} puts {self.decision_card} into their hand')
 
     def __str__(self):
-        return f'EventLibrary'
+        return 'EventLibrary'
+
 
 class EventSentry(Event):
     def __init__(self, source: Card, choices: List[Card]):
@@ -819,6 +834,7 @@ class EventSentry(Event):
     def __str__(self):
         return 'EventSentry'
 
+
 class BureaucratAttack(Event):
     def __init__(self, source: Card, player: int):
         self.source = source
@@ -842,14 +858,15 @@ class BureaucratAttack(Event):
             for card in p_state.hand:
                 if isinstance(card, VictoryCard):
                     s.decision.add_unique_card(card)
-            s.decision.text = f'Choose a victory card to put on top of your deck'
+            s.decision.text = 'Choose a victory card to put on top of your deck'
         return True
 
     def get_attack_annotations(self):
         return self.annotations
 
     def __str__(self):
-        return f'BureaucratAttack'
+        return 'BureaucratAttack'
+
 
 class MoatReveal(Event):
     def __init__(self, source: Card, player: int):
@@ -884,10 +901,11 @@ class MoatReveal(Event):
         self.done = True
 
     def __str__(self):
-        return f'MoatReveal'
+        return 'MoatReveal'
+
 
 class PutOnDeckDownToN(Event):
-    def __init__(self, source: Card, player: int, handSize: int, is_attack = False):
+    def __init__(self, source: Card, player: int, handSize: int, is_attack=False):
         self.source = source
         self.player = player
         self.handSize = handSize
@@ -933,6 +951,7 @@ class PutOnDeckDownToN(Event):
 
     def __str__(self):
         return f'PD{self.handSize}'
+
 
 class PlayActionNTimes(Event):
     def __init__(self, source: Card, count: int):

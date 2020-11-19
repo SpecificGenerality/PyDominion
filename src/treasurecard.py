@@ -1,5 +1,3 @@
-from abc import ABC
-
 from card import Card
 
 
@@ -19,6 +17,7 @@ class TreasureCard(Card):
     def get_plus_cards(self) -> int:
         return 0
 
+
 class Copper(TreasureCard):
     def get_coin_cost(self) -> int:
         return 0
@@ -31,6 +30,7 @@ class Copper(TreasureCard):
 
     def __str__(self):
         return "Copper"
+
 
 class Silver(TreasureCard):
     def get_coin_cost(self) -> int:
@@ -45,6 +45,7 @@ class Silver(TreasureCard):
     def __str__(self):
         return "Silver"
 
+
 class Gold(TreasureCard):
     def get_coin_cost(self) -> int:
         return 6
@@ -57,6 +58,7 @@ class Gold(TreasureCard):
 
     def __str__(self):
         return "Gold"
+
 
 class Platinum(TreasureCard):
     def get_coin_cost(self) -> int:

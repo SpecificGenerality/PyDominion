@@ -1,5 +1,4 @@
 from actioncard import *
-from card import Card
 from cursecard import Curse
 from treasurecard import Copper, Gold, Silver
 from victorycard import Duchy, Estate, Gardens, Province

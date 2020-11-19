@@ -26,7 +26,7 @@ def main(strategies: List[str], must_include: List[str], prosperity: bool, sandb
         elif strategy == 'BM':
             players.append(HeuristicPlayer(BigMoneyBuyAgenda()))
         elif strategy == 'MLP':
-            model = SandboxMLP(14,7,1)
+            model = SandboxMLP(14, 7, 1)
             model.load_state_dict(torch.load(kwargs['path']))
             model.cuda()
             players.append(MLPPlayer(model, [card_class() for card_class in SANDBOX_CARDS], 2))

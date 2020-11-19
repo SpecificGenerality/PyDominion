@@ -1,9 +1,7 @@
 import logging
 import os
-import pickle
 from argparse import ArgumentParser
 
-import numpy as np
 from tqdm import tqdm
 
 from aiconfig import data_dir, model_dir
@@ -12,17 +10,16 @@ from config import GameConfig
 from cursecard import Curse
 from enums import DecisionType, Phase, Rollout, StartingSplit
 from game import Game
-from mcts import Node
 from mctsdata import MCTSData
 from player import MCTSPlayer
 from rollout import (HistoryHeuristicRollout, LinearRegressionRollout,
                      RandomRollout)
-from state import DecisionResponse, DecisionState, State
+from state import DecisionResponse, DecisionState
 from supply import Supply
+
 
 # define first k turns, and then plot the expected value
 # of the random rollout
-
 class MCTS:
     def __init__(self, T: int, n: int, tau: float, rollout: Rollout, eps: float):
         # initialize game config
@@ -45,7 +42,7 @@ class MCTS:
             self.rollout_cards = []
             self.rollout = HistoryHeuristicRollout(tau=tau, train=True)
         elif rollout == Rollout.LinearRegression:
-            self.rollout= LinearRegressionRollout(self.iters, self.supply, tau=tau, train=True, eps=eps)
+            self.rollout = LinearRegressionRollout(self.iters, self.supply, tau=tau, train=True, eps=eps)
         self.player = MCTSPlayer(rollout=self.rollout, train=True)
 
     def run(self):
@@ -81,7 +78,6 @@ class MCTS:
             s.process_decision(response)
             s.advance_next_decision()
 
-
         score = self.game.get_player_scores()[0]
         # update data
         self.data.update_split_scores(score - tree_score, True, self.iter)
@@ -91,7 +87,7 @@ class MCTS:
         self.player.node.v += delta
         self.player.node = self.player.node.parent
         while self.player.node != self.player.root:
-            self.player.node.update_v(lambda x: sum(x)/ len(x))
+            self.player.node.update_v(lambda x: sum(x) / len(x))
             self.player.node = self.player.node.parent
 
         # update history heuristic
@@ -99,7 +95,7 @@ class MCTS:
             self.rollout.update(cards=self.rollout_cards, score=score)
         elif self.rollout_model == Rollout.LinearRegression:
             counts = self.game.state.player_states[0].get_card_counts()
-            self.rollout.update(counts=counts,score=score, i=self.iter)
+            self.rollout.update(counts=counts, score=score, i=self.iter)
 
         return self.game.get_player_scores()[0]
 
@@ -115,8 +111,8 @@ class MCTS:
         self.player.reset(self.game.state.player_states[0])
 
     def train(self, n: int, output_iters: int,
-        save_model=False, model_dir=model_dir, model_name='mcts',
-        save_data=False, data_dir=data_dir, data_name='data'):
+              save_model=False, model_dir=model_dir, model_name='mcts',
+              save_data=False, data_dir=data_dir, data_name='data'):
 
         avg = 0
         for i in tqdm(range(n)):
@@ -125,7 +121,7 @@ class MCTS:
             self.run()
             self.data.update(self.game, self.player, i)
 
-            avg = sum(self.data.scores) / (i+1)
+            avg = sum(self.data.scores) / (i + 1)
 
             if i > 0 and i % output_iters == 0:
                 print(f'Last {output_iters} avg: {sum(self.data.scores[i-output_iters:i]) / output_iters}')
@@ -165,5 +161,5 @@ if __name__ == '__main__':
 
     mcts = MCTS(args.T, args.n, args.tau, rollout, eps=args.eps)
     mcts.train(args.n, args.l,
-        save_model=args.save_model, model_dir=model_dir, model_name=args.model_name,
-        save_data=args.save_data, data_dir=data_dir, data_name=args.data_name)
+               save_model=args.save_model, model_dir=model_dir, model_name=args.model_name,
+               save_data=args.save_data, data_dir=data_dir, data_name=args.data_name)

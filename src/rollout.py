@@ -21,6 +21,7 @@ class RolloutModel(ABC):
     def augment_data(self, data: dict):
         pass
 
+
 class RandomRollout(RolloutModel):
     def update(self, **data):
         '''Nothing to update'''
@@ -35,6 +36,7 @@ class RandomRollout(RolloutModel):
 
     def __str__(self):
         return 'RandomRollout'
+
 
 class HistoryHeuristicRollout(RolloutModel):
     def __init__(self, tau=0.5, train=False):
@@ -51,7 +53,7 @@ class HistoryHeuristicRollout(RolloutModel):
             if str(c) in self.mast:
                 n = self.mast[str(c)][1]
                 x_bar = self.mast[str(c)][0]
-                self.mast[str(c)] = (x_bar / (n+1) * n + score / (n+1), n+1)
+                self.mast[str(c)] = (x_bar / (n + 1) * n + score / (n + 1), n + 1)
             else:
                 self.mast[str(c)] = (score, 1)
 
@@ -70,6 +72,7 @@ class HistoryHeuristicRollout(RolloutModel):
 
     def __str__(self):
         return 'HistoryHeuristicRollout'
+
 
 class LinearRegressionRollout(RolloutModel):
     def __init__(self, iters: int, G: Supply, tau=0.5, train=False, eps=10e-10):
@@ -109,7 +112,7 @@ class LinearRegressionRollout(RolloutModel):
             logging.warning("Not updating betas, obviously rank-deficient system.")
             return
 
-        reg = LinearRegression().fit(self.X[:i+1], self.y[:i+1])
+        reg = LinearRegression().fit(self.X[:i + 1], self.y[:i + 1])
 
         beta_norm = np.linalg.norm(self.betas)
         if (not np.isclose(beta_norm, 0)) and abs(np.linalg.norm(reg.coef_) - beta_norm) / beta_norm < self.eps:
