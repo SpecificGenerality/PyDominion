@@ -4,6 +4,7 @@ from enum import Enum, IntEnum, auto
 class GameConstants(IntEnum):
     KingdomSize = 10
     StartingHands = 4
+    BaseSupplySize = 7
 
 
 # TODO: Use auto() after upgrading pygame and running python3.7

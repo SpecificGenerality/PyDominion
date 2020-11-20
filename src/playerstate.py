@@ -5,7 +5,7 @@ import utils
 from actioncard import ActionCard, Chapel
 from card import Card
 from config import GameConfig
-from enums import StartingSplit, Zone
+from enums import DiscardZone, GainZone, StartingSplit, Zone
 from treasurecard import Copper, TreasureCard
 from victorycard import Estate, VictoryCard
 
@@ -78,10 +78,70 @@ class PlayerState:
     def zone_size(self, zone: Zone):
         return len(self._get_zone_cards(zone))
 
+    def draw_card(self) -> Card:
+        card = self._deck.pop()
+        self.hand.append(card)
+        return card
+
+    def discard_hand(self) -> None:
+        self._discard += self.hand
+        self.hand = []
+
+    def discard_card(self, card: Card, zone: DiscardZone) -> None:
+        if self.zone == DiscardZone.DiscardFromHand:
+            src = self.hand
+        elif self.zone == DiscardZone.DiscardFromDeck:
+            src = self._deck
+        elif self.zone == DiscardZone.DiscardFromSideZone:
+            src = self._island
+        else:
+            raise ValueError(f'Cannot discard from {zone}.')
+        utils.move_card(card, src, self._discard)
+
+    def gain_card(self, card: Card, zone: GainZone) -> None:
+        if zone == GainZone.GainToHand:
+            self.hand.append(self.card)
+        elif zone == GainZone.GainToDiscard:
+            self._discard.append(self.card)
+        elif zone == GainZone.GainToDeckTop:
+            self._deck.append(self.card)
+        else:
+            raise ValueError(f'Cannot gain to {zone}.')
+
+    def move_card(self, card: Card, src_zone: Zone, dest_zone: Zone):
+        src = self._get_zone_cards(src_zone)
+        dest = self._get_zone_cards(dest_zone)
+        utils.move_card(card, src, dest)
+
+    def play_card(self, card: Card, zone: Zone) -> None:
+        src = self._get_zone_cards(zone)
+        utils.move_card(card, src, self._play_area)
+
+    def update_play_area(self) -> None:
+        new_play_area = []
+        for card in self._play_area:
+            if card.turns_left > 1:
+                utils.move_card(card, self._play_area, new_play_area)
+        self._discard += self._play_area
+        self._play_area = new_play_area
+
     def shuffle(self) -> None:
         random.shuffle(self._discard)
         self._deck = self._deck + self._discard
         self._discard = []
+
+    def trash_card(self, card: Card, zone: Zone) -> None:
+        cards = self._get_zone_cards(zone)
+
+        if not cards:
+            return None
+
+        trashed_card = utils.remove_card(card, cards)
+
+        if not trashed_card:
+            raise ValueError(f'Failed to trash {card} from {zone}: card does not exist.')
+
+        return trashed_card
 
     def is_degenerate(self) -> None:
         return self.num_cards == 1 and self.has_card(Chapel)
@@ -114,10 +174,6 @@ class PlayerState:
             return self._play_area
         else:
             raise ValueError(f'Playerstate does not have list corresponding to zone: {zone}.')
-
-    def play_card(self, card: Card, zone: Zone) -> None:
-        src = self._get_zone_cards(zone)
-        utils.move_card(card, src, self._play_area)
 
     def get_action_card_count(self, zone: Zone) -> int:
         cards = self._get_zone_cards(zone)

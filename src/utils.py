@@ -30,9 +30,12 @@ def remove_first_card(card: Card, cards: List[Card]):
 
 
 def remove_card(card: Card, cards: List) -> Card:
-    for i, c in enumerate(cards):
+    # Enumerate in reverse order because it will be O(1)
+    n = len(cards)
+    for i in range(n):
+        c = cards[n - i - 1]
         if c == card:
-            return cards.pop(i)
+            return cards.pop(n - i - 1)
     return None
 
 

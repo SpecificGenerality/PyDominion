@@ -70,8 +70,7 @@ class BureaucratEffect(CardEffect):
 
     def process_decision(self, s: State, response: DecisionResponse):
         c = response.cards[0]
-        p_state: PlayerState = s.player_states[s.decision.controlling_player]
-        move_card(c, p_state.hand, p_state._deck)
+        s.move_card(s.decision.controlling_player, c, Zone.Hand, Zone.Deck)
 
 
 class CellarEffect(CardEffect):
@@ -142,7 +141,8 @@ class HarbingerEffect(CardEffect):
 
     def process_decision(self, s: State, response: DecisionResponse):
         p_state: PlayerState = s.player_states[s.player]
-        move_card(p_state._discard[response.choice], p_state._discard, p_state._deck)
+        card = p_state._discard[response.choice]
+        s.move_card(s.player, card, Zone.Discard, Zone.Deck)
 
 
 class LibraryEffect(CardEffect):
