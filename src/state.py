@@ -477,8 +477,6 @@ class State:
                 self.decision.type = DecisionType.DecisionGameOver
                 return
 
-            print(self.feature.idxs)
-            print(self.feature.feature)
             self.player = (self.player + 1) % len(self.player_states)
             self.phase = Phase.ActionPhase
             p_state: PlayerState = self.player_states[self.player]
