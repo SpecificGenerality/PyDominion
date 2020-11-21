@@ -93,12 +93,11 @@ class DecisionState:
 
 
 class StateFeature:
-    def __init__(self, config: GameConfig, supply: Supply, player_states: List[PlayerState], device='cuda'):
+    def __init__(self, config: GameConfig, supply: Supply, player_states: List[PlayerState]):
         self.num_cards = len(supply)
         self.num_players = config.num_players
         # Hand/play, deck, discard
         self.num_zones = 3
-        self.device = device
         self.idxs = dict([(str(k()), i) for i, k in enumerate(supply.keys())])
 
         # Offsets within player subfeature
@@ -107,7 +106,7 @@ class StateFeature:
         self.discard_offset = 2
 
         # +1 for supply
-        self.feature = torch.zeros((self.num_players * self.num_zones + 1) * self.num_cards, device=self.device)
+        self.feature = torch.zeros((self.num_players * self.num_zones + 1) * self.num_cards, device='cuda')
 
         # Fill supply card counts
         for k, v in supply.items():
@@ -124,7 +123,7 @@ class StateFeature:
     def get_player_idx(self, player: int) -> int:
         return self.num_cards + player * self.num_zones * self.num_cards
 
-    def get_zone_idx(self, player: int, zone: Union[Zone, DiscardZone, GainZone]):
+    def get_zone_idx(self, player: int, zone: Union[Zone, DiscardZone, GainZone]) -> int:
         p_offset = self.get_player_idx(player)
 
         if zone == Zone.Deck or zone == DiscardZone.DiscardFromDeck or zone == GainZone.GainToDeckTop:
@@ -137,6 +136,13 @@ class StateFeature:
             raise ValueError(f'{zone} not supported.')
 
         return p_offset + z_offset_idx * self.num_cards
+
+    def get_card_offset(self, card: Card) -> int:
+        return self.idxs[str(card)]
+
+    # TODO: Account for imperfect information
+    def get_player_feature(self, player: int) -> torch.tensor:
+        return self.feature
 
     def _dec_inc(self, src: int, tgt: int) -> None:
         self.feature[src] = self.feature[src] - 1
@@ -199,9 +205,12 @@ class StateFeature:
 
         self.feature[src_idx] = self.feature[src_idx] - 1
 
+    def __len__(self) -> int:
+        return self.feature.__len__()
+
 
 class State:
-    def __init__(self, config: GameConfig, device='cpu'):
+    def __init__(self, config: GameConfig):
         self.players = [i for i in range(config.num_players)]
         self.player_states = [PlayerState(config) for i in range(config.num_players)]
         self.phase = Phase.ActionPhase
@@ -210,7 +219,7 @@ class State:
         self.supply = Supply(config)
         self.trash = []
         self.events = []
-        self.feature = StateFeature(config, self.supply, self.player_states, device)
+        self.feature = StateFeature(config, self.supply, self.player_states)
 
     def draw_card(self, player: int) -> None:
         p_state: PlayerState = self.player_states[player]

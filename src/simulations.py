@@ -13,7 +13,6 @@ from aiconfig import data_dir, model_dir
 from aiutils import load, save
 from buyagenda import BigMoneyBuyAgenda, TDBigMoneyBuyAgenda
 from config import GameConfig
-from constants import SANDBOX_CARDS
 from enums import Rollout, StartingSplit
 from game import Game
 from mlp import SandboxMLP
@@ -52,6 +51,7 @@ def test_C(trials=10, iters=500):
 def init_players(args: ArgumentParser, **kwargs):
     players = []
     j = 0
+    config = kwargs['config']
     for i in range(args.players):
         if args.strategy[i] == 'R':
             players.append(RandomPlayer())
@@ -69,10 +69,10 @@ def init_players(args: ArgumentParser, **kwargs):
         elif args.strategy[i] == 'TDBM':
             players.append(HeuristicPlayer(TDBigMoneyBuyAgenda()))
         elif args.strategy[i] == 'MLP':
-            model = SandboxMLP(14, 7, 1)
+            model = SandboxMLP(config.feature_size, (config.feature_size + 1) // 2, 1)
             model.load_state_dict(torch.load(args.path))
             model.cuda()
-            players.append(MLPPlayer(model, [card_class() for card_class in SANDBOX_CARDS], 2, train=False))
+            players.append(MLPPlayer(model, train=False))
 
     return players
 
@@ -82,7 +82,7 @@ def simulate(args: ArgumentParser, split: StartingSplit, n: int, save_data=False
     sim_data = SimulationData()
     config = GameConfig(split, prosperity=args.prosperity, num_players=args.players, sandbox=args.sandbox)
     supply = Supply(config)
-    players = init_players(args, supply=supply)
+    players = init_players(args, config=config, supply=supply)
 
     for i in tqdm(range(n)):
         dominion = Game(config, players)
@@ -127,7 +127,7 @@ if __name__ == '__main__':
     parser.add_argument('--split', default=0, type=int, help='Starting Copper/Estate split. 0: Random, 1: 25Split, 2: 34Split')
     parser.add_argument('--prosperity', action='store_true', help='Whether the Prosperity settings should be used')
     parser.add_argument('--players', default=2, type=int, help='Number of AI players')
-    parser.add_argument('--strategy', nargs='+', type=str, help='Strategy of AI opponent. Supported: [R, BM, TDBM, UCT]')
+    parser.add_argument('--strategy', nargs='+', type=str, choices=['R', 'BM', 'TDBM', 'UCT', 'MLP'], help='Strategy of AI opponent.')
     parser.add_argument('--model_dir', default=model_dir, help='Where the models are located')
     parser.add_argument('--roots', nargs='+', help='Roots of UCT')
     parser.add_argument('--rollouts', nargs='+', help='Rollout models of UCT')

@@ -3,7 +3,7 @@ import torch.nn as nn
 
 
 class SandboxMLP(nn.Module):
-    def __init__(self, D_in: int, H: int, D_out: int, lr=1e-3, gamma=1, lambd=0.7):
+    def __init__(self, D_in: int, H: int, D_out: int, lr=1e-3, gamma=1, lambd=0.7, device='cuda'):
         super(SandboxMLP, self).__init__()
         self.D_in = D_in
         self.D_out = D_out
@@ -16,6 +16,8 @@ class SandboxMLP(nn.Module):
         self.gamma = gamma
         self.lambd = lambd
 
+        self.device = device
+
     def forward(self, x):
         x = self.fc1(x)
         x = self.sigmoid(x)
@@ -23,15 +25,15 @@ class SandboxMLP(nn.Module):
         x = self.sigmoid(x)
         return x
 
-    def init_eligibility_traces(self, device='cuda'):
-        self.eligibility_traces = [torch.zeros(weights.shape, requires_grad=False, device=device) for weights in list(self.parameters())]
+    def init_eligibility_traces(self):
+        self.eligibility_traces = [torch.zeros(weights.shape, requires_grad=False, device=self.device) for weights in list(self.parameters())]
 
     def update_weights(self, p: torch.tensor, p_next: torch.tensor):
         delta = p_next - p
 
         self.zero_grad()
 
-        p.backward(torch.ones(self.D_out).cuda(), retain_graph=True)
+        p.backward(torch.ones(self.D_out, device=self.device), retain_graph=True)
 
         for i, param in enumerate(self.parameters()):
             self.eligibility_traces[i] = self.gamma * self.lambd * self.eligibility_traces[i] + param.grad.data

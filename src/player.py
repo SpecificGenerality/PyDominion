@@ -1,17 +1,16 @@
 import logging
 import random
 from abc import ABC, abstractmethod
-from collections import Counter
 from typing import List
 
 import numpy as np
-import torch
 import numpy.random
+import torch
 
 from buyagenda import BuyAgenda
 from card import Card
 from cursecard import Curse
-from enums import Phase, DecisionType, GameConstants, Zone
+from enums import DecisionType, GameConstants, Phase, Zone
 from heuristics import PlayerHeuristic
 from heuristicsutils import heuristic_select_cards
 from mcts import Node
@@ -19,7 +18,6 @@ from mlp import SandboxMLP
 from playerstate import PlayerState
 from state import (DecisionResponse, DecisionState, DiscardDownToN,
                    PutOnDeckDownToN, RemodelExpand, State)
-from treasurecard import Copper
 from utils import remove_first_card
 from victorycard import Estate, VictoryCard
 
@@ -34,40 +32,15 @@ class Player(ABC):
 
 
 class MLPPlayer(Player):
-    def __init__(self, mlp: SandboxMLP, cards: List[Card], n_players: int, train: bool = True, tau=0.5):
+    def __init__(self, mlp: SandboxMLP, train: bool = True, tau=0.5):
         self.mlp = mlp
-        self.n_players = n_players
-        self.num_cards = len(cards)
-        self.idxs = dict([(str(x), i) for i, x in enumerate(cards)])
-        self.counts = dict((i, Counter({str(Copper()): 7, str(Estate()): 3})) for i in range(self.n_players))
         self.train = train
         self.tau = tau
-        self.eps = 5e-2
-        self.state_feature = torch.zeros(self.mlp.D_in).cuda()
+        self.iters = 0
+        self.min_eps = 0.1
 
-        # initialize feature vector
-        for k, v in self.counts[0].items():
-            idx = self.idxs[k]
-            self.state_feature[idx] = v
-            self.state_feature[idx + self.num_cards] = v
-
-    def update_counts(self, card: Card, player: int):
-        if not card:
-            return
-        offset = 0 if player == 0 else self.num_cards
-        idx = self.idxs[str(card)]
-        self.counts[player][idx] += 1
-        self.state_feature[idx + offset] = self.state_feature[idx + offset] + 1
-
-    def reset(self):
-        self.counts = dict((i, Counter({str(Copper()): 7, str(Estate()): 3})) for i in range(self.n_players))
-        self.state_feature = torch.zeros(self.mlp.D_in).cuda()
-
-        # initialize feature vector
-        for k, v in self.counts[0].items():
-            idx = self.idxs[k]
-            self.state_feature[idx] = v
-            self.state_feature[idx + self.num_cards] = v
+    def eps(self):
+        return max(1 / (self.iters + 1), self.min_eps)
 
     def get_expected_hand(self, deck: List[Card], HAND_SIZE=5) -> np.array:
         expected_hand = np.zeros(len(self.idxs))
@@ -76,47 +49,27 @@ class MLPPlayer(Player):
         expected_hand = expected_hand / sum(expected_hand) * HAND_SIZE
         return expected_hand
 
-    def featurize(self, s: State, lookahead=False, lookahead_card: Card = None, dtype=torch.cuda.FloatTensor) -> torch.Tensor:
-        """
-            Given the current game state s and possible lookahead card, return a Tensor x representing the feature vector
-            with the following structure:
-                x[0:7] - Current player card ratios (or counts)
-                x[7] - Current player # turns
-                x[8] - Current player # VP
-                x[9:16] - Current player hand counts (expectation if lookahead)
-                x[16:23] - Opponent player card ratios
-                x[23] - Opponent player # turns
-                x[24] - Opponent player # VP
+    def reset(self):
+        return
 
-                x[0:7] - Current player card counts
-                x[7:14] - Current player hand counts (expectation if lookahead)
-                x[14:21] - Opponent player card counts
-        """
+    def featurize(self, s: State, lookahead=False, lookahead_card: Card = None) -> torch.Tensor:
         p: int = s.player
-        q: int = 1 if s.player == 0 else 0
-        offset = 0 if p == 0 else self.num_cards
 
-        if self.train:
-            if not lookahead or not lookahead_card:
-                return self.state_feature
+        if not lookahead or not lookahead_card:
+            return s.feature.feature
 
-        p_features = self.state_feature.detach().clone()
+        p_features = s.feature.feature.detach().clone()
 
-        if not self.train:
-            opponent_counts = s.player_states[q].get_card_counts()
-            for k, v in opponent_counts.items():
-                p_features[self.idxs[k] + offset] = v
+        zone_base_idx = s.feature.get_zone_idx(p, Zone.Discard)
+        card_offset = s.feature.get_card_offset(lookahead_card)
 
-            if not lookahead or not lookahead_card:
-                return p_features
+        p_features[zone_base_idx + card_offset] = p_features[zone_base_idx + card_offset] + 1
 
-        p_features[self.idxs[str(lookahead_card)] + offset] = p_features[self.idxs[str(lookahead_card)]] + 1
-
-        return p_features.type(dtype)
+        return p_features
 
     def select(self, player: int, choices: List[Card], vals: List[float]):
         '''Epsilon-greedy action selection'''
-        if np.random.rand() < self.eps:
+        if np.random.rand() < self.eps():
             return np.random.choice(choices)
 
         if player == 0:
@@ -140,7 +93,6 @@ class MLPPlayer(Player):
                 vals.append(self.mlp(x).item())
 
             choice = self.select(p, choices, vals)
-            self.update_counts(choice, p)
             response.single_card = choice
 
 

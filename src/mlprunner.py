@@ -5,7 +5,6 @@ from tqdm import tqdm
 
 from aiconfig import model_dir
 from config import GameConfig
-from constants import SANDBOX_CARDS
 from enums import DecisionType, Phase, StartingSplit
 from game import Game
 from mlp import SandboxMLP
@@ -15,29 +14,28 @@ from torch.utils.tensorboard import SummaryWriter
 
 
 class MLP:
-    def __init__(self, n: int, dtype, **kwargs):
+    def __init__(self, n: int, **kwargs):
+        # Configure game
+        self.config = GameConfig(split=StartingSplit.StartingRandomSplit, prosperity=False, num_players=2, sandbox=True)
+
         # Define network parameters
-        self.D_in, self.D_out = 2 * (len(SANDBOX_CARDS)), 1
-        # self.H = (self.D_in + self.D_out) // 2
-        self.H = 30
+        self.D_in, self.D_out = self.config.feature_size, 1
+        self.H = (self.D_in + self.D_out) // 2
 
         # Initialize network
         self.model = SandboxMLP(self.D_in, self.H, self.D_out, **kwargs)
         self.model.cuda()
         torch.nn.init.xavier_uniform_(self.model.fc1.weight)
-        self.model.init_eligibility_traces(device='cuda')
+        self.model.init_eligibility_traces()
         self.criterion = torch.nn.MSELoss()
 
-        # Configure game
-        self.config = GameConfig(split=StartingSplit.StartingRandomSplit, prosperity=False, num_players=2, sandbox=True)
-        self.cards = [card_class() for card_class in SANDBOX_CARDS]
-        player = MLPPlayer(self.model, self.cards, 2)
+        # Initialize players
+        player = MLPPlayer(self.model)
         self.players = [player, player]
 
         # Initalize game
         self.game = Game(self.config, self.players)
         self.n = n
-        self.dtype = dtype
 
         self.writer = SummaryWriter()
 
@@ -88,6 +86,7 @@ class MLP:
             self.model.update_weights(y, tgt)
             loss = self.criterion(y, tgt)
             self.writer.add_scalar("Loss/train", loss, i)
+            p.iters += 1
 
 
 if __name__ == '__main__':
@@ -95,15 +94,14 @@ if __name__ == '__main__':
     parser.add_argument('-n', default=1000, type=int, help='Number of training iterations')
     parser.add_argument('--lr', default=1e-5, type=float, help='Learning rate')
     parser.add_argument('--lambd', default=0.5, type=float, help='Lambda parameter for TD-learning')
-    parser.add_argument('--momentum', type=float, default=0.01)
-    parser.add_argument('--cuda', action='store_true', help='Whether or not to use GPU')
+    parser.add_argument('--cuda', action='store_true', help='Whether or not to use the GPU')
     parser.add_argument('--save', action='store_true', help='Whether or not to save the model.')
     parser.add_argument('--path', type=str, help='Where to save the model', default=model_dir)
 
     args = parser.parse_args()
 
-    dtype = torch.cuda.FloatTensor if args.cuda else torch.FloatTensor
-    mlp = MLP(args.n, dtype, lr=args.lr, lambd=args.lambd)
+    device = 'cuda' if args.cuda else 'cpu'
+    mlp = MLP(args.n, device=device, lr=args.lr, lambd=args.lambd)
     mlp.train()
     mlp.writer.flush()
 

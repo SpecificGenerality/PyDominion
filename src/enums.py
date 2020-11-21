@@ -1,8 +1,12 @@
 from enum import Enum, IntEnum, auto
 
 
+class AIConstants(IntEnum):
+    NumZones = 3
+
+
 class GameConstants(IntEnum):
-    KingdomSize = 10
+    BaseKingdomSize = 10
     StartingHands = 4
     BaseSupplySize = 7
 
