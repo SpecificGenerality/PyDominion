@@ -93,12 +93,12 @@ class DecisionState:
 
 
 class StateFeature:
-    def __init__(self, config: GameConfig, supply: Supply, player_states: List[PlayerState], cuda=True):
+    def __init__(self, config: GameConfig, supply: Supply, player_states: List[PlayerState], device='cuda'):
         self.num_cards = len(supply)
         self.num_players = config.num_players
         # Hand/play, deck, discard
         self.num_zones = 3
-        self.device = 'cuda' if cuda else 'cpu'
+        self.device = device
         self.idxs = dict([(str(k()), i) for i, k in enumerate(supply.keys())])
 
         # Offsets within player subfeature
@@ -169,6 +169,7 @@ class StateFeature:
         card_idx = self.idxs[str(card)]
 
         self.feature[src_offset + card_idx] = self.feature[src_offset + card_idx] + 1
+        self.feature[card_idx] = self.feature[card_idx] - 1
 
     def move_card(self, player: int, card: Card, src_zone: Union[Zone, GainZone, DiscardZone], dest_zone: Union[Zone, GainZone, DiscardZone]):
         src_base_idx = self.get_zone_idx(player, src_zone)
@@ -200,7 +201,7 @@ class StateFeature:
 
 
 class State:
-    def __init__(self, config: GameConfig, cuda=True):
+    def __init__(self, config: GameConfig, device='cpu'):
         self.players = [i for i in range(config.num_players)]
         self.player_states = [PlayerState(config) for i in range(config.num_players)]
         self.phase = Phase.ActionPhase
@@ -209,7 +210,7 @@ class State:
         self.supply = Supply(config)
         self.trash = []
         self.events = []
-        self.feature = StateFeature(config, self.supply, self.player_states, cuda)
+        self.feature = StateFeature(config, self.supply, self.player_states, device)
 
     def draw_card(self, player: int) -> None:
         p_state: PlayerState = self.player_states[player]
@@ -236,7 +237,7 @@ class State:
     def discard_hand(self, player: int):
         p_state: PlayerState = self.player_states[player]
         p_state.discard_hand()
-        self.feature.discard_hand()
+        self.feature.discard_hand(player)
         logging.info(f'Player {player} discards their hand')
 
     def gain_card(self, player: int, card: Card, zone: GainZone, bought: bool):
@@ -285,7 +286,7 @@ class State:
     def update_play_area(self, player: int):
         p_state: PlayerState = self.player_states[player]
         p_state.update_play_area()
-        self.feature.update_play_area()
+        self.feature.update_play_area(player)
 
     def play_card(self, player: int, card: Card, zone: Zone = Zone.Hand) -> None:
         p_state: PlayerState = self.player_states[player]
@@ -476,6 +477,8 @@ class State:
                 self.decision.type = DecisionType.DecisionGameOver
                 return
 
+            print(self.feature.idxs)
+            print(self.feature.feature)
             self.player = (self.player + 1) % len(self.player_states)
             self.phase = Phase.ActionPhase
             p_state: PlayerState = self.player_states[self.player]
