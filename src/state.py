@@ -39,9 +39,7 @@ class DecisionState:
         self.controlling_player = None
 
     def is_trivial(self) -> bool:
-        return (self.type == DecisionType.DecisionSelectCards \
-                and len(self.card_choices) == 1 and self.min_cards == 1 \
-                and self.max_cards == 1) or (self.type == DecisionType.DecisionDiscreteChoice and self.min_cards == self.max_cards == 1)
+        return (self.type == DecisionType.DecisionSelectCards and len(self.card_choices) == 1 and self.min_cards == 1 and self.max_cards == 1) or (self.type == DecisionType.DecisionDiscreteChoice and self.min_cards == self.max_cards == 1)
 
     def trivial_response(self) -> DecisionResponse:
         return DecisionResponse([self.card_choices[0]]) if self.type == DecisionType.DecisionSelectCards else DecisionResponse([], 0)
@@ -101,7 +99,7 @@ class StateFeature:
         # Hand/play, deck, discard
         self.num_zones = 3
         self.device = 'cuda' if cuda else 'cpu'
-        self.idxs = dict([(str(k()), i) for k, i in enumerate(supply.keys())])
+        self.idxs = dict([(str(k()), i) for i, k in enumerate(supply.keys())])
 
         # Offsets within player subfeature
         self.deck_offset = 0
@@ -119,7 +117,7 @@ class StateFeature:
         # Fill player card counts
         for i, p_state in enumerate(player_states):
             offset = self.num_cards + i * self.num_zones * self.num_cards + self.deck_offset * self.num_cards
-            for card, count in p_state.get_card_counts():
+            for card, count in p_state.get_card_counts().items():
                 idx = self.idxs[str(card)]
                 self.feature[idx + offset] = count
 

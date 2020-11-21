@@ -88,11 +88,11 @@ class PlayerState:
         self.hand = []
 
     def discard_card(self, card: Card, zone: DiscardZone) -> None:
-        if self.zone == DiscardZone.DiscardFromHand:
+        if zone == DiscardZone.DiscardFromHand:
             src = self.hand
-        elif self.zone == DiscardZone.DiscardFromDeck:
+        elif zone == DiscardZone.DiscardFromDeck:
             src = self._deck
-        elif self.zone == DiscardZone.DiscardFromSideZone:
+        elif zone == DiscardZone.DiscardFromSideZone:
             src = self._island
         else:
             raise ValueError(f'Cannot discard from {zone}.')
@@ -100,11 +100,11 @@ class PlayerState:
 
     def gain_card(self, card: Card, zone: GainZone) -> None:
         if zone == GainZone.GainToHand:
-            self.hand.append(self.card)
+            self.hand.append(card)
         elif zone == GainZone.GainToDiscard:
-            self._discard.append(self.card)
+            self._discard.append(card)
         elif zone == GainZone.GainToDeckTop:
-            self._deck.append(self.card)
+            self._deck.append(card)
         else:
             raise ValueError(f'Cannot gain to {zone}.')
 

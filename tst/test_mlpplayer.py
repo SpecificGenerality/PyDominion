@@ -19,26 +19,6 @@ class TestMLPPlayer(unittest.TestCase):
         self.players = [self.mlp_player, Mock()]
         self.game = Game(self.config, self.players)
 
-    def test_featurize(self) -> None:
-        self.game.new_game()
-
-        x = self.mlp_player.featurize(self.game.state)
-        self.assertEqual(x[self.mlp_player.idxs[str(Copper())]], 7 / 10)
-        self.assertEqual(x[self.mlp_player.idxs[str(Estate())]], 3 / 10)
-        self.assertEqual(x[self.mlp_player.idxs[str(Copper())] + 16], 7 / 10)
-        self.assertEqual(x[self.mlp_player.idxs[str(Estate())] + 16], 3 / 10)
-
-        x = self.mlp_player.featurize(self.game.state, lookahead=True, lookahead_card=Copper())
-        self.assertEqual(x[self.mlp_player.idxs[str(Copper())]], 8 / 11)
-        self.assertEqual(x[self.mlp_player.idxs[str(Estate())]], 3 / 11)
-        self.assertEqual(x[self.mlp_player.num_cards], 1)
-        self.assertEqual(x[self.mlp_player.idxs[str(Copper())] + 16], 7 / 10)
-        self.assertEqual(x[self.mlp_player.idxs[str(Estate())] + 16], 3 / 10)
-
-        x = self.mlp_player.featurize(self.game.state, lookahead=True, lookahead_card=Estate())
-        self.assertEqual(x[self.mlp_player.idxs[str(Estate())]], 4 / 11)
-        self.assertEqual(x[self.mlp_player.num_cards + 1], 4)
-
     def test_get_expected_hand(self) -> None:
         deck = [Copper()] * 7 + [Estate()] * 3
         expected_hand = self.mlp_player.get_expected_hand(deck)

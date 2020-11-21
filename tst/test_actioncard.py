@@ -49,4 +49,3 @@ class TestActionCard(unittest.TestCase):
         self.game.state.advance_next_decision()
 
         self.assertEqual(p_state.coins, 5)
-
