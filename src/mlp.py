@@ -10,6 +10,7 @@ class SandboxMLP(nn.Module):
         self.fc1 = nn.Linear(D_in, H)
         self.fc2 = nn.Linear(H, D_out)
         self.sigmoid = nn.Sigmoid()
+        self.relu = nn.LeakyReLU()
 
         self.eligibility_traces = None
         self.lr = lr
@@ -20,7 +21,7 @@ class SandboxMLP(nn.Module):
 
     def forward(self, x):
         x = self.fc1(x)
-        x = self.sigmoid(x)
+        x = self.relu(x)
         x = self.fc2(x)
         x = self.sigmoid(x)
         return x
@@ -44,11 +45,10 @@ class SandboxMLP(nn.Module):
 
 
 class SandboxPerceptron(nn.Module):
-    def __init__(self, D_in: int, D_out: int, lr=1e-3, gamma=1, lambd=0.7, device='cuda'):
+    def __init__(self, D_in: int, lr=1e-3, gamma=1, lambd=0.7, device='cuda'):
         super(SandboxPerceptron, self).__init__()
         self.D_in = D_in
-        self.D_out = D_out
-        self.fc1 = nn.Linear(D_in, D_out)
+        self.fc1 = nn.Linear(D_in, 1)
         self.sigmoid = nn.Sigmoid()
 
         self.eligibility_traces = None
@@ -71,7 +71,7 @@ class SandboxPerceptron(nn.Module):
 
         self.zero_grad()
 
-        p.backward(torch.ones(self.D_out, device=self.device), retain_graph=True)
+        p.backward(retain_graph=True)
 
         for i, param in enumerate(self.parameters()):
             self.eligibility_traces[i] = self.gamma * self.lambd * self.eligibility_traces[i] + param.grad.data

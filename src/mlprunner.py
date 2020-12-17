@@ -7,7 +7,7 @@ from aiconfig import model_dir
 from config import GameConfig
 from enums import DecisionType, Phase, StartingSplit
 from game import Game
-from mlp import SandboxMLP
+from mlp import SandboxMLP, SandboxPerceptron
 from player import MLPPlayer
 from state import DecisionResponse, DecisionState, State
 from torch.utils.tensorboard import SummaryWriter
@@ -17,6 +17,7 @@ class MLP:
     def __init__(self, n: int, **kwargs):
         # Configure game
         self.config = GameConfig(split=StartingSplit.StartingRandomSplit, prosperity=False, num_players=2, sandbox=True)
+        self.tensorboard_logging = kwargs.pop('tensorboard_logging')
 
         # Define network parameters
         self.D_in, self.D_out = self.config.feature_size, 1
@@ -85,7 +86,8 @@ class MLP:
             y = self.model(last_x)
             self.model.update_weights(y, tgt)
             loss = self.criterion(y, tgt)
-            self.writer.add_scalar("Loss/train", loss, i)
+            if self.tensorboard_logging:
+                self.writer.add_scalar("Loss/train", loss, i)
             p.iters += 1
 
 
@@ -95,13 +97,14 @@ if __name__ == '__main__':
     parser.add_argument('--lr', default=1e-5, type=float, help='Learning rate')
     parser.add_argument('--lambd', default=0.5, type=float, help='Lambda parameter for TD-learning')
     parser.add_argument('--cuda', action='store_true', help='Whether or not to use the GPU')
+    parser.add_argument('--tensorboard', action='store_true', help='Whether or not to log using TensorBoard')
     parser.add_argument('--save', action='store_true', help='Whether or not to save the model.')
     parser.add_argument('--path', type=str, help='Where to save the model', default=model_dir)
 
     args = parser.parse_args()
 
     device = 'cuda' if args.cuda else 'cpu'
-    mlp = MLP(args.n, device=device, lr=args.lr, lambd=args.lambd)
+    mlp = MLP(args.n, device=device, lr=args.lr, lambd=args.lambd, tensorboard_logging=args.tensorboard)
     mlp.train()
     mlp.writer.flush()
 

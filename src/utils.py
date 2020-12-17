@@ -1,8 +1,13 @@
 from typing import List
 
 import numpy as np
+import torch
 
 from card import Card
+
+##############
+# Game utils #
+##############
 
 
 def get_first_index(card: Card, cards: List[Card]):
@@ -44,6 +49,25 @@ def move_card(card: Card, src: List, dest: List) -> None:
     if x is None:
         raise ValueError(f'{card} not found in source list.')
     dest.append(x)
+
+################
+# Tensor utils #
+################
+
+
+def mov_zero(feature: torch.tensor, src: int, tgt: int, length: int) -> None:
+    feature[tgt:tgt + length] = feature[tgt:tgt + length] + feature[src:src + length]
+    feature[src:src + length] = 0
+
+
+def dec_inc(feature, src: int, tgt: int) -> None:
+    feature[src] = feature[src] - 1
+    feature[tgt] = feature[tgt] + 1
+
+
+################
+# Misc utils #
+################
 
 
 def running_mean(x: List, N: int):

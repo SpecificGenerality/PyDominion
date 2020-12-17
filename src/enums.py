@@ -9,6 +9,7 @@ class GameConstants(IntEnum):
     BaseKingdomSize = 10
     StartingHands = 4
     BaseSupplySize = 7
+    HandSize = 5
 
 
 # TODO: Use auto() after upgrading pygame and running python3.7

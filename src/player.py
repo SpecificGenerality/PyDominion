@@ -55,17 +55,10 @@ class MLPPlayer(Player):
     def featurize(self, s: State, lookahead=False, lookahead_card: Card = None) -> torch.Tensor:
         p: int = s.player
 
-        if not lookahead or not lookahead_card:
+        if not lookahead:
             return s.feature.feature
 
-        p_features = s.feature.feature.detach().clone()
-
-        zone_base_idx = s.feature.get_zone_idx(p, Zone.Discard)
-        card_offset = s.feature.get_card_offset(lookahead_card)
-
-        p_features[zone_base_idx + card_offset] = p_features[zone_base_idx + card_offset] + 1
-
-        return p_features
+        return s.feature.lookahead(p, lookahead_card)
 
     def select(self, player: int, choices: List[Card], vals: List[float]):
         '''Epsilon-greedy action selection'''
@@ -93,6 +86,7 @@ class MLPPlayer(Player):
                 vals.append(self.mlp(x).item())
 
             choice = self.select(p, choices, vals)
+            # print(choice)
             response.single_card = choice
 
 

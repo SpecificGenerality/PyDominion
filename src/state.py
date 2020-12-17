@@ -9,12 +9,12 @@ from actioncard import ActionCard, Merchant, Moat
 from card import Card
 from config import GameConfig
 from cursecard import Curse
-from enums import (DecisionType, DiscardZone, GainZone, Phase, TriggerState,
-                   Zone)
+from enums import (DecisionType, DiscardZone, GainZone, GameConstants, Phase,
+                   TriggerState, Zone)
 from playerstate import PlayerState
 from supply import Supply
 from treasurecard import Copper, Silver, TreasureCard
-from utils import remove_card, remove_first_card
+from utils import dec_inc, mov_zero, remove_card, remove_first_card
 from victorycard import VictoryCard
 
 
@@ -144,19 +144,11 @@ class StateFeature:
     def get_player_feature(self, player: int) -> torch.tensor:
         return self.feature
 
-    def _dec_inc(self, src: int, tgt: int) -> None:
-        self.feature[src] = self.feature[src] - 1
-        self.feature[tgt] = self.feature[tgt] + 1
-
-    def _mov_zero(self, src: int, tgt: int, length: int) -> None:
-        self.feature[tgt:tgt + length] = self.feature[tgt:tgt + length] + self.feature[src:src + length]
-        self.feature[src:src + length] = 0
-
     def shuffle(self, player: int) -> None:
         deck_idx = self.get_zone_idx(player, Zone.Deck)
         discard_idx = self.get_zone_idx(player, Zone.Discard)
 
-        self._mov_zero(discard_idx, deck_idx, self.num_cards)
+        mov_zero(self.feature, discard_idx, deck_idx, self.num_cards)
 
     def draw_card(self, player: int, card: Card) -> None:
         self.move_card(player, card, Zone.Deck, Zone.Hand)
@@ -168,7 +160,7 @@ class StateFeature:
         src_idx = self.get_zone_idx(player, Zone.Hand)
         tgt_idx = self.get_zone_idx(player, Zone.Discard)
 
-        self._mov_zero(src_idx, tgt_idx, self.num_cards)
+        mov_zero(self.feature, src_idx, tgt_idx, self.num_cards)
 
     def gain_card(self, player: int, card: Card, zone: GainZone) -> None:
         src_offset = self.get_zone_idx(player, zone)
@@ -186,7 +178,7 @@ class StateFeature:
         src_idx = src_base_idx + card_offset
         dest_idx = dest_base_idx + card_offset
 
-        self._dec_inc(src_idx, dest_idx)
+        dec_inc(self.feature, src_idx, dest_idx)
 
     # TODO: Update to split hand/play
     def play_card(self, player: int, card: Card, zone: Zone) -> None:
@@ -197,13 +189,56 @@ class StateFeature:
         src_idx = self.get_zone_idx(player, Zone.Play)
         tgt_idx = self.get_zone_idx(player, Zone.Discard)
 
-        self._mov_zero(src_idx, tgt_idx, self.num_cards)
+        mov_zero(self.feature, src_idx, tgt_idx, self.num_cards)
 
     def trash_card(self, player: int, card: Card, zone: Zone) -> None:
         src_offset = self.get_zone_idx(player, zone)
         src_idx = src_offset + self.idxs[str(card)]
 
         self.feature[src_idx] = self.feature[src_idx] - 1
+
+    def lookahead(self, player: int, card: Card) -> torch.tensor:
+        '''
+            Performs a lookahead update on a copy of the feature and returns it. Lookahead consists of
+            1) Discard hand and bought card
+            2) Update supply
+            3) If deck empty, then simulate shuffle by moving discard to deck
+            4) Draw a hand in expectation
+        '''
+        feature = self.feature.detach().clone()
+
+        discard_zone_idx = self.get_zone_idx(player, Zone.Discard)
+
+        if card is not None:
+            card_offset = self.get_card_offset(card)
+
+            # increment card count in discard
+            feature[discard_zone_idx + card_offset] = feature[discard_zone_idx + card_offset] + 1
+
+            # decrement card count in supply
+            feature[card_offset] = feature[card_offset] - 1
+
+        # move hand to discard
+        hand_idx = self.get_zone_idx(player, Zone.Hand)
+        mov_zero(feature, hand_idx, discard_zone_idx, self.num_cards)
+
+        deck_idx = self.get_zone_idx(player, Zone.Deck)
+
+        # discard becomes deck if empty
+        if torch.all(feature[deck_idx:deck_idx + self.num_cards] == 0):
+            mov_zero(feature, discard_zone_idx, deck_idx, self.num_cards)
+
+        # if deck is still empty, player is out of cards
+        if torch.all(feature[deck_idx:deck_idx + self.num_cards] == 0):
+            return feature
+
+        # draw a hand in expectation
+        hand_feature = feature[deck_idx:deck_idx + self.num_cards].detach().clone()
+        hand_feature = hand_feature / hand_feature.sum() * GameConstants.HandSize
+        feature[hand_idx:hand_idx + self.num_cards] = feature[hand_idx:hand_idx + self.num_cards] + hand_feature
+        feature[deck_idx:deck_idx + self.num_cards] = feature[deck_idx:deck_idx + self.num_cards] - hand_feature
+
+        return feature
 
     def __len__(self) -> int:
         return self.feature.__len__()
