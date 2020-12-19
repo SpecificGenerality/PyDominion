@@ -218,6 +218,9 @@ class RandomPlayer(Player):
         else:
             logging.error('Invalid decision type')
 
+    def reset(self) -> None:
+        return
+
     def __str__(self):
         return 'Random Player'
 

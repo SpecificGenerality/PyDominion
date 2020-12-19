@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from collections import Counter
 from typing import List, Union
 
+import numpy as np
 import torch
 
 from actioncard import ActionCard, Merchant, Moat
@@ -138,6 +139,14 @@ class StateFeature(ABC):
     def lookahead(self, player: int, card: Card) -> torch.tensor:
         pass
 
+    @abstractmethod
+    def to_numpy(self) -> np.array:
+        pass
+
+    @abstractmethod
+    def to_tensor(self) -> torch.tensor:
+        pass
+
 
 class ReducedStateFeature(StateFeature):
     def __init__(self, config: GameConfig, supply: Supply, player_states: List[PlayerState]):
@@ -204,6 +213,15 @@ class ReducedStateFeature(StateFeature):
 
         dec_inc(feature, offset, base + offset)
         return feature
+
+    def to_numpy(self) -> np.array:
+        return self.feature.cpu().numpy()
+
+    def to_tensor(self) -> torch.tensor:
+        return self.feature
+
+    def __len__(self) -> int:
+        return self.feature.__len__()
 
 
 class FullStateFeature(StateFeature):
@@ -351,6 +369,12 @@ class FullStateFeature(StateFeature):
         feature[deck_idx:deck_idx + self.num_cards] = feature[deck_idx:deck_idx + self.num_cards] - hand_feature
 
         return feature
+
+    def to_numpy(self) -> np.array:
+        return self.feature.cpu().numpy()
+
+    def to_tensor(self) -> torch.tensor:
+        return self.feature
 
     def __len__(self) -> int:
         return self.feature.__len__()
