@@ -18,7 +18,7 @@
             "request": "launch",
             "console": "integratedTerminal",
             "program": "scripts/predictor.py",
-            "args": ["-n", "10", "-path", "models/test-linreg-predictor", "--players", "R", "R", "--sandbox"]
+            "args": ["-n", "10", "-ftype", "reduced", "-path", "models/test-linreg-predictor", "--players", "R", "R", "--sandbox"]
         },
         {
             "name": "Python: Current File",

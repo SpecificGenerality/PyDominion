@@ -5,6 +5,11 @@ class AIConstants(IntEnum):
     NumZones = 3
 
 
+class FeatureType(Enum):
+    FullFeature = auto()
+    ReducedFeature = auto()
+
+
 class GameConstants(IntEnum):
     BaseKingdomSize = 10
     StartingHands = 4

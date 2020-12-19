@@ -19,8 +19,12 @@ class MLP:
         self.config = GameConfig(split=StartingSplit.StartingRandomSplit, prosperity=False, num_players=2, sandbox=True)
         self.tensorboard_logging = kwargs.pop('tensorboard_logging')
 
+        # Initalize game
+        self.game = Game(self.config, self.players)
+        self.n = n
+
         # Define network parameters
-        self.D_in, self.D_out = self.config.feature_size, 1
+        self.D_in, self.D_out = len(self.game.state.feature), 1
         self.H = (self.D_in + self.D_out) // 2
 
         # Initialize network
@@ -33,10 +37,6 @@ class MLP:
         # Initialize players
         player = MLPPlayer(self.model)
         self.players = [player, player]
-
-        # Initalize game
-        self.game = Game(self.config, self.players)
-        self.n = n
 
         self.writer = SummaryWriter()
 

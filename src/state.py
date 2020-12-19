@@ -11,7 +11,7 @@ from card import Card
 from config import GameConfig
 from cursecard import Curse
 from enums import (DecisionType, DiscardZone, GainZone, GameConstants, Phase,
-                   TriggerState, Zone)
+                   TriggerState, Zone, FeatureType)
 from playerstate import PlayerState
 from supply import Supply
 from treasurecard import Copper, Silver, TreasureCard
@@ -108,7 +108,7 @@ class StateFeature(ABC):
         pass
 
     @abstractmethod
-    def discard_card(self, player: int, card: Card) -> None:
+    def discard_card(self, player: int, card: Card, zone: DiscardZone) -> None:
         pass
 
     @abstractmethod
@@ -116,7 +116,7 @@ class StateFeature(ABC):
         pass
 
     @abstractmethod
-    def gain_card(self, player: int) -> None:
+    def gain_card(self, player: int, card: Card, zone: GainZone) -> None:
         pass
 
     @abstractmethod
@@ -154,7 +154,7 @@ class ReducedStateFeature(StateFeature):
 
         self.device = device
         # +1 for supply
-        self.feature = torch.zeros((self.num_players * self.num_zones + 1) * self.num_cards, device=self.device)
+        self.feature = torch.zeros((self.num_players + 1) * self.num_cards, device=self.device)
 
         # Fill supply card counts
         for k, v in supply.items():
@@ -174,16 +174,16 @@ class ReducedStateFeature(StateFeature):
     def shuffle(self, player: int) -> None:
         return
 
-    def draw_card(self, player: int) -> None:
+    def draw_card(self, player: int, card: Card) -> None:
         return
 
     def discard_card(self, player: int, card: Card) -> None:
         return
 
-    def discard_hand(self, player: int, card: Card) -> None:
+    def discard_hand(self, player: int) -> None:
         return
 
-    def gain_card(self, player: int, card: Card) -> None:
+    def gain_card(self, player: int, card: Card, gain_zone) -> None:
         idx = self.get_player_idx(player)
         offset = self.idxs[str(card)]
 
@@ -396,7 +396,11 @@ class State:
         self.supply = Supply(config)
         self.trash = []
         self.events = []
-        self.feature = FullStateFeature(config, self.supply, self.player_states)
+
+        if config.feature_type == FeatureType.FullFeature:
+            self.feature = FullStateFeature(config, self.supply, self.player_states)
+        elif config.feature_type == FeatureType.ReducedFeature:
+            self.feature = ReducedStateFeature(config, self.supply, self.player_states)
 
     def draw_card(self, player: int) -> None:
         p_state: PlayerState = self.player_states[player]
