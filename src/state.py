@@ -149,11 +149,12 @@ class StateFeature(ABC):
 
 
 class ReducedStateFeature(StateFeature):
-    def __init__(self, config: GameConfig, supply: Supply, player_states: List[PlayerState]):
+    def __init__(self, config: GameConfig, supply: Supply, player_states: List[PlayerState], device='cpu'):
         super(ReducedStateFeature, self).__init__(config, supply)
 
+        self.device = device
         # +1 for supply
-        self.feature = torch.zeros((self.num_players * self.num_zones + 1) * self.num_cards, device='cuda')
+        self.feature = torch.zeros((self.num_players * self.num_zones + 1) * self.num_cards, device=self.device)
 
         # Fill supply card counts
         for k, v in supply.items():
@@ -215,6 +216,8 @@ class ReducedStateFeature(StateFeature):
         return feature
 
     def to_numpy(self) -> np.array:
+        if self.device == 'cpu':
+            return self.feature.numpy()
         return self.feature.cpu().numpy()
 
     def to_tensor(self) -> torch.tensor:
@@ -225,7 +228,7 @@ class ReducedStateFeature(StateFeature):
 
 
 class FullStateFeature(StateFeature):
-    def __init__(self, config: GameConfig, supply: Supply, player_states: List[PlayerState]):
+    def __init__(self, config: GameConfig, supply: Supply, player_states: List[PlayerState], device='cuda'):
         super(FullStateFeature, self).__init__(config, supply)
         # Hand/play, deck, discard
         self.num_zones = 3
@@ -235,8 +238,9 @@ class FullStateFeature(StateFeature):
         self.hand_offset = 1
         self.discard_offset = 2
 
+        self.device = device
         # +1 for supply
-        self.feature = torch.zeros((self.num_players * self.num_zones + 1) * self.num_cards, device='cuda')
+        self.feature = torch.zeros((self.num_players * self.num_zones + 1) * self.num_cards, device=self.device)
 
         # Fill supply card counts
         for k, v in supply.items():
@@ -371,6 +375,8 @@ class FullStateFeature(StateFeature):
         return feature
 
     def to_numpy(self) -> np.array:
+        if self.device == 'cpu':
+            return self.feature.numpy()
         return self.feature.cpu().numpy()
 
     def to_tensor(self) -> torch.tensor:

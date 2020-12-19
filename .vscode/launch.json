@@ -13,6 +13,14 @@
             "args": ["-n", "10", "--cuda"]
         },
         {
+            "name": "Python: Test Linreg Predictor Script",
+            "type": "python",
+            "request": "launch",
+            "console": "integratedTerminal",
+            "program": "scripts/predictor.py",
+            "args": ["-n", "10", "-path", "models/test-linreg-predictor", "--players", "R", "R", "--sandbox"]
+        },
+        {
             "name": "Python: Current File",
             "type": "python",
             "request": "launch",

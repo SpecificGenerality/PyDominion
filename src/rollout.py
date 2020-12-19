@@ -67,7 +67,7 @@ class HistoryHeuristicRollout(RolloutModel):
     def augment_data(self, data):
         '''Add the tau parameter and mast values to dict'''
         data['tau'] = self.tau
-        for k,v in self.mast.items():
+        for k, v in self.mast.items():
             data[f'Q({k})'] = v[0]
 
     def __str__(self):

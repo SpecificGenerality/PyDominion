@@ -7,7 +7,8 @@ import numpy as np
 import numpy.random
 import torch
 
-from buyagenda import BuyAgenda
+from aiutils import load
+from buyagenda import BuyAgenda, BigMoneyBuyAgenda, TDBigMoneyBuyAgenda
 from card import Card
 from cursecard import Curse
 from enums import DecisionType, GameConstants, Phase, Zone
@@ -16,6 +17,7 @@ from heuristicsutils import heuristic_select_cards
 from mcts import Node
 from mlp import SandboxMLP
 from playerstate import PlayerState
+from rollout import RandomRollout
 from state import (DecisionResponse, DecisionState, DiscardDownToN,
                    PutOnDeckDownToN, RemodelExpand, State)
 from utils import remove_first_card
@@ -30,6 +32,11 @@ class Player(ABC):
         '''Given the current state s of the game, make a decision given the choices in s and modify response.'''
         pass
 
+    @classmethod
+    @abstractmethod
+    def load(cls, **kwargs):
+        pass
+
 
 class MLPPlayer(Player):
     def __init__(self, mlp: SandboxMLP, train: bool = True, tau=0.5):
@@ -39,15 +46,21 @@ class MLPPlayer(Player):
         self.iters = 0
         self.min_eps = 0.1
 
+    @classmethod
+    def load(cls, **kwargs):
+        if 'path' not in kwargs:
+            raise KeyError('Model path missing from kwargs.')
+        if 'config' not in kwargs:
+            raise KeyError('Config missing from kwargs.')
+
+        config = kwargs.pop('config')
+        model = SandboxMLP(config.feature_size, (config.feature_size + 1) // 2, 1)
+        model.load_state_dict(torch.load(kwargs.pop('path')))
+        model.cuda()
+        return cls(model, train=False)
+
     def eps(self):
         return max(1 / (self.iters + 1), self.min_eps)
-
-    def get_expected_hand(self, deck: List[Card], HAND_SIZE=5) -> np.array:
-        expected_hand = np.zeros(len(self.idxs))
-        for card in deck:
-            expected_hand[self.idxs[str(card)]] += 1
-        expected_hand = expected_hand / sum(expected_hand) * HAND_SIZE
-        return expected_hand
 
     def reset(self):
         return
@@ -102,6 +115,20 @@ class MCTSPlayer(Player):
         self.node = None
         self.rollout = rollout
         self.Cfx = C
+
+    @classmethod
+    def load(cls, **kwargs):
+        root_path = kwargs.pop('root_path')
+        rollout_path = kwargs.pop('rollout_path')
+
+        try:
+            rollout_model = load(rollout_path)
+        except ImportError:
+            logging.warning(f'Failed to load rollout from {rollout_path}, defaulting to random rollouts.')
+            rollout_model = RandomRollout()
+
+        root = load(root_path)
+        return cls(rollout=rollout_model, root=root, train=False)
 
     def get_C(self):
         '''Return time-varying C tuned for raw score reward'''
@@ -198,6 +225,13 @@ class HeuristicPlayer(Player):
             else:
                 self.heuristic.makeBaseDecision(s, response)
 
+    def reset(self) -> None:
+        return
+
+    @classmethod
+    def load(cls, **kwargs):
+        return cls(agenda=kwargs.pop('agenda'))
+
 
 class RandomPlayer(Player):
     def makeDecision(self, s: State, response: DecisionResponse):
@@ -217,6 +251,10 @@ class RandomPlayer(Player):
             response.choice = random.randint(0, d.min_cards)
         else:
             logging.error('Invalid decision type')
+
+    @classmethod
+    def load(cls, **kwargs):
+        return cls()
 
     def reset(self) -> None:
         return
@@ -260,6 +298,13 @@ class HumanPlayer(Player):
         else:
             logging.error(f'Player {s.player} given invalid decision type.')
 
+    @classmethod
+    def load(cls, **kwargs):
+        return cls()
+
+    def reset(self) -> None:
+        return
+
     def __str__(self):
         return "Human Player"
 
@@ -271,3 +316,23 @@ class PlayerInfo:
 
     def __str__(self):
         return f'{self.controller} {self.id}'
+
+
+def load_players(player_types: List[str], models: List[str]) -> List[Player]:
+    players = []
+    for p_type in player_types:
+        if p_type == 'R':
+            players.append(RandomPlayer.load())
+        elif p_type == 'BM':
+            players.append(HeuristicPlayer.load(agenda=BigMoneyBuyAgenda()))
+        elif p_type == 'TDBM':
+            players.append(HeuristicPlayer.load(agenda=TDBigMoneyBuyAgenda()))
+        elif p_type == 'UCT':
+            players.append(MCTSPlayer.load(root_path=models.pop(0), rollout_path=models.pop(0)))
+        elif p_type == 'MLP':
+            players.append(MLPPlayer.load(path=models.pop(0)))
+
+    if models:
+        logging.warning(f'Possible extraneous model paths passed. Remaining paths: {models}')
+
+    return players

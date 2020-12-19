@@ -6,8 +6,6 @@ from constants import SANDBOX_CARDS
 from enums import StartingSplit
 from game import Game
 from player import MLPPlayer
-from treasurecard import Copper
-from victorycard import Estate
 
 
 class TestMLPPlayer(unittest.TestCase):
@@ -18,9 +16,3 @@ class TestMLPPlayer(unittest.TestCase):
         self.mlp_player = MLPPlayer(mlp=self.mlp, cards=[card_class() for card_class in SANDBOX_CARDS], n_players=2)
         self.players = [self.mlp_player, Mock()]
         self.game = Game(self.config, self.players)
-
-    def test_get_expected_hand(self) -> None:
-        deck = [Copper()] * 7 + [Estate()] * 3
-        expected_hand = self.mlp_player.get_expected_hand(deck)
-        self.assertEqual(expected_hand[self.mlp_player.idxs[str(Copper())]], 7 / 2)
-        self.assertEqual(expected_hand[self.mlp_player.idxs[str(Estate())]], 3 / 2)
