@@ -60,7 +60,7 @@ def mov_zero(feature: torch.tensor, src: int, tgt: int, length: int) -> None:
     feature[src:src + length] = 0
 
 
-def dec_inc(feature, src: int, tgt: int) -> None:
+def dec_inc(feature: torch.tensor, src: int, tgt: int) -> None:
     feature[src] = feature[src] - 1
     feature[tgt] = feature[tgt] + 1
 

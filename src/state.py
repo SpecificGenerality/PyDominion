@@ -92,13 +92,125 @@ class DecisionState:
             logging.info(f'{i}: {card}')
 
 
-class StateFeature:
-    def __init__(self, config: GameConfig, supply: Supply, player_states: List[PlayerState]):
+class StateFeature(ABC):
+    def __init__(self, config: GameConfig, supply: Supply):
         self.num_cards = len(supply)
         self.num_players = config.num_players
+        self.idxs = dict([(str(k()), i) for i, k in enumerate(supply.keys())])
+
+    @abstractmethod
+    def shuffle(self, player: int) -> None:
+        pass
+
+    @abstractmethod
+    def draw_card(self, player: int, card: Card) -> None:
+        pass
+
+    @abstractmethod
+    def discard_card(self, player: int, card: Card) -> None:
+        pass
+
+    @abstractmethod
+    def discard_hand(self, player: int) -> None:
+        pass
+
+    @abstractmethod
+    def gain_card(self, player: int) -> None:
+        pass
+
+    @abstractmethod
+    def move_card(self, player: int, card: Card, src_zone: Union[Zone, GainZone, DiscardZone], dest_zone: Union[Zone, GainZone, DiscardZone]):
+        pass
+
+    @abstractmethod
+    def play_card(self, player: int, card: Card, zone: Zone) -> None:
+        pass
+
+    @abstractmethod
+    def update_play_area(self, player: int) -> None:
+        pass
+
+    @abstractmethod
+    def trash_card(self, player: int, card: Card, zone: Zone) -> None:
+        pass
+
+    @abstractmethod
+    def lookahead(self, player: int, card: Card) -> torch.tensor:
+        pass
+
+
+class ReducedStateFeature(StateFeature):
+    def __init__(self, config: GameConfig, supply: Supply, player_states: List[PlayerState]):
+        super(ReducedStateFeature, self).__init__(config, supply)
+
+        # +1 for supply
+        self.feature = torch.zeros((self.num_players * self.num_zones + 1) * self.num_cards, device='cuda')
+
+        # Fill supply card counts
+        for k, v in supply.items():
+            idx = self.idxs[str(k())]
+            self.feature[idx] = v
+
+        # Fill player card counts
+        for i, p_state in enumerate(player_states):
+            offset = self.num_cards + i * self.num_cards
+            for card, count in p_state.get_card_counts().items():
+                idx = self.idxs[str(card)]
+                self.feature[idx + offset] = count
+
+    def get_player_idx(self, player: int) -> int:
+        return self.num_cards + player * self.num_cards
+
+    def shuffle(self, player: int) -> None:
+        return
+
+    def draw_card(self, player: int) -> None:
+        return
+
+    def discard_card(self, player: int, card: Card) -> None:
+        return
+
+    def discard_hand(self, player: int, card: Card) -> None:
+        return
+
+    def gain_card(self, player: int, card: Card) -> None:
+        idx = self.get_player_idx(player)
+        offset = self.idxs[str(card)]
+
+        dec_inc(self.feature, offset, idx + offset)
+
+    def move_card(self, player, card, src_zone, dest_zone) -> None:
+        return
+
+    def play_card(self, player, card, zone) -> None:
+        return
+
+    def update_play_area(self, player: int) -> None:
+        return
+
+    def trash_card(self, player: int, card: Card, zone: Zone) -> None:
+        offset = self.idxs[str(card)]
+        base = self.get_player_idx(player)
+
+        self.feature[base + offset] = self.feature[base + offset] - 1
+
+    def lookahead(self, player: int, card: Card) -> torch.tensor:
+        if not card:
+            return self.feature
+
+        feature = self.feature.detach().clone()
+        offset = self.idxs[str(card)]
+        base = self.get_player_idx(player)
+
+        dec_inc(feature, offset, base + offset)
+        return feature
+
+
+class FullStateFeature(StateFeature):
+    def __init__(self, config: GameConfig, supply: Supply, player_states: List[PlayerState]):
+        super(FullStateFeature, self).__init__(config, supply)
         # Hand/play, deck, discard
         self.num_zones = 3
-        self.idxs = dict([(str(k()), i) for i, k in enumerate(supply.keys())])
 
         # Offsets within player subfeature
         self.deck_offset = 0
@@ -254,7 +366,7 @@ class State:
         self.supply = Supply(config)
         self.trash = []
         self.events = []
-        self.feature = StateFeature(config, self.supply, self.player_states)
+        self.feature = FullStateFeature(config, self.supply, self.player_states)
 
     def draw_card(self, player: int) -> None:
         p_state: PlayerState = self.player_states[player]

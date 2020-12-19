@@ -86,7 +86,7 @@ class MLPPlayer(Player):
                 vals.append(self.mlp(x).item())
 
             choice = self.select(p, choices, vals)
-            # print(choice)
+            # print(f'{p}: {choice}')
             response.single_card = choice
 
 
