@@ -46,6 +46,7 @@ def predict(reg, n: int, config: GameConfig, players: Iterable[Player], turn_bre
     for epoch in tqdm(range(n)):
         state: State = env.reset()
         done = False
+        feature_done = False
         while not done:
             action = DecisionResponse([])
             d = state.decision
@@ -53,7 +54,12 @@ def predict(reg, n: int, config: GameConfig, players: Iterable[Player], turn_bre
             player.makeDecision(state, action)
             obs, reward, done, _ = env.step(action)
 
-        X[epoch] = obs.feature.to_numpy()
+            if state.player_states[d.controlling_player].turns > turn_break:
+                X[epoch] = obs.feature.to_numpy()
+                feature_done = True
+
+        if not feature_done:
+            X[epoch] = obs.feature.to_numpy()
         y[epoch] = reward
 
     return reg.score(X, y)
