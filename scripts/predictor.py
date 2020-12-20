@@ -98,10 +98,11 @@ def main(args: ArgumentParser):
         pickle.dump(reg, open(args.path, 'wb'))
     else:
         reg = pickle.load(open(args.path, 'rb'))
-        # score = predict(reg, args.n, config, players)
-        scores = evaluate_turn_break(reg, args.n, config, players)
+        score = predict(reg, args.n, config, players)
+        print(f'R_sq = {score}')
+        # scores = evaluate_turn_break(reg, args.n, config, players)
 
-        print(f'R_sq = {scores}')
+        # print(f'R_sq = {scores}')
 
 
 if __name__ == '__main__':

@@ -271,6 +271,11 @@ class RandomPlayer(Player):
         if s.phase == Phase.BuyPhase:
             remove_first_card(Curse(), d.card_choices)
 
+        # Ensure random player plays all treasures
+        if s.phase == Phase.TreasurePhase:
+            response.single_card = d.card_choices[0]
+            return
+
         if d.type == DecisionType.DecisionSelectCards:
             cards_to_pick = d.min_cards
             if d.max_cards > d.min_cards:
