@@ -7,7 +7,7 @@ from src.mlp import SandboxPerceptron
 
 class TestPerceptron(unittest.TestCase):
     def setUp(self):
-        self.perceptron = SandboxPerceptron(D_in=2, D_out=1, lr=1, gamma=1, lambd=1, device='cpu')
+        self.perceptron = SandboxPerceptron(D_in=2, lr=1, gamma=1, lambd=1, device='cpu')
         self.perceptron.fc1.weight.data.fill_(0.5)
         self.perceptron.fc1.bias.data.fill_(0.5)
         self.perceptron.init_eligibility_traces()
