@@ -6,6 +6,7 @@ from typing import List
 import numpy as np
 import numpy.random
 import torch
+from sklearn.linear_model import LogisticRegression
 
 from aiutils import load
 from buyagenda import BigMoneyBuyAgenda, BuyAgenda, TDBigMoneyBuyAgenda
@@ -39,6 +40,42 @@ class Player(ABC):
         pass
 
 
+class GreedyLogisticPlayer(Player):
+    @classmethod
+    def load(cls, **kwargs):
+        if 'path' not in kwargs:
+            raise KeyError('Model path missing from kwargs.')
+
+        model = load(kwargs['path'])
+        return cls(model)
+
+    def __init__(self, model: LogisticRegression):
+        self.model: LogisticRegression = model
+
+    def reset(self):
+        return
+
+    def makeDecision(self, s: State, response: DecisionResponse):
+        d: DecisionState = s.decision
+        p: int = s.player
+        if s.phase == Phase.ActionPhase:
+            assert False, 'GreedyPlayer does not support action cards yet'
+        elif s.phase == Phase.TreasurePhase:
+            response.single_card = d.card_choices[0]
+        else:
+            choices = d.card_choices + [None]
+
+            X = s.lookahead_batch_featurize(choices)
+
+            label_idx = np.argmin(self.model.classes_) if p == 1 else np.argmax(self.model.classes_)
+
+            y = self.model.predict_proba(X)
+
+            card_idx = np.argmax(y[:, label_idx])
+
+            response.single_card = choices[card_idx]
+
+
 class MLPPlayer(Player):
     def __init__(self, mlp: SandboxMLP, train: bool = True, tau=0.5):
         self.mlp = mlp
@@ -66,14 +103,6 @@ class MLPPlayer(Player):
     def reset(self):
         return
 
-    def featurize(self, s: State, lookahead=False, lookahead_card: Card = None) -> torch.Tensor:
-        p: int = s.player
-
-        if not lookahead:
-            return s.feature.feature
-
-        return s.feature.lookahead(p, lookahead_card)
-
     def select(self, player: int, choices: List[Card], vals: List[float]):
         '''Epsilon-greedy action selection'''
         if np.random.rand() < self.eps():
@@ -96,7 +125,7 @@ class MLPPlayer(Player):
             choices = d.card_choices + [None]
 
             for card in choices:
-                x = self.featurize(s, lookahead=True, lookahead_card=card)
+                x = s.featurize(lookahead=True, lookahead_card=card)
                 vals.append(self.mlp(x).item())
 
             choice = self.select(p, choices, vals)
@@ -332,6 +361,8 @@ def load_players(player_types: List[str], models: List[str], config: GameConfig)
             players.append(MCTSPlayer.load(root_path=models.pop(0), rollout_path=models.pop(0)))
         elif p_type == 'MLP':
             players.append(MLPPlayer.load(path=models.pop(0), config=config))
+        elif p_type == 'LOG':
+            players.append(GreedyLogisticPlayer.load(path=models.pop(0)))
         elif p_type == 'H':
             players.append(HumanPlayer())
 

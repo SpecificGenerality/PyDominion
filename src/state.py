@@ -1,7 +1,7 @@
 import logging
 from abc import ABC, abstractmethod
 from collections import Counter
-from typing import List, Union
+from typing import Iterable, List, Union
 
 import numpy as np
 import torch
@@ -10,8 +10,8 @@ from actioncard import ActionCard, Merchant, Moat
 from card import Card
 from config import GameConfig
 from cursecard import Curse
-from enums import (DecisionType, DiscardZone, GainZone, GameConstants, Phase,
-                   TriggerState, Zone, FeatureType)
+from enums import (DecisionType, DiscardZone, FeatureType, GainZone,
+                   GameConstants, Phase, TriggerState, Zone)
 from playerstate import PlayerState
 from supply import Supply
 from treasurecard import Copper, Silver, TreasureCard
@@ -401,6 +401,25 @@ class State:
             self.feature = FullStateFeature(config, self.supply, self.player_states)
         elif config.feature_type == FeatureType.ReducedFeature:
             self.feature = ReducedStateFeature(config, self.supply, self.player_states)
+
+    def featurize(self, lookahead=False, lookahead_card: Card = None) -> torch.Tensor:
+        p: int = self.player
+
+        if not lookahead:
+            return self.feature.feature
+
+        return self.feature.lookahead(p, lookahead_card)
+
+    def lookahead_batch_featurize(self, cards: Iterable[Card]) -> torch.Tensor:
+        p: int = self.player
+        N = len(cards)
+        M = len(self.feature)
+        X = torch.zeros((N, M), device=self.feature.device)
+
+        for i, card in enumerate(cards):
+            X[i] = self.feature.lookahead(p, card)
+
+        return X
 
     def draw_card(self, player: int) -> None:
         p_state: PlayerState = self.player_states[player]
