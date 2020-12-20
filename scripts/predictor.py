@@ -1,4 +1,3 @@
-import os
 import pickle
 import sys
 from argparse import ArgumentParser
@@ -84,6 +83,27 @@ def load_predict_model(reg_cls, alpha: float = None):
         return reg_cls(max_iter=10e5)
 
 
+def main(args: ArgumentParser):
+    reg = load_predict_model(args.reg_cls, alpha=args.alpha)
+
+    config = GameConfig(split=StartingSplit.StartingRandomSplit, prosperity=False, num_players=len(args.players), sandbox=args.sandbox, feature_type=args.ftype)
+
+    players = load_players(args.players, args.models, config)
+
+    if not args.predict:
+        score = train(args.n, reg, config, players)
+
+        print(f'R_sq = {score}')
+
+        pickle.dump(reg, open(args.path, 'wb'))
+    else:
+        reg = pickle.load(open(args.path, 'rb'))
+        # score = predict(reg, args.n, config, players)
+        scores = evaluate_turn_break(reg, args.n, config, players)
+
+        print(f'R_sq = {scores}')
+
+
 if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('-n', required=True, default=10000, type=int, help='Number of games; number of rows in X')
@@ -98,20 +118,4 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    reg = load_predict_model(args.reg_cls, alpha=args.alpha)
-
-    players = load_players(args.players, args.models)
-    config = GameConfig(split=StartingSplit.StartingRandomSplit, prosperity=False, num_players=len(players), sandbox=args.sandbox, feature_type=args.ftype)
-
-    if not args.predict:
-        score = train(args.n, reg, config, players)
-
-        print(f'R_sq = {score}')
-
-        pickle.dump(reg, open(args.path, 'wb'))
-    else:
-        reg = pickle.load(open(args.path, 'rb'))
-        # score = predict(reg, args.n, config, players)
-        scores = evaluate_turn_break(reg, args.n, config, players)
-
-        print(f'R_sq = {scores}')
+    main(args)

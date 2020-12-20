@@ -8,8 +8,9 @@ import numpy.random
 import torch
 
 from aiutils import load
-from buyagenda import BuyAgenda, BigMoneyBuyAgenda, TDBigMoneyBuyAgenda
+from buyagenda import BigMoneyBuyAgenda, BuyAgenda, TDBigMoneyBuyAgenda
 from card import Card
+from config import GameConfig
 from cursecard import Curse
 from enums import DecisionType, GameConstants, Phase, Zone
 from heuristics import PlayerHeuristic
@@ -318,7 +319,7 @@ class PlayerInfo:
         return f'{self.controller} {self.id}'
 
 
-def load_players(player_types: List[str], models: List[str]) -> List[Player]:
+def load_players(player_types: List[str], models: List[str], config: GameConfig) -> List[Player]:
     players = []
     for p_type in player_types:
         if p_type == 'R':
@@ -330,7 +331,7 @@ def load_players(player_types: List[str], models: List[str]) -> List[Player]:
         elif p_type == 'UCT':
             players.append(MCTSPlayer.load(root_path=models.pop(0), rollout_path=models.pop(0)))
         elif p_type == 'MLP':
-            players.append(MLPPlayer.load(path=models.pop(0)))
+            players.append(MLPPlayer.load(path=models.pop(0), config=config))
 
     if models:
         logging.warning(f'Possible extraneous model paths passed. Remaining paths: {models}')
