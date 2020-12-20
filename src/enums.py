@@ -1,9 +1,20 @@
 from enum import Enum, IntEnum, auto
 
 
+class AIConstants(IntEnum):
+    NumZones = 3
+
+
+class FeatureType(Enum):
+    FullFeature = auto()
+    ReducedFeature = auto()
+
+
 class GameConstants(IntEnum):
-    KingdomSize = 10
+    BaseKingdomSize = 10
     StartingHands = 4
+    BaseSupplySize = 7
+    HandSize = 5
 
 
 # TODO: Use auto() after upgrading pygame and running python3.7

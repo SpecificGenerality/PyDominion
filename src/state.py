@@ -1,19 +1,21 @@
 import logging
 from abc import ABC, abstractmethod
 from collections import Counter
-from typing import List
+from typing import List, Union
+
+import numpy as np
+import torch
 
 from actioncard import ActionCard, Merchant, Moat
 from card import Card
 from config import GameConfig
 from cursecard import Curse
-from enums import (DecisionType, DiscardZone, GainZone, Phase, TriggerState,
-                   Zone)
+from enums import (DecisionType, DiscardZone, GainZone, GameConstants, Phase,
+                   TriggerState, Zone, FeatureType)
 from playerstate import PlayerState
 from supply import Supply
 from treasurecard import Copper, Silver, TreasureCard
-from utils import (move_card, remove_card,
-                   remove_first_card)
+from utils import dec_inc, mov_zero, remove_card, remove_first_card
 from victorycard import VictoryCard
 
 
@@ -38,9 +40,7 @@ class DecisionState:
         self.controlling_player = None
 
     def is_trivial(self) -> bool:
-        return (self.type == DecisionType.DecisionSelectCards \
-                and len(self.card_choices) == 1 and self.min_cards == 1 \
-                and self.max_cards == 1) or (self.type == DecisionType.DecisionDiscreteChoice and self.min_cards == self.max_cards == 1)
+        return (self.type == DecisionType.DecisionSelectCards and len(self.card_choices) == 1 and self.min_cards == 1 and self.max_cards == 1) or (self.type == DecisionType.DecisionDiscreteChoice and self.min_cards == self.max_cards == 1)
 
     def trivial_response(self) -> DecisionResponse:
         return DecisionResponse([self.card_choices[0]]) if self.type == DecisionType.DecisionSelectCards else DecisionResponse([], 0)
@@ -93,6 +93,299 @@ class DecisionState:
             logging.info(f'{i}: {card}')
 
 
+class StateFeature(ABC):
+    def __init__(self, config: GameConfig, supply: Supply):
+        self.num_cards = len(supply)
+        self.num_players = config.num_players
+        self.idxs = dict([(str(k()), i) for i, k in enumerate(supply.keys())])
+
+    @abstractmethod
+    def shuffle(self, player: int) -> None:
+        pass
+
+    @abstractmethod
+    def draw_card(self, player: int, card: Card) -> None:
+        pass
+
+    @abstractmethod
+    def discard_card(self, player: int, card: Card, zone: DiscardZone) -> None:
+        pass
+
+    @abstractmethod
+    def discard_hand(self, player: int) -> None:
+        pass
+
+    @abstractmethod
+    def gain_card(self, player: int, card: Card, zone: GainZone) -> None:
+        pass
+
+    @abstractmethod
+    def move_card(self, player: int, card: Card, src_zone: Union[Zone, GainZone, DiscardZone], dest_zone: Union[Zone, GainZone, DiscardZone]):
+        pass
+
+    @abstractmethod
+    def play_card(self, player: int, card: Card, zone: Zone) -> None:
+        pass
+
+    @abstractmethod
+    def update_play_area(self, player: int) -> None:
+        pass
+
+    @abstractmethod
+    def trash_card(self, player: int, card: Card, zone: Zone) -> None:
+        pass
+
+    @abstractmethod
+    def lookahead(self, player: int, card: Card) -> torch.tensor:
+        pass
+
+    @abstractmethod
+    def to_numpy(self) -> np.array:
+        pass
+
+    @abstractmethod
+    def to_tensor(self) -> torch.tensor:
+        pass
+
+
+class ReducedStateFeature(StateFeature):
+    def __init__(self, config: GameConfig, supply: Supply, player_states: List[PlayerState], device='cpu'):
+        super(ReducedStateFeature, self).__init__(config, supply)
+
+        self.device = device
+        # +1 for supply
+        self.feature = torch.zeros((self.num_players + 1) * self.num_cards, device=self.device)
+
+        # Fill supply card counts
+        for k, v in supply.items():
+            idx = self.idxs[str(k())]
+            self.feature[idx] = v
+
+        # Fill player card counts
+        for i, p_state in enumerate(player_states):
+            offset = self.num_cards + i * self.num_cards
+            for card, count in p_state.get_card_counts().items():
+                idx = self.idxs[str(card)]
+                self.feature[idx + offset] = count
+
+    def get_player_idx(self, player: int) -> int:
+        return self.num_cards + player * self.num_cards
+
+    def shuffle(self, player: int) -> None:
+        return
+
+    def draw_card(self, player: int, card: Card) -> None:
+        return
+
+    def discard_card(self, player: int, card: Card) -> None:
+        return
+
+    def discard_hand(self, player: int) -> None:
+        return
+
+    def gain_card(self, player: int, card: Card, gain_zone) -> None:
+        idx = self.get_player_idx(player)
+        offset = self.idxs[str(card)]
+
+        dec_inc(self.feature, offset, idx + offset)
+
+    def move_card(self, player, card, src_zone, dest_zone) -> None:
+        return
+
+    def play_card(self, player, card, zone) -> None:
+        return
+
+    def update_play_area(self, player: int) -> None:
+        return
+
+    def trash_card(self, player: int, card: Card, zone: Zone) -> None:
+        offset = self.idxs[str(card)]
+        base = self.get_player_idx(player)
+
+        self.feature[base + offset] = self.feature[base + offset] - 1
+
+    def lookahead(self, player: int, card: Card) -> torch.tensor:
+        if not card:
+            return self.feature
+
+        feature = self.feature.detach().clone()
+        offset = self.idxs[str(card)]
+        base = self.get_player_idx(player)
+
+        dec_inc(feature, offset, base + offset)
+        return feature
+
+    def to_numpy(self) -> np.array:
+        if self.device == 'cpu':
+            return self.feature.numpy()
+        return self.feature.cpu().numpy()
+
+    def to_tensor(self) -> torch.tensor:
+        return self.feature
+
+    def __len__(self) -> int:
+        return self.feature.__len__()
+
+
+class FullStateFeature(StateFeature):
+    def __init__(self, config: GameConfig, supply: Supply, player_states: List[PlayerState], device='cuda'):
+        super(FullStateFeature, self).__init__(config, supply)
+        # Hand/play, deck, discard
+        self.num_zones = 3
+
+        # Offsets within player subfeature
+        self.deck_offset = 0
+        self.hand_offset = 1
+        self.discard_offset = 2
+
+        self.device = device
+        # +1 for supply
+        self.feature = torch.zeros((self.num_players * self.num_zones + 1) * self.num_cards, device=self.device)
+
+        # Fill supply card counts
+        for k, v in supply.items():
+            idx = self.idxs[str(k())]
+            self.feature[idx] = v
+
+        # Fill player card counts
+        for i, p_state in enumerate(player_states):
+            offset = self.num_cards + i * self.num_zones * self.num_cards + self.deck_offset * self.num_cards
+            for card, count in p_state.get_card_counts().items():
+                idx = self.idxs[str(card)]
+                self.feature[idx + offset] = count
+
+    def get_player_idx(self, player: int) -> int:
+        return self.num_cards + player * self.num_zones * self.num_cards
+
+    def get_zone_idx(self, player: int, zone: Union[Zone, DiscardZone, GainZone]) -> int:
+        p_offset = self.get_player_idx(player)
+
+        if zone == Zone.Deck or zone == DiscardZone.DiscardFromDeck or zone == GainZone.GainToDeckTop:
+            z_offset_idx = self.deck_offset
+        elif zone == Zone.Discard or zone == GainZone.GainToDiscard:
+            z_offset_idx = self.discard_offset
+        elif zone == Zone.Hand or zone == Zone.Play or zone == DiscardZone.DiscardFromHand or zone == GainZone.GainToHand:
+            z_offset_idx = self.hand_offset
+        else:
+            raise ValueError(f'{zone} not supported.')
+
+        return p_offset + z_offset_idx * self.num_cards
+
+    def get_card_offset(self, card: Card) -> int:
+        return self.idxs[str(card)]
+
+    # TODO: Account for imperfect information
+    def get_player_feature(self, player: int) -> torch.tensor:
+        return self.feature
+
+    def shuffle(self, player: int) -> None:
+        deck_idx = self.get_zone_idx(player, Zone.Deck)
+        discard_idx = self.get_zone_idx(player, Zone.Discard)
+
+        mov_zero(self.feature, discard_idx, deck_idx, self.num_cards)
+
+    def draw_card(self, player: int, card: Card) -> None:
+        self.move_card(player, card, Zone.Deck, Zone.Hand)
+
+    def discard_card(self, player: int, card: Card, zone: DiscardZone) -> None:
+        self.move_card(player, card, zone, Zone.Discard)
+
+    def discard_hand(self, player: int) -> None:
+        src_idx = self.get_zone_idx(player, Zone.Hand)
+        tgt_idx = self.get_zone_idx(player, Zone.Discard)
+
+        mov_zero(self.feature, src_idx, tgt_idx, self.num_cards)
+
+    def gain_card(self, player: int, card: Card, zone: GainZone) -> None:
+        src_offset = self.get_zone_idx(player, zone)
+        card_idx = self.idxs[str(card)]
+
+        self.feature[src_offset + card_idx] = self.feature[src_offset + card_idx] + 1
+        self.feature[card_idx] = self.feature[card_idx] - 1
+
+    def move_card(self, player: int, card: Card, src_zone: Union[Zone, GainZone, DiscardZone], dest_zone: Union[Zone, GainZone, DiscardZone]):
+        src_base_idx = self.get_zone_idx(player, src_zone)
+        dest_base_idx = self.get_zone_idx(player, dest_zone)
+
+        card_offset = self.idxs[str(card)]
+
+        src_idx = src_base_idx + card_offset
+        dest_idx = dest_base_idx + card_offset
+
+        dec_inc(self.feature, src_idx, dest_idx)
+
+    # TODO: Update to split hand/play
+    def play_card(self, player: int, card: Card, zone: Zone) -> None:
+        return
+
+    # TODO: Update to allow duration cards
+    def update_play_area(self, player: int) -> None:
+        src_idx = self.get_zone_idx(player, Zone.Play)
+        tgt_idx = self.get_zone_idx(player, Zone.Discard)
+
+        mov_zero(self.feature, src_idx, tgt_idx, self.num_cards)
+
+    def trash_card(self, player: int, card: Card, zone: Zone) -> None:
+        src_offset = self.get_zone_idx(player, zone)
+        src_idx = src_offset + self.idxs[str(card)]
+
+        self.feature[src_idx] = self.feature[src_idx] - 1
+
+    def lookahead(self, player: int, card: Card) -> torch.tensor:
+        '''
+            Performs a lookahead update on a copy of the feature and returns it. Lookahead consists of
+            1) Discard hand and bought card
+            2) Update supply
+            3) If deck empty, then simulate shuffle by moving discard to deck
+            4) Draw a hand in expectation
+        '''
+        feature = self.feature.detach().clone()
+
+        discard_zone_idx = self.get_zone_idx(player, Zone.Discard)
+
+        if card is not None:
+            card_offset = self.get_card_offset(card)
+
+            # increment card count in discard
+            feature[discard_zone_idx + card_offset] = feature[discard_zone_idx + card_offset] + 1
+
+            # decrement card count in supply
+            feature[card_offset] = feature[card_offset] - 1
+
+        # move hand to discard
+        hand_idx = self.get_zone_idx(player, Zone.Hand)
+        mov_zero(feature, hand_idx, discard_zone_idx, self.num_cards)
+
+        deck_idx = self.get_zone_idx(player, Zone.Deck)
+
+        # discard becomes deck if empty
+        if torch.all(feature[deck_idx:deck_idx + self.num_cards] == 0):
+            mov_zero(feature, discard_zone_idx, deck_idx, self.num_cards)
+
+        # if deck is still empty, player is out of cards
+        if torch.all(feature[deck_idx:deck_idx + self.num_cards] == 0):
+            return feature
+
+        # draw a hand in expectation
+        hand_feature = feature[deck_idx:deck_idx + self.num_cards].detach().clone()
+        hand_feature = hand_feature / hand_feature.sum() * GameConstants.HandSize
+        feature[hand_idx:hand_idx + self.num_cards] = feature[hand_idx:hand_idx + self.num_cards] + hand_feature
+        feature[deck_idx:deck_idx + self.num_cards] = feature[deck_idx:deck_idx + self.num_cards] - hand_feature
+
+        return feature
+
+    def to_numpy(self) -> np.array:
+        if self.device == 'cpu':
+            return self.feature.numpy()
+        return self.feature.cpu().numpy()
+
+    def to_tensor(self) -> torch.tensor:
+        return self.feature
+
+    def __len__(self) -> int:
+        return self.feature.__len__()
+
+
 class State:
     def __init__(self, config: GameConfig):
         self.players = [i for i in range(config.num_players)]
@@ -104,6 +397,11 @@ class State:
         self.trash = []
         self.events = []
 
+        if config.feature_type == FeatureType.FullFeature:
+            self.feature = FullStateFeature(config, self.supply, self.player_states)
+        elif config.feature_type == FeatureType.ReducedFeature:
+            self.feature = ReducedStateFeature(config, self.supply, self.player_states)
+
     def draw_card(self, player: int) -> None:
         p_state: PlayerState = self.player_states[player]
         if not p_state._deck:
@@ -112,7 +410,8 @@ class State:
         if not p_state._deck:
             logging.info(f'Player {player} tries to draw but has no cards')
         else:
-            p_state.hand.append(p_state._deck.pop())
+            card = p_state.draw_card()
+            self.feature.draw_card(player, card)
 
     def draw_hand(self, player: int):
         num_cards_to_draw = 5
@@ -120,61 +419,69 @@ class State:
             self.draw_card(player)
         logging.info(f'Player {player} draws a new hand.')
 
-    def discard_card(self, player: int, card: Card, cards: List[Card]):
+    def discard_card(self, player: int, card: Card, zone: DiscardZone):
         p_state: PlayerState = self.player_states[player]
-        move_card(card, cards, p_state._discard)
+        p_state.discard_card(card, zone)
+        self.feature.discard_card(player, card, zone)
 
     def discard_hand(self, player: int):
         p_state: PlayerState = self.player_states[player]
-        p_state._discard += p_state.hand
-        p_state.hand = []
+        p_state.discard_hand()
+        self.feature.discard_hand(player)
         logging.info(f'Player {player} discards their hand')
 
-    def update_play_area(self, player: int):
+    def gain_card(self, player: int, card: Card, zone: GainZone, bought: bool):
         p_state: PlayerState = self.player_states[player]
-        new_play_area = []
-        for card in p_state._play_area:
-            if card.turns_left > 1:
-                move_card(card, p_state._play_area, new_play_area)
-        p_state._discard += p_state._play_area
-        p_state._play_area = new_play_area
+
+        if self.supply[type(card)] > 0:
+            p_state.gain_card(card, zone)
+            self.feature.gain_card(player, card, zone)
+
+            self.supply[type(card)] -= 1
+
+            if bought:
+                cost = self.get_supply_cost(card)
+                logging.info(f'Player {player} spends {cost} and buys {card}')
+                p_state.coins -= cost
+                p_state.buys -= 1
+        else:
+            if bought:
+                logging.info(f'Player {player} cannot buy {card}')
+                p_state.buys -= 1
+            else:
+                logging.info(f'Player {player} cannot gain {card}')
+
+    def move_card(self, player: int, card: Card, src_zone: Zone, dest_zone: Zone):
+        p_state: PlayerState = self.player_states[self.player]
+        p_state.move_card(card, src_zone, dest_zone)
+        self.feature.move_card(card, src_zone, dest_zone)
+
+    def shuffle(self, player: int) -> None:
+        p_state: PlayerState = self.player_states[player]
+        p_state.shuffle()
+        self.feature.shuffle(player)
 
     def trash_card(self, card: Card, zone: Zone, player: int) -> None:
         p_state: PlayerState = self.player_states[player]
-        # print(f'Trashing {card}')
-        if zone == Zone.Hand:
-            if p_state.hand:
-                trashed_card = remove_card(card, p_state.hand)
-                if trashed_card:
-                    self.trash.append(trashed_card)
-                    logging.info(f'Player {player} trashes {card} from hand.')
-                else:
-                    logging.error(f'Player {player} fails to trash {card} from hand: card does not exist.')
-                    exit()
-            else:
-                logging.info(f'Player {player} hand is empty, trashing nothing.')
-        elif zone == Zone.Deck:
-            if p_state._deck:
-                trashed_card = remove_card(card, p_state._deck)
-                if trashed_card:
-                    self.trash.append(trashed_card)
-                    logging.info(f'Player trashes {trashed_card}')
-            else:
-                logging.info(f'Player {player} deck is empty, trashing nothing')
-        elif zone == Zone.Play:
-            if p_state._play_area:
-                trashed_card = remove_card(p_state._play_area, card)
-                if trashed_card:
-                    self.trash.append(trashed_card)
-                    logging.info(f'Player {player} trashes {card} from play.')
-                else:
-                    logging.error(f'Player {player} fails to trash {card} from play: card does not exist.')
+
+        trashed_card = p_state.trash_card(card, zone)
+
+        if trashed_card:
+            self.trash.append(trashed_card)
+            self.feature.trash_card(player, trashed_card, zone)
+            logging.info(f'Player {player} trashes {card} from {zone}.')
         else:
-            logging.error(f'Player {player} attemped to trash card from un-recognized zone.')
+            logging.info(f'Player {player} {zone} is empty, trashing nothing.')
+
+    def update_play_area(self, player: int):
+        p_state: PlayerState = self.player_states[player]
+        p_state.update_play_area()
+        self.feature.update_play_area(player)
 
     def play_card(self, player: int, card: Card, zone: Zone = Zone.Hand) -> None:
         p_state: PlayerState = self.player_states[player]
         p_state.play_card(card, zone)
+        self.feature.play_card(player, card, zone)
 
     def process_action(self, card: Card):
         import cardeffectbase
@@ -272,10 +579,6 @@ class State:
         if self.decision.controlling_player == -1:
             self.decision.controlling_player = self.player
         self.decision.max_cards = min(self.decision.max_cards, len(self.decision.card_choices))
-
-    def shuffle(self, player: int) -> None:
-        p_state: PlayerState = self.player_states[player]
-        p_state.shuffle()
 
     # TODO: peddler, bridge, quarry, and plunder affect this method
     def get_supply_cost(self, card: Card) -> int:
@@ -487,15 +790,7 @@ class DiscardCard(Event):
         self.card = card
 
     def advance(self, s: State):
-        p_state: PlayerState = s.player_states[self.player]
-        if self.zone == DiscardZone.DiscardFromHand:
-            s.discard_card(self.player, self.card, p_state.hand)
-        elif self.zone == DiscardZone.DiscardFromDeck:
-            s.discard_card(self.player, self.card, p_state._deck)
-        elif self.zone == DiscardZone.DiscardFromSideZone:
-            p_state._discard.append(self.card)
-        else:
-            logging.warning('Attempted to discard from non-hand zone')
+        s.discard_card(self.player, self.card, self.zone)
         return True
 
     def __str__(self):
@@ -529,35 +824,7 @@ class GainCard(Event):
         self.state = TriggerState.TriggerProcessed
 
     def advance(self, s: State):
-        p_state: PlayerState = s.player_states[self.player]
-        supply: Supply = s.supply
-        # TODO: Refactor
-
-        if supply[type(self.card)] > 0:
-            if self.zone == GainZone.GainToHand:
-                p_state.hand.append(self.card)
-                logging.info(f'Player {self.player} gains {self.card} to hand')
-            elif self.zone == GainZone.GainToDiscard:
-                p_state._discard.append(self.card)
-                logging.info(f'Player {self.player} gains {self.card} to discard')
-            elif self.zone == GainZone.GainToDeckTop:
-                p_state._deck.append(self.card)
-                logging.info(f'Player {self.player} gains {self.card} to deck')
-
-            # TODO: Refactor
-            supply[type(self.card)] -= 1
-
-            if self.bought:
-                cost = s.get_supply_cost(self.card)
-                logging.info(f'Player {self.player} spends {cost} and buys {self.card}')
-                p_state.coins -= cost
-                p_state.buys -= 1
-        else:
-            if self.bought:
-                logging.info(f'Player {self.player} cannot buy {self.card}')
-                p_state.buys -= 1
-            else:
-                logging.info(f'Player {self.player} cannot gain {self.card}')
+        s.gain_card(self.player, self.card, self.zone, self.bought)
         return True
 
     def __str__(self):
@@ -573,6 +840,7 @@ class ReorderCards(Event):
         p_state: PlayerState = s.player_states[self._player]
         _n = len(self._cards)
         if _n > 0:
+            # TODO: Update when the order of deck matters to feature state
             p_state._deck[-_n:] = self._cards
 
         return True
@@ -738,6 +1006,7 @@ class EventLibrary(Event):
         self.done_drawing = False
         self.library_zone = []
 
+    # TODO: Fix this probably broken method
     def advance(self, s: State):
         p_state: PlayerState = s.player_states[s.player]
         current_hand_size = len(p_state.hand)
@@ -751,7 +1020,7 @@ class EventLibrary(Event):
                 logging.info(f'Player {s.player} tries to draw, but has no cards left')
                 self.done_drawing = True
             else:
-                revealed_card = p_state._deck.pop()
+                revealed_card = p_state._deck[-1]
                 if isinstance(revealed_card, ActionCard):
                     self.decision_card = revealed_card
                     s.decision.make_discrete_choice(self.source, 2)
@@ -759,11 +1028,10 @@ class EventLibrary(Event):
                     s.decision.text = f'Set aside {self.decision_card}? 0. Yes 1. No'
                 else:
                     logging.info(f'Player {s.player} draws {revealed_card}')
-                    p_state.hand.append(revealed_card)
+                    s.move_card(s.player, revealed_card, Zone.Deck, Zone.Hand)
                 return False
         self.done_drawing = True
         for card in self.library_zone:
-            print(card)
             s.events.append(DiscardCard(DiscardZone.DiscardFromSideZone, s.player, card))
         return True
 
@@ -773,10 +1041,11 @@ class EventLibrary(Event):
     def process_decision(self, s: State, response: DecisionResponse):
         p_state: PlayerState = s.player_states[s.player]
         if response.choice == 0:
+            remove_card(self.decision_card, p_state._deck)
             self.library_zone.append(self.decision_card)
             logging.info(f'Player {s.player} sets aside {self.decision_card}')
         else:
-            p_state.hand.append(self.decision_card)
+            s.move_card(s.player, self.decision_card, Zone.Deck, Zone.Hand)
             logging.info(f'Player {s.player} puts {self.decision_card} into their hand')
 
     def __str__(self):
@@ -943,10 +1212,9 @@ class PutOnDeckDownToN(Event):
         return True
 
     def process_decision(self, s: State, response: DecisionResponse):
-        p_state: PlayerState = s.player_states[self.player]
         for card in response.cards:
             logging.info(f'Player {self.player} puts {card} on top of their deck')
-            move_card(card, p_state.hand, p_state._deck)
+            s.move_card(self.player, card, Zone.Hand, Zone.Deck)
         self.done = True
 
     def __str__(self):
@@ -988,6 +1256,7 @@ class PlayActionNTimes(Event):
     def process_decision(self, s: State, response: DecisionResponse):
         p_state: PlayerState = s.player_states[s.player]
         self.target = response.cards[0]
+        # TODO: Update feature after adding Throne Room
         target = remove_first_card(self.target, p_state.hand)
 
         target.copies = self.count

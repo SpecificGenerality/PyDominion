@@ -2,25 +2,21 @@ import logging
 import os
 import time
 from argparse import ArgumentParser
-from typing import List
+from typing import Iterable, List
 
 import numpy as np
-import torch
 from tqdm import tqdm
 
 from ai import MCTS
-from aiconfig import data_dir, model_dir
-from aiutils import load, save
-from buyagenda import BigMoneyBuyAgenda, TDBigMoneyBuyAgenda
+from aiconfig import data_dir
+from aiutils import save
 from config import GameConfig
-from constants import SANDBOX_CARDS
 from enums import Rollout, StartingSplit
 from game import Game
-from mlp import SandboxMLP
-from player import HeuristicPlayer, MCTSPlayer, MLPPlayer, RandomPlayer
-from rollout import LinearRegressionRollout, RandomRollout
+from player import MCTSPlayer, Player, load_players
+from rollout import LinearRegressionRollout
 from simulationdata import SimulationData
-from supply import Supply
+from state import FeatureType
 
 
 def test_tau(taus: List, trials=100, iters=500):
@@ -49,40 +45,9 @@ def test_C(trials=10, iters=500):
     save(os.path.join(data_dir, 'C-lr'), agent.data)
 
 
-def init_players(args: ArgumentParser, **kwargs):
-    players = []
-    j = 0
-    for i in range(args.players):
-        if args.strategy[i] == 'R':
-            players.append(RandomPlayer())
-        elif args.strategy[i] == 'UCT':
-            try:
-                rollout_model = load(os.path.join(args.model_dir, args.rollouts[j]))
-            except ImportError:
-                rollout_model = RandomRollout()
-            root = load(os.path.join(args.model_dir, args.roots[j]))
-            j += 1
-            uct_agent = MCTSPlayer(rollout_model, root=root)
-            players.append(uct_agent)
-        elif args.strategy[i] == 'BM':
-            players.append(HeuristicPlayer(BigMoneyBuyAgenda()))
-        elif args.strategy[i] == 'TDBM':
-            players.append(HeuristicPlayer(TDBigMoneyBuyAgenda()))
-        elif args.strategy[i] == 'MLP':
-            model = SandboxMLP(14, 7, 1)
-            model.load_state_dict(torch.load(args.path))
-            model.cuda()
-            players.append(MLPPlayer(model, [card_class() for card_class in SANDBOX_CARDS], 2, train=False))
-
-    return players
-
-
-def simulate(args: ArgumentParser, split: StartingSplit, n: int, save_data=False):
+def simulate(n: int, config: GameConfig, players: Iterable[Player], save_data=False, data_path=None):
 
     sim_data = SimulationData()
-    config = GameConfig(split, prosperity=args.prosperity, num_players=args.players, sandbox=args.sandbox)
-    supply = Supply(config)
-    players = init_players(args, supply=supply)
 
     for i in tqdm(range(n)):
         dominion = Game(config, players)
@@ -100,13 +65,14 @@ def simulate(args: ArgumentParser, split: StartingSplit, n: int, save_data=False
     sim_data.finalize(dominion)
 
     if save_data:
-        save(os.path.join(data_dir, args.data_name), sim_data)
+        save(data_path, sim_data)
 
     print('===SUMMARY===')
     print(sim_data.summary)
 
 
 def main(args: ArgumentParser):
+
     if args.debug:
         logging.basicConfig(level=logging.INFO)
     if args.split == 0:
@@ -116,26 +82,27 @@ def main(args: ArgumentParser):
     else:
         split = StartingSplit.Starting34Split
 
-    simulate(args, split, args.iters, args.save_data)
+    config = GameConfig(split=split, prosperity=args.prosperity, num_players=len(args.players), sandbox=args.sandbox, feature_type=args.ftype)
+
+    players = load_players(args.players, args.models, config)
+
+    simulate(args.n, config, players, args.save_data, args.data_path)
 
 
 if __name__ == '__main__':
     parser = ArgumentParser('Simulation Chamber for Dominion')
+    parser.add_argument('-n', type=int, required=True, help='Number of games to simulate')
     parser.add_argument('-T', type=int, default=None, help='Upper threshold for number of turns in each game')
-    parser.add_argument('--iters', type=int, required=True, help='Number of games to simulate')
+    parser.add_argument('-ftype', required=True, type=lambda x: {'full': FeatureType.FullFeature, 'reduced': FeatureType.ReducedFeature}.get(x.lower()))
     parser.add_argument('--sandbox', action='store_true', help='When set, the supply is limited to the 7 basic kingdom supply cards.')
-    parser.add_argument('--split', default=0, type=int, help='Starting Copper/Estate split. 0: Random, 1: 25Split, 2: 34Split')
     parser.add_argument('--prosperity', action='store_true', help='Whether the Prosperity settings should be used')
-    parser.add_argument('--players', default=2, type=int, help='Number of AI players')
-    parser.add_argument('--strategy', nargs='+', type=str, help='Strategy of AI opponent. Supported: [R, BM, TDBM, UCT]')
-    parser.add_argument('--model_dir', default=model_dir, help='Where the models are located')
-    parser.add_argument('--roots', nargs='+', help='Roots of UCT')
-    parser.add_argument('--rollouts', nargs='+', help='Rollout models of UCT')
+    parser.add_argument('--split', default=0, type=int, help='Starting Copper/Estate split. 0: Random, 1: 25Split, 2: 34Split')
+    parser.add_argument('--players', nargs='+', type=str, choices=['H', 'R', 'BM', 'TDBM', 'UCT', 'MLP'], help='Strategy of AI opponent.')
+    parser.add_argument('--models', nargs='+', type=str, help='Path to AI models')
     parser.add_argument('--save_data', action='store_true', help='Whether the data should be saved')
-    parser.add_argument('--data_dir', default=data_dir, type=str, help='Where the data should be saved')
-    parser.add_argument('--data_name', default='data', type=str, help='Name of the data file')
+    parser.add_argument('--data_path', type=str, help='Where to save data file')
     parser.add_argument('--debug', action='store_true', help='Turn logging settings to DEBUG')
-    parser.add_argument('--path', default='../models/mlp_l1_default', help='Path to MLP model')
 
     args = parser.parse_args()
+
     main(args)

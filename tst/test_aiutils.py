@@ -1,8 +1,10 @@
 import unittest
-import numpy as np
 
-from aiutils import best_path, get_branching_factor_stats, get_path, get_most_visited_paths_at_depth
+import numpy as np
+from aiutils import (best_path, get_branching_factor_stats,
+                     get_most_visited_paths_at_depth, get_path)
 from mcts import Node
+
 
 class TestAIUtils(unittest.TestCase):
     def setUp(self):

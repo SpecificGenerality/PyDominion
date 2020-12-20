@@ -5,6 +5,22 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Python: Test Featurize",
+            "type": "python",
+            "request": "launch",
+            "console": "integratedTerminal",
+            "program": "src/mlprunner.py",
+            "args": ["-n", "10", "--cuda"]
+        },
+        {
+            "name": "Python: Test Linreg Predictor Script",
+            "type": "python",
+            "request": "launch",
+            "console": "integratedTerminal",
+            "program": "scripts/predictor.py",
+            "args": ["-n", "10", "-ftype", "reduced", "-path", "models/test-linreg-predictor", "--players", "R", "R", "--sandbox"]
+        },
+        {
             "name": "Python: Current File",
             "type": "python",
             "request": "launch",

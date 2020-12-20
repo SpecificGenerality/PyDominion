@@ -1,25 +1,26 @@
 import logging
 import random
 from abc import ABC, abstractmethod
-from collections import Counter
 from typing import List
 
 import numpy as np
-import torch
 import numpy.random
+import torch
 
-from buyagenda import BuyAgenda
+from aiutils import load
+from buyagenda import BigMoneyBuyAgenda, BuyAgenda, TDBigMoneyBuyAgenda
 from card import Card
+from config import GameConfig
 from cursecard import Curse
-from enums import Phase, DecisionType, GameConstants, Zone
+from enums import DecisionType, GameConstants, Phase, Zone
 from heuristics import PlayerHeuristic
 from heuristicsutils import heuristic_select_cards
 from mcts import Node
 from mlp import SandboxMLP
 from playerstate import PlayerState
+from rollout import RandomRollout
 from state import (DecisionResponse, DecisionState, DiscardDownToN,
                    PutOnDeckDownToN, RemodelExpand, State)
-from treasurecard import Copper
 from utils import remove_first_card
 from victorycard import Estate, VictoryCard
 
@@ -32,91 +33,50 @@ class Player(ABC):
         '''Given the current state s of the game, make a decision given the choices in s and modify response.'''
         pass
 
+    @classmethod
+    @abstractmethod
+    def load(cls, **kwargs):
+        pass
+
 
 class MLPPlayer(Player):
-    def __init__(self, mlp: SandboxMLP, cards: List[Card], n_players: int, train: bool = True, tau=0.5):
+    def __init__(self, mlp: SandboxMLP, train: bool = True, tau=0.5):
         self.mlp = mlp
-        self.n_players = n_players
-        self.num_cards = len(cards)
-        self.idxs = dict([(str(x), i) for i, x in enumerate(cards)])
-        self.counts = dict((i, Counter({str(Copper()): 7, str(Estate()): 3})) for i in range(self.n_players))
         self.train = train
         self.tau = tau
-        self.eps = 5e-2
-        self.state_feature = torch.zeros(self.mlp.D_in).cuda()
+        self.iters = 0
+        self.min_eps = 0.1
 
-        # initialize feature vector
-        for k, v in self.counts[0].items():
-            idx = self.idxs[k]
-            self.state_feature[idx] = v
-            self.state_feature[idx + self.num_cards] = v
+    @classmethod
+    def load(cls, **kwargs):
+        if 'path' not in kwargs:
+            raise KeyError('Model path missing from kwargs.')
+        if 'config' not in kwargs:
+            raise KeyError('Config missing from kwargs.')
 
-    def update_counts(self, card: Card, player: int):
-        if not card:
-            return
-        offset = 0 if player == 0 else self.num_cards
-        idx = self.idxs[str(card)]
-        self.counts[player][idx] += 1
-        self.state_feature[idx + offset] = self.state_feature[idx + offset] + 1
+        config = kwargs.pop('config')
+        model = SandboxMLP(config.feature_size, (config.feature_size + 1) // 2, 1)
+        model.load_state_dict(torch.load(kwargs.pop('path')))
+        model.cuda()
+        return cls(model, train=False)
+
+    def eps(self):
+        return max(1 / (self.iters + 1), self.min_eps)
 
     def reset(self):
-        self.counts = dict((i, Counter({str(Copper()): 7, str(Estate()): 3})) for i in range(self.n_players))
-        self.state_feature = torch.zeros(self.mlp.D_in).cuda()
+        return
 
-        # initialize feature vector
-        for k, v in self.counts[0].items():
-            idx = self.idxs[k]
-            self.state_feature[idx] = v
-            self.state_feature[idx + self.num_cards] = v
-
-    def get_expected_hand(self, deck: List[Card], HAND_SIZE=5) -> np.array:
-        expected_hand = np.zeros(len(self.idxs))
-        for card in deck:
-            expected_hand[self.idxs[str(card)]] += 1
-        expected_hand = expected_hand / sum(expected_hand) * HAND_SIZE
-        return expected_hand
-
-    def featurize(self, s: State, lookahead=False, lookahead_card: Card = None, dtype=torch.cuda.FloatTensor) -> torch.Tensor:
-        """
-            Given the current game state s and possible lookahead card, return a Tensor x representing the feature vector
-            with the following structure:
-                x[0:7] - Current player card ratios (or counts)
-                x[7] - Current player # turns
-                x[8] - Current player # VP
-                x[9:16] - Current player hand counts (expectation if lookahead)
-                x[16:23] - Opponent player card ratios
-                x[23] - Opponent player # turns
-                x[24] - Opponent player # VP
-
-                x[0:7] - Current player card counts
-                x[7:14] - Current player hand counts (expectation if lookahead)
-                x[14:21] - Opponent player card counts
-        """
+    def featurize(self, s: State, lookahead=False, lookahead_card: Card = None) -> torch.Tensor:
         p: int = s.player
-        q: int = 1 if s.player == 0 else 0
-        offset = 0 if p == 0 else self.num_cards
 
-        if self.train:
-            if not lookahead or not lookahead_card:
-                return self.state_feature
+        if not lookahead:
+            return s.feature.feature
 
-        p_features = self.state_feature.detach().clone()
-
-        if not self.train:
-            opponent_counts = s.player_states[q].get_card_counts()
-            for k, v in opponent_counts.items():
-                p_features[self.idxs[k] + offset] = v
-
-            if not lookahead or not lookahead_card:
-                return p_features
-
-        p_features[self.idxs[str(lookahead_card)] + offset] = p_features[self.idxs[str(lookahead_card)]] + 1
-
-        return p_features.type(dtype)
+        return s.feature.lookahead(p, lookahead_card)
 
     def select(self, player: int, choices: List[Card], vals: List[float]):
         '''Epsilon-greedy action selection'''
-        if np.random.rand() < self.eps:
+        if np.random.rand() < self.eps():
             return np.random.choice(choices)
 
         if player == 0:
@@ -140,7 +100,7 @@ class MLPPlayer(Player):
                 vals.append(self.mlp(x).item())
 
             choice = self.select(p, choices, vals)
-            self.update_counts(choice, p)
+            # print(f'{p}: {choice}')
             response.single_card = choice
 
 
@@ -156,6 +116,20 @@ class MCTSPlayer(Player):
         self.node = None
         self.rollout = rollout
         self.Cfx = C
+
+    @classmethod
+    def load(cls, **kwargs):
+        root_path = kwargs.pop('root_path')
+        rollout_path = kwargs.pop('rollout_path')
+
+        try:
+            rollout_model = load(rollout_path)
+        except ImportError:
+            logging.warning(f'Failed to load rollout from {rollout_path}, defaulting to random rollouts.')
+            rollout_model = RandomRollout()
+
+        root = load(root_path)
+        return cls(rollout=rollout_model, root=root, train=False)
 
     def get_C(self):
         '''Return time-varying C tuned for raw score reward'''
@@ -252,6 +226,13 @@ class HeuristicPlayer(Player):
             else:
                 self.heuristic.makeBaseDecision(s, response)
 
+    def reset(self) -> None:
+        return
+
+    @classmethod
+    def load(cls, **kwargs):
+        return cls(agenda=kwargs.pop('agenda'))
+
 
 class RandomPlayer(Player):
     def makeDecision(self, s: State, response: DecisionResponse):
@@ -271,6 +252,13 @@ class RandomPlayer(Player):
             response.choice = random.randint(0, d.min_cards)
         else:
             logging.error('Invalid decision type')
+
+    @classmethod
+    def load(cls, **kwargs):
+        return cls()
+
+    def reset(self) -> None:
+        return
 
     def __str__(self):
         return 'Random Player'
@@ -311,6 +299,13 @@ class HumanPlayer(Player):
         else:
             logging.error(f'Player {s.player} given invalid decision type.')
 
+    @classmethod
+    def load(cls, **kwargs):
+        return cls()
+
+    def reset(self) -> None:
+        return
+
     def __str__(self):
         return "Human Player"
 
@@ -322,3 +317,25 @@ class PlayerInfo:
 
     def __str__(self):
         return f'{self.controller} {self.id}'
+
+
+def load_players(player_types: List[str], models: List[str], config: GameConfig) -> List[Player]:
+    players = []
+    for p_type in player_types:
+        if p_type == 'R':
+            players.append(RandomPlayer.load())
+        elif p_type == 'BM':
+            players.append(HeuristicPlayer.load(agenda=BigMoneyBuyAgenda()))
+        elif p_type == 'TDBM':
+            players.append(HeuristicPlayer.load(agenda=TDBigMoneyBuyAgenda()))
+        elif p_type == 'UCT':
+            players.append(MCTSPlayer.load(root_path=models.pop(0), rollout_path=models.pop(0)))
+        elif p_type == 'MLP':
+            players.append(MLPPlayer.load(path=models.pop(0), config=config))
+        elif p_type == 'H':
+            players.append(HumanPlayer())
+
+    if models:
+        logging.warning(f'Possible extraneous model paths passed. Remaining paths: {models}')
+
+    return players

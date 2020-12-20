@@ -19,6 +19,10 @@ class Game:
         else:
             logging.basicConfig(level=logging.WARNING)
 
+    @property
+    def done(self):
+        return self.state.decision.type == DecisionType.DecisionGameOver
+
     def new_game(self):
         self.state = State(self.config)
         self.state.new_game()

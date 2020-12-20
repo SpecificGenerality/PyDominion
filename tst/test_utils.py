@@ -3,6 +3,7 @@ import numpy as np
 from utils import get_first_index, contains_card, remove_card, remove_first_card, move_card, running_mean
 from victorycard import Estate, Province, Colony
 
+
 class TestUtils(unittest.TestCase):
     def test_get_first_index(self):
         card = Colony()
@@ -80,18 +81,18 @@ class TestUtils(unittest.TestCase):
         self.assertEqual(dst, [card])
 
     def test_running_mean(self):
-        x, N = [1,1,1], 1
-        expected = np.array([1,1,1])
+        x, N = [1, 1, 1], 1
+        expected = np.array([1, 1, 1])
 
         np.testing.assert_allclose(running_mean(x, N), expected)
 
-        x, N = [1,1,1], 4
-        expected = np.array([1,1,1])
+        x, N = [1, 1, 1], 4
+        expected = np.array([1, 1, 1])
 
         np.testing.assert_allclose(running_mean(x, N), expected)
 
-        x, N = [1,1,1], 0
-        expected = np.array([1,1,1])
+        x, N = [1, 1, 1], 0
+        expected = np.array([1, 1, 1])
 
         np.testing.assert_allclose(running_mean(x, N), expected)
 
@@ -101,6 +102,6 @@ class TestUtils(unittest.TestCase):
         np.testing.assert_allclose(running_mean(x, N), expected)
 
         x, N = [1, -1, 1, -1, 1, -1], 3
-        expected = np.array([1, 0, 1/3, -1/3, 1/3, -1/3])
+        expected = np.array([1, 0, 1 / 3, -1 / 3, 1 / 3, -1 / 3])
 
         np.testing.assert_allclose(running_mean(x, N), expected)
