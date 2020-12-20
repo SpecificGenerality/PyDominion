@@ -97,7 +97,7 @@ if __name__ == '__main__':
     parser.add_argument('--sandbox', action='store_true', help='When set, the supply is limited to the 7 basic kingdom supply cards.')
     parser.add_argument('--prosperity', action='store_true', help='Whether the Prosperity settings should be used')
     parser.add_argument('--split', default=0, type=int, help='Starting Copper/Estate split. 0: Random, 1: 25Split, 2: 34Split')
-    parser.add_argument('--players', nargs='+', type=str, choices=['R', 'BM', 'TDBM', 'UCT', 'MLP'], help='Strategy of AI opponent.')
+    parser.add_argument('--players', nargs='+', type=str, choices=['H', 'R', 'BM', 'TDBM', 'UCT', 'MLP'], help='Strategy of AI opponent.')
     parser.add_argument('--models', nargs='+', type=str, help='Path to AI models')
     parser.add_argument('--save_data', action='store_true', help='Whether the data should be saved')
     parser.add_argument('--data_path', type=str, help='Where to save data file')

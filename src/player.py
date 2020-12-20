@@ -332,6 +332,8 @@ def load_players(player_types: List[str], models: List[str], config: GameConfig)
             players.append(MCTSPlayer.load(root_path=models.pop(0), rollout_path=models.pop(0)))
         elif p_type == 'MLP':
             players.append(MLPPlayer.load(path=models.pop(0), config=config))
+        elif p_type == 'H':
+            players.append(HumanPlayer())
 
     if models:
         logging.warning(f'Possible extraneous model paths passed. Remaining paths: {models}')
