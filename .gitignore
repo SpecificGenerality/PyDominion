@@ -5,6 +5,7 @@ models*
 figures*
 aiconfig.py
 src/runs/*
+runs/*
 temp/
 
 # Byte-compiled / optimized / DLL files
