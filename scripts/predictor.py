@@ -124,7 +124,7 @@ def load_predict_model(reg_cls, alpha: float = None):
 def main(args: ArgumentParser):
     config = GameConfig(split=StartingSplit.StartingRandomSplit, prosperity=False, num_players=len(args.players), sandbox=args.sandbox, feature_type=args.ftype)
 
-    players = load_players(args.players, args.models, config)
+    players = load_players(args.players, args.models, config, train=True)
 
     if not args.predict:
         if args.reg_cls == MLP:

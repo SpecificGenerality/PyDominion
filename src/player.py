@@ -112,7 +112,7 @@ class GreedyMLPPlayer(Player):
             card_idx = torch.argmax(y_pred[:, label_idx])
 
             response.single_card = choices[card_idx]
-            print(response.single_card)
+            # print(response.single_card)
 
 
 class MLPPlayer(Player):
@@ -303,11 +303,17 @@ class HeuristicPlayer(Player):
 
 
 class RandomPlayer(Player):
+    def __init__(self, train: bool = False):
+        self.train = train
+
+    def train(self):
+        self.train = True
+
     def makeDecision(self, s: State, response: DecisionResponse):
         d: DecisionState = s.decision
 
         # Do not allow RandomPlayer to purchase curses
-        if s.phase == Phase.BuyPhase:
+        if s.phase == Phase.BuyPhase and not self.train:
             remove_first_card(Curse(), d.card_choices)
 
         # Ensure random player plays all treasures
@@ -328,7 +334,7 @@ class RandomPlayer(Player):
 
     @classmethod
     def load(cls, **kwargs):
-        return cls()
+        return cls(train=kwargs['train'])
 
     def reset(self) -> None:
         return
@@ -392,11 +398,11 @@ class PlayerInfo:
         return f'{self.controller} {self.id}'
 
 
-def load_players(player_types: List[str], models: List[str], config: GameConfig) -> List[Player]:
+def load_players(player_types: List[str], models: List[str], config: GameConfig, train=False) -> List[Player]:
     players = []
     for p_type in player_types:
         if p_type == 'R':
-            players.append(RandomPlayer.load())
+            players.append(RandomPlayer.load(train=train))
         elif p_type == 'BM':
             players.append(HeuristicPlayer.load(agenda=BigMoneyBuyAgenda()))
         elif p_type == 'TDBM':
