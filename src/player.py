@@ -28,6 +28,7 @@ from victorycard import Estate, VictoryCard
 
 # feature decks as counts of each card, least squares regress each against scores + offset
 # try random + greedy
+# TODO: add reset function
 class Player(ABC):
     @abstractmethod
     def makeDecision(self, s: State, response: DecisionResponse):
@@ -74,6 +75,44 @@ class GreedyLogisticPlayer(Player):
             card_idx = np.argmax(y[:, label_idx])
 
             response.single_card = choices[card_idx]
+
+
+class GreedyMLPPlayer(Player):
+    def __init__(self, model):
+        self.model = model
+
+    @classmethod
+    def load(cls, **kwargs):
+        if 'path' not in kwargs:
+            raise KeyError('Model path missing from kwargs.')
+
+        model = torch.load(kwargs['path'])
+        model.cuda()
+        return cls(model)
+
+    def reset(self):
+        return
+
+    def makeDecision(self, s: State, response: DecisionResponse):
+        d: DecisionState = s.decision
+        p: int = s.player
+        if s.phase == Phase.ActionPhase:
+            assert False, 'GreedyMLPPlayer does not support action cards yet'
+        elif s.phase == Phase.TreasurePhase:
+            response.single_card = d.card_choices[0]
+        else:
+            choices = d.card_choices + [None]
+
+            X = s.lookahead_batch_featurize(choices)
+
+            label_idx = 0 if p == 1 else 2
+
+            y_pred = self.model.forward(X)
+
+            card_idx = torch.argmax(y_pred[:, label_idx])
+
+            response.single_card = choices[card_idx]
+            print(response.single_card)
 
 
 class MLPPlayer(Player):
@@ -368,6 +407,8 @@ def load_players(player_types: List[str], models: List[str], config: GameConfig)
             players.append(MLPPlayer.load(path=models.pop(0), config=config))
         elif p_type == 'LOG':
             players.append(GreedyLogisticPlayer.load(path=models.pop(0)))
+        elif p_type == 'GMLP':
+            players.append(GreedyMLPPlayer.load(path=models.pop(0)))
         elif p_type == 'H':
             players.append(HumanPlayer())
 

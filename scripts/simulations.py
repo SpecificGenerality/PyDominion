@@ -82,7 +82,7 @@ def main(args: ArgumentParser):
     else:
         split = StartingSplit.Starting34Split
 
-    config = GameConfig(split=split, prosperity=args.prosperity, num_players=len(args.players), sandbox=args.sandbox, feature_type=args.ftype)
+    config = GameConfig(split=split, prosperity=args.prosperity, num_players=len(args.players), sandbox=args.sandbox, feature_type=args.ftype, device=args.device)
 
     players = load_players(args.players, args.models, config)
 
@@ -97,7 +97,8 @@ if __name__ == '__main__':
     parser.add_argument('--sandbox', action='store_true', help='When set, the supply is limited to the 7 basic kingdom supply cards.')
     parser.add_argument('--prosperity', action='store_true', help='Whether the Prosperity settings should be used')
     parser.add_argument('--split', default=0, type=int, help='Starting Copper/Estate split. 0: Random, 1: 25Split, 2: 34Split')
-    parser.add_argument('--players', nargs='+', type=str, choices=['H', 'LOG', 'R', 'BM', 'TDBM', 'UCT', 'MLP'], help='Strategy of AI opponent.')
+    parser.add_argument('--players', nargs='+', type=str, choices=['H', 'LOG', 'R', 'BM', 'TDBM', 'UCT', 'MLP', 'GMLP'], help='Strategy of AI opponent.')
+    parser.add_argument('--device', default='cuda', type=str, help='Hardware to use for neural network models.')
     parser.add_argument('--models', nargs='+', type=str, help='Path to AI models')
     parser.add_argument('--save_data', action='store_true', help='Whether the data should be saved')
     parser.add_argument('--data_path', type=str, help='Where to save data file')

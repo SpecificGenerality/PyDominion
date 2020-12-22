@@ -398,9 +398,9 @@ class State:
         self.events = []
 
         if config.feature_type == FeatureType.FullFeature:
-            self.feature = FullStateFeature(config, self.supply, self.player_states)
+            self.feature = FullStateFeature(config, self.supply, self.player_states, device=config.device)
         elif config.feature_type == FeatureType.ReducedFeature:
-            self.feature = ReducedStateFeature(config, self.supply, self.player_states)
+            self.feature = ReducedStateFeature(config, self.supply, self.player_states, device=config.device)
 
     def featurize(self, lookahead=False, lookahead_card: Card = None) -> torch.Tensor:
         p: int = self.player

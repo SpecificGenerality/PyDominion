@@ -10,7 +10,6 @@ class MLP(nn.Module):
         self.fc1 = nn.Linear(D_in, H)
         # Output: Win/loss/tie
         self.fc2 = nn.Linear(H, 3)
-        self.tanh = nn.Tanh()
         self.relu = nn.LeakyReLU()
 
     def forward(self, x):
