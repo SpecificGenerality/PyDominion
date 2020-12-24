@@ -66,7 +66,7 @@ class GreedyLogisticPlayer(Player):
         else:
             choices = d.card_choices + [None]
 
-            X = s.lookahead_batch_featurize(choices)
+            X = s.lookahead_batch_featurize(choices).cpu()
 
             label_idx = np.argmin(self.model.classes_) if p == 1 else np.argmax(self.model.classes_)
 
@@ -112,7 +112,7 @@ class GreedyMLPPlayer(Player):
             card_idx = torch.argmax(y_pred[:, label_idx])
 
             response.single_card = choices[card_idx]
-            # print(response.single_card)
+            print(response.single_card)
 
 
 class MLPPlayer(Player):

@@ -1,3 +1,4 @@
+import os
 import pickle
 from argparse import ArgumentParser
 from typing import Iterable, Tuple
@@ -127,18 +128,20 @@ def main(args: ArgumentParser):
     players = load_players(args.players, args.models, config, train=True)
 
     if not args.predict:
+        X, y = sample_training_batch(args.n, args.p, config, players)
+
         if args.reg_cls == MLP:
-            X, y = sample_training_batch(args.n, args.p, config, players)
             model = MLP(config.feature_size, (config.feature_size + 1) // 2)
             acc = train_mlp(X, y, model, args.epochs, save_epochs=args.save_epochs, path=args.path)
             print(f'Acc = {acc}')
             torch.save(model, args.path)
         else:
-            X, y = sample_training_batch(args.n, args.p, config, players)
             reg = load_predict_model(args.reg_cls, alpha=args.alpha)
             score = train_linear_model(X, y, reg)
             print(f'R_sq = {score}')
             pickle.dump(reg, open(args.path, 'wb'))
+
+        np.savez(os.path.join('data', os.path.split(args.path)[-1]))
     else:
         if args.reg_cls == MLP:
             model = torch.load(args.path)
