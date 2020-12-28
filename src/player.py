@@ -6,6 +6,7 @@ from typing import List
 import numpy as np
 import numpy.random
 import torch
+from sklearn.linear_model import LogisticRegression
 
 from aiutils import load
 from buyagenda import BigMoneyBuyAgenda, BuyAgenda, TDBigMoneyBuyAgenda
@@ -27,6 +28,7 @@ from victorycard import Estate, VictoryCard
 
 # feature decks as counts of each card, least squares regress each against scores + offset
 # try random + greedy
+# TODO: add reset function
 class Player(ABC):
     @abstractmethod
     def makeDecision(self, s: State, response: DecisionResponse):
@@ -37,6 +39,80 @@ class Player(ABC):
     @abstractmethod
     def load(cls, **kwargs):
         pass
+
+
+class GreedyLogisticPlayer(Player):
+    @classmethod
+    def load(cls, **kwargs):
+        if 'path' not in kwargs:
+            raise KeyError('Model path missing from kwargs.')
+
+        model = load(kwargs['path'])
+        return cls(model)
+
+    def __init__(self, model: LogisticRegression):
+        self.model: LogisticRegression = model
+
+    def reset(self):
+        return
+
+    def makeDecision(self, s: State, response: DecisionResponse):
+        d: DecisionState = s.decision
+        p: int = s.player
+        if s.phase == Phase.ActionPhase:
+            assert False, 'GreedyPlayer does not support action cards yet'
+        elif s.phase == Phase.TreasurePhase:
+            response.single_card = d.card_choices[0]
+        else:
+            choices = d.card_choices + [None]
+
+            X = s.lookahead_batch_featurize(choices).cpu()
+
+            label_idx = np.argmin(self.model.classes_) if p == 1 else np.argmax(self.model.classes_)
+
+            y = self.model.predict_proba(X)
+
+            card_idx = np.argmax(y[:, label_idx])
+
+            response.single_card = choices[card_idx]
+
+
+class GreedyMLPPlayer(Player):
+    def __init__(self, model):
+        self.model = model
+
+    @classmethod
+    def load(cls, **kwargs):
+        if 'path' not in kwargs:
+            raise KeyError('Model path missing from kwargs.')
+
+        model = torch.load(kwargs['path'])
+        model.cuda()
+        return cls(model)
+
+    def reset(self):
+        return
+
+    def makeDecision(self, s: State, response: DecisionResponse):
+        d: DecisionState = s.decision
+        p: int = s.player
+        if s.phase == Phase.ActionPhase:
+            assert False, 'GreedyMLPPlayer does not support action cards yet'
+        elif s.phase == Phase.TreasurePhase:
+            response.single_card = d.card_choices[0]
+        else:
+            choices = d.card_choices + [None]
+
+            X = s.lookahead_batch_featurize(choices)
+
+            label_idx = 0 if p == 1 else 2
+
+            y_pred = self.model.forward(X)
+
+            card_idx = torch.argmax(y_pred[:, label_idx])
+
+            response.single_card = choices[card_idx]
+            print(response.single_card)
 
 
 class MLPPlayer(Player):
@@ -66,14 +142,6 @@ class MLPPlayer(Player):
     def reset(self):
         return
 
-    def featurize(self, s: State, lookahead=False, lookahead_card: Card = None) -> torch.Tensor:
-        p: int = s.player
-
-        if not lookahead:
-            return s.feature.feature
-
-        return s.feature.lookahead(p, lookahead_card)
-
     def select(self, player: int, choices: List[Card], vals: List[float]):
         '''Epsilon-greedy action selection'''
         if np.random.rand() < self.eps():
@@ -96,7 +164,7 @@ class MLPPlayer(Player):
             choices = d.card_choices + [None]
 
             for card in choices:
-                x = self.featurize(s, lookahead=True, lookahead_card=card)
+                x = s.featurize(lookahead=True, lookahead_card=card)
                 vals.append(self.mlp(x).item())
 
             choice = self.select(p, choices, vals)
@@ -235,12 +303,23 @@ class HeuristicPlayer(Player):
 
 
 class RandomPlayer(Player):
+    def __init__(self, train: bool = False):
+        self.train = train
+
+    def train(self):
+        self.train = True
+
     def makeDecision(self, s: State, response: DecisionResponse):
         d: DecisionState = s.decision
 
         # Do not allow RandomPlayer to purchase curses
-        if s.phase == Phase.BuyPhase:
+        if s.phase == Phase.BuyPhase and not self.train:
             remove_first_card(Curse(), d.card_choices)
+
+        # Ensure random player plays all treasures
+        if s.phase == Phase.TreasurePhase:
+            response.single_card = d.card_choices[0]
+            return
 
         if d.type == DecisionType.DecisionSelectCards:
             cards_to_pick = d.min_cards
@@ -255,7 +334,7 @@ class RandomPlayer(Player):
 
     @classmethod
     def load(cls, **kwargs):
-        return cls()
+        return cls(train=kwargs['train'])
 
     def reset(self) -> None:
         return
@@ -319,11 +398,11 @@ class PlayerInfo:
         return f'{self.controller} {self.id}'
 
 
-def load_players(player_types: List[str], models: List[str], config: GameConfig) -> List[Player]:
+def load_players(player_types: List[str], models: List[str], config: GameConfig, train=False) -> List[Player]:
     players = []
     for p_type in player_types:
         if p_type == 'R':
-            players.append(RandomPlayer.load())
+            players.append(RandomPlayer.load(train=train))
         elif p_type == 'BM':
             players.append(HeuristicPlayer.load(agenda=BigMoneyBuyAgenda()))
         elif p_type == 'TDBM':
@@ -332,6 +411,10 @@ def load_players(player_types: List[str], models: List[str], config: GameConfig)
             players.append(MCTSPlayer.load(root_path=models.pop(0), rollout_path=models.pop(0)))
         elif p_type == 'MLP':
             players.append(MLPPlayer.load(path=models.pop(0), config=config))
+        elif p_type == 'LOG':
+            players.append(GreedyLogisticPlayer.load(path=models.pop(0)))
+        elif p_type == 'GMLP':
+            players.append(GreedyMLPPlayer.load(path=models.pop(0)))
         elif p_type == 'H':
             players.append(HumanPlayer())
 

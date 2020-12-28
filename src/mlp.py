@@ -2,6 +2,24 @@ import torch
 import torch.nn as nn
 
 
+class MLP(nn.Module):
+    def __init__(self, D_in: int, H: int):
+        super(MLP, self).__init__()
+        self.D_in = D_in
+        self.H = H
+        self.fc1 = nn.Linear(D_in, H)
+        # Output: Win/loss/tie
+        self.fc2 = nn.Linear(H, 3)
+        self.relu = nn.LeakyReLU()
+
+    def forward(self, x):
+        x = self.fc1(x)
+        x = self.relu(x)
+        x = self.fc2(x)
+
+        return x
+
+
 class SandboxMLP(nn.Module):
     def __init__(self, D_in: int, H: int, D_out: int, lr=1e-3, gamma=1, lambd=0.7, device='cuda'):
         super(SandboxMLP, self).__init__()
