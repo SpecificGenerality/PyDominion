@@ -29,13 +29,13 @@ class DefaultEnvironment(Environment):
         self.players = players
         self.game = Game(config, players)
 
-    def reset(self) -> State:
+    def reset(self, **kwargs) -> State:
         self.game = Game(self.config, self.players)
         self.game.new_game()
         self.game.state.advance_next_decision()
 
         for player in self.players:
-            player.reset()
+            player.reset(p_state=self.game.state.player_states[0])
 
         s: State = self.game.state
         d: DecisionState = s.decision

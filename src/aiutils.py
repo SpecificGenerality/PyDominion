@@ -22,6 +22,12 @@ def save(file: str, obj):
         pickle.dump(obj, output, 4)
 
 
+def softmax(x):
+    '''Compute softmax values for each sets of scores in x.'''
+    e_x = np.exp(x - np.max(x))
+    return e_x / e_x.sum(axis=0)
+
+
 def print_path(path: List[Node]):
     print('-->'.join([str(node.card) for node in path]))
 

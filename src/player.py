@@ -30,14 +30,18 @@ from victorycard import Estate, VictoryCard
 # try random + greedy
 # TODO: add reset function
 class Player(ABC):
+    @classmethod
+    @abstractmethod
+    def load(cls, **kwargs):
+        pass
+
     @abstractmethod
     def makeDecision(self, s: State, response: DecisionResponse):
         '''Given the current state s of the game, make a decision given the choices in s and modify response.'''
         pass
 
-    @classmethod
     @abstractmethod
-    def load(cls, **kwargs):
+    def reset(self, **kwargs):
         pass
 
 
@@ -53,7 +57,7 @@ class GreedyLogisticPlayer(Player):
     def __init__(self, model: LogisticRegression):
         self.model: LogisticRegression = model
 
-    def reset(self):
+    def reset(self, **kwargs):
         return
 
     def makeDecision(self, s: State, response: DecisionResponse):
@@ -90,7 +94,7 @@ class GreedyMLPPlayer(Player):
         model.cuda()
         return cls(model)
 
-    def reset(self):
+    def reset(self, **kwargs):
         return
 
     def makeDecision(self, s: State, response: DecisionResponse):
@@ -139,7 +143,7 @@ class MLPPlayer(Player):
     def eps(self):
         return max(1 / (self.iters + 1), self.min_eps)
 
-    def reset(self):
+    def reset(self, **kwargs):
         return
 
     def select(self, player: int, choices: List[Card], vals: List[float]):
@@ -181,7 +185,7 @@ class MCTSPlayer(Player):
         # To prevent clobbering trees loaded from file
         if not root.children:
             self.root.children = [Node(parent=self.root) for i in range(GameConstants.StartingHands)]
-        self.node = None
+        self.node: Node = None
         self.rollout = rollout
         self.Cfx = C
 
@@ -203,7 +207,8 @@ class MCTSPlayer(Player):
         '''Return time-varying C tuned for raw score reward'''
         return self.Cfx(self.node.n)
 
-    def reset(self, p_state: PlayerState):
+    def reset(self, **kwargs):
+        p_state: PlayerState = kwargs['p_state']
         if self.train:
             self.root.n += 1
         # advance MCTS from virtual root to the correct start position (2/3/4/5 coppers)
@@ -234,7 +239,7 @@ class MCTSPlayer(Player):
         else:
             choices = list(filter(lambda x: not isinstance(x, Curse), d.card_choices + [None]))
             if not self.node.children:
-                response.single_card = self.rollout.select(choices)
+                response.single_card = self.rollout.select(choices, state=s)
                 return None
 
             if self.train:
@@ -242,7 +247,7 @@ class MCTSPlayer(Player):
             # the next node in the tree is the one that maximizes the UCB1 score
             next_node = self.get_next_node(d.card_choices, self.get_C())
             if not next_node:
-                response.single_card = self.rollout.select(choices)
+                response.single_card = self.rollout.select(choices, state=s)
                 return None
 
             self.node = next_node
@@ -294,7 +299,7 @@ class HeuristicPlayer(Player):
             else:
                 self.heuristic.makeBaseDecision(s, response)
 
-    def reset(self) -> None:
+    def reset(self, **kwargs) -> None:
         return
 
     @classmethod
@@ -336,7 +341,7 @@ class RandomPlayer(Player):
     def load(cls, **kwargs):
         return cls(train=kwargs['train'])
 
-    def reset(self) -> None:
+    def reset(self, **kwargs) -> None:
         return
 
     def __str__(self):
@@ -382,7 +387,7 @@ class HumanPlayer(Player):
     def load(cls, **kwargs):
         return cls()
 
-    def reset(self) -> None:
+    def reset(self, **kwargs) -> None:
         return
 
     def __str__(self):

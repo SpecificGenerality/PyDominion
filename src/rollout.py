@@ -5,9 +5,13 @@ from collections import Counter
 from typing import List
 
 import numpy as np
+import torch
 from sklearn.linear_model import LinearRegression
 
+from aiutils import softmax
 from card import Card
+from mlp import MLP
+from state import State
 from supply import Supply
 
 
@@ -15,7 +19,7 @@ class RolloutModel(ABC):
     def update(self, **data):
         pass
 
-    def select(self, choices: List[Card]):
+    def select(self, choices: List[Card], **kwargs):
         pass
 
     def augment_data(self, data: dict):
@@ -27,7 +31,7 @@ class RandomRollout(RolloutModel):
         '''Nothing to update'''
         pass
 
-    def select(self, choices: List[Card]):
+    def select(self, choices: List[Card], **kwargs):
         '''Select a card from choices uniformly at random'''
         return random.choice(choices)
 
@@ -36,6 +40,40 @@ class RandomRollout(RolloutModel):
 
     def __str__(self):
         return 'RandomRollout'
+
+
+class MLPRollout(RolloutModel):
+    def __init__(self, mlp: MLP):
+        self.model = mlp
+
+    @classmethod
+    def load(cls, **kwargs):
+        path = kwargs['path']
+        model = torch.load(path)
+        model.cuda()
+        model.eval()
+        return cls(model)
+
+    def update(self, **data):
+        return
+
+    def select(self, choices, **kwargs):
+        s: State = kwargs['state']
+        p: int = s.player
+
+        # Calculate values of next-step states
+        X = s.lookahead_batch_featurize(choices)
+        label_idx = 0 if p == 1 else 2
+        y_pred = self.model.forward(X)
+        scores = y_pred[:, label_idx].detach().cpu().numpy()
+
+        # Softmax over scores
+        D = softmax(scores)
+
+        return np.random.choice(choices, p=D)
+
+    def augment_data(self, data):
+        return
 
 
 class HistoryHeuristicRollout(RolloutModel):
@@ -57,7 +95,7 @@ class HistoryHeuristicRollout(RolloutModel):
             else:
                 self.mast[str(c)] = (score, 1)
 
-    def select(self, choices):
+    def select(self, choices, **kwargs):
         '''Create Gibbs distribution over choices given mast and return card choice'''
         D = [np.exp(self.mast.get(str(c), (50 if self.train else 0, 0))[0] / self.tau) for c in choices]
         D /= sum(D)
@@ -120,7 +158,7 @@ class LinearRegressionRollout(RolloutModel):
 
         self.betas = reg.coef_
 
-    def select(self, choices):
+    def select(self, choices, **kwargs):
         '''Sample from Gibbs distribution over choices weighted by regression weights'''
         D = [np.exp(self.betas[self.indices[str(c)]] / self.tau) for c in choices]
         D /= sum(D)
