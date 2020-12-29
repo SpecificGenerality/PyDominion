@@ -16,10 +16,10 @@ from cursecard import Curse
 from enums import DecisionType, GameConstants, Phase, Zone
 from heuristics import PlayerHeuristic
 from heuristicsutils import heuristic_select_cards
-from mcts import Node
+from mcts import GameTree, Node
 from mlp import SandboxMLP
 from playerstate import PlayerState
-from rollout import RandomRollout
+from rollout import MLPRollout, RandomRollout, RolloutModel
 from state import (DecisionResponse, DecisionState, DiscardDownToN,
                    PutOnDeckDownToN, RemodelExpand, State)
 from utils import remove_first_card
@@ -178,57 +178,52 @@ class MLPPlayer(Player):
 
 # TODO: Expand MCTS to work outside of sandbox games
 class MCTSPlayer(Player):
-    def __init__(self, rollout, root=Node(), train=False, C=lambda x: max(1, min(25, 25 / np.sqrt(x)))):
-        self.train = train
-        self.root = root
-        self.root.parent = self.root
-        # To prevent clobbering trees loaded from file
-        if not root.children:
-            self.root.children = [Node(parent=self.root) for i in range(GameConstants.StartingHands)]
-        self.node: Node = None
-        self.rollout = rollout
+    def __init__(self, rollout, tree: GameTree, train=False, C=lambda x: max(1, min(25, 25 / np.sqrt(x)))):
+        self.train: bool = train
+        self.tree: GameTree = tree
+        # self.root = root
+        # self.root.parent = self.root
+        # # To prevent clobbering trees loaded from file
+        # if not root.children:
+        #     self.root.children = [Node(parent=self.root) for i in range(GameConstants.StartingHands)]
+        # self.node: Node = None
+        self.rollout: RolloutModel = rollout
         self.Cfx = C
 
     @classmethod
     def load(cls, **kwargs):
-        root_path = kwargs.pop('root_path')
-        rollout_path = kwargs.pop('rollout_path')
+        tree: GameTree = kwargs.pop('tree')
+        rollout_path: str = kwargs.pop('rollout_path')
 
+        # TODO: Fix this to work with other rollout models.
         try:
-            rollout_model = load(rollout_path)
+            rollout_model: MLPRollout = MLPRollout.load(path=rollout_path)
         except ImportError:
             logging.warning(f'Failed to load rollout from {rollout_path}, defaulting to random rollouts.')
             rollout_model = RandomRollout()
 
-        root = load(root_path)
-        return cls(rollout=rollout_model, root=root, train=False)
+        return cls(rollout=rollout_model, tree=tree, train=False)
 
     def get_C(self):
         '''Return time-varying C tuned for raw score reward'''
-        return self.Cfx(self.node.n)
+        return self.Cfx(self.tree.node.n)
 
     def reset(self, **kwargs):
-        p_state: PlayerState = kwargs['p_state']
-        # if self.train:
-        #     self.root.n += 1
-        # advance MCTS from virtual root to the correct start position (2/3/4/5 coppers)
-        self.node = self.root.children[p_state.get_treasure_card_count(Zone.Hand) - 2]
-        # if self.train:
-        #     self.node.n += 1
+        return
 
-    def get_next_node(self, choices: List[Card], C):
-        '''Select the node that maximizes the UCB score'''
-        max_score = 0
-        next_node = None
-        for c in choices:
-            for node in self.node.children:
-                if str(node.card) == str(c):
-                    val = node.score(C)
-                    if val > max_score:
-                        max_score = val
-                        next_node = node
+    # def get_next_node(self, choices: List[Card], C):
+    #     '''Select the node that maximizes the UCB score'''
+    #     max_score = 0
+    #     next_node = None
+    #     for c in choices:
+    #         for node in self.node.children:
+    #             if str(node.card) == str(c):
+    #                 val = node.score(C)
+    #                 if val > max_score:
+    #                     max_score = val
+    #                     next_node = node
 
-        return next_node
+    #     return next_node
 
     def makeDecision(self, s: State, response: DecisionResponse):
         d: DecisionState = s.decision
@@ -239,20 +234,20 @@ class MCTSPlayer(Player):
         else:
             choices = list(filter(lambda x: not isinstance(x, Curse), d.card_choices + [None]))
 
-            # TODO: Change this to check if leaf?
-            if not self.node.children:
+            if not self.tree.in_tree:
                 response.single_card = self.rollout.select(choices, state=s)
                 return None
 
-            if self.train:
-                self.node.add_unique_children(d.card_choices)
+            if self.tree.train:
+                self.tree.node.add_unique_children(d.card_choices)
+
             # the next node in the tree is the one that maximizes the UCB1 score
-            next_node = self.get_next_node(d.card_choices, self.get_C())
+            next_node = self.tree.select(d.card_choices, self.get_C())
             if not next_node:
                 response.single_card = self.rollout.select(choices, state=s)
                 return None
 
-            self.node = next_node
+            # self.node = next_node
             response.single_card = next_node.card
             return next_node
 
@@ -405,7 +400,7 @@ class PlayerInfo:
         return f'{self.controller} {self.id}'
 
 
-def load_players(player_types: List[str], models: List[str], config: GameConfig, train=False) -> List[Player]:
+def load_players(player_types: List[str], models: List[str], config: GameConfig, train=False, **kwargs) -> List[Player]:
     players = []
     for p_type in player_types:
         if p_type == 'R':
@@ -415,7 +410,7 @@ def load_players(player_types: List[str], models: List[str], config: GameConfig,
         elif p_type == 'TDBM':
             players.append(HeuristicPlayer.load(agenda=TDBigMoneyBuyAgenda()))
         elif p_type == 'UCT':
-            players.append(MCTSPlayer.load(root_path=models.pop(0), rollout_path=models.pop(0)))
+            players.append(MCTSPlayer.load(tree=kwargs.pop('tree'), rollout_path=models.pop(0)))
         elif p_type == 'MLP':
             players.append(MLPPlayer.load(path=models.pop(0), config=config))
         elif p_type == 'LOG':

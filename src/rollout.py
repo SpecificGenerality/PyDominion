@@ -25,6 +25,10 @@ class RolloutModel(ABC):
     def augment_data(self, data: dict):
         pass
 
+    @classmethod
+    def load(cls, **kwargs):
+        pass
+
 
 class RandomRollout(RolloutModel):
     def update(self, **data):
@@ -37,6 +41,10 @@ class RandomRollout(RolloutModel):
 
     def augment_data(self, data):
         pass
+
+    @classmethod
+    def load(cls, **kwargs):
+        return cls()
 
     def __str__(self):
         return 'RandomRollout'
@@ -82,6 +90,10 @@ class HistoryHeuristicRollout(RolloutModel):
         self.tau = tau
         self.train = train
 
+    @classmethod
+    def load(cls, **kwargs):
+        raise NotImplementedError()
+
     def update(self, **data):
         '''Update history heuristic with card buys from last rollout'''
         cards: List[Card] = data['cards']
@@ -124,6 +136,10 @@ class LinearRegressionRollout(RolloutModel):
         self.tau = tau
         self.train = train
         self.eps = eps
+
+    @classmethod
+    def load(cls, **kwargs):
+        raise NotImplementedError()
 
     def update(self, **data):
         if not self.train:

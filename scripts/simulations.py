@@ -5,18 +5,18 @@ from argparse import ArgumentParser
 from typing import Iterable, List
 
 import numpy as np
-from tqdm import tqdm
-
 from ai import MCTS
 from aiconfig import data_dir
 from aiutils import save
 from config import GameConfig
 from enums import Rollout, StartingSplit
 from game import Game
+from mcts import GameTree
 from player import MCTSPlayer, Player, load_players
 from rollout import LinearRegressionRollout
 from simulationdata import SimulationData
 from state import FeatureType
+from tqdm import tqdm
 
 
 def test_tau(taus: List, trials=100, iters=500):
@@ -55,7 +55,7 @@ def simulate(n: int, config: GameConfig, players: Iterable[Player], save_data=Fa
 
         for i, player in enumerate(players):
             if isinstance(player, MCTSPlayer):
-                player.reset(dominion.state.player_states[i])
+                player.reset(p_state=dominion.state.player_states[i])
 
         t_start = time.time()
         dominion.run(T=args.T)
@@ -84,8 +84,12 @@ def main(args: ArgumentParser):
 
     config = GameConfig(split=split, prosperity=args.prosperity, num_players=len(args.players), sandbox=args.sandbox, feature_type=args.ftype, device=args.device)
 
-    players = load_players(args.players, args.models, config)
+    if args.tree_path:
+        tree = GameTree.load(args.tree_path, False)
+    else:
+        tree = None
 
+    players = load_players(args.players, args.models, config, tree=tree)
     simulate(args.n, config, players, args.save_data, args.data_path)
 
 
@@ -97,6 +101,7 @@ if __name__ == '__main__':
     parser.add_argument('--sandbox', action='store_true', help='When set, the supply is limited to the 7 basic kingdom supply cards.')
     parser.add_argument('--prosperity', action='store_true', help='Whether the Prosperity settings should be used')
     parser.add_argument('--split', default=0, type=int, help='Starting Copper/Estate split. 0: Random, 1: 25Split, 2: 34Split')
+    parser.add_argument('--tree-path', type=str, help='Path to game tree.')
     parser.add_argument('--players', nargs='+', type=str, choices=['H', 'LOG', 'R', 'BM', 'TDBM', 'UCT', 'MLP', 'GMLP'], help='Strategy of AI opponent.')
     parser.add_argument('--device', default='cuda', type=str, help='Hardware to use for neural network models.')
     parser.add_argument('--models', nargs='+', type=str, help='Path to AI models')

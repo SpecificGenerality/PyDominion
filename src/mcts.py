@@ -3,8 +3,11 @@ from typing import Callable, Iterable, List
 
 import numpy as np
 
+from aiutils import load
 from card import Card
 from cursecard import Curse
+from enums import Zone
+from state import PlayerState, State
 
 
 class Node:
@@ -24,6 +27,7 @@ class Node:
     def score(self, C):
         return self.v / self.n + C * np.sqrt(np.log(self.parent.n) / self.n) if self.n > 0 else sys.maxsize
 
+    # TODO: Deprecate this?
     def update_v(self, f: Callable[[Iterable], float]):
         vals = np.array([n.v for n in self.children if n.n > 0])
         self.v = f(vals)
@@ -78,3 +82,48 @@ class Node:
 
     def __repr__(self):
         return str(self)
+
+
+class GameTree:
+    def __init__(self, root: Node, train: bool = False):
+        self._root: Node = root
+        self._node: Node = root
+        self.train: bool = train
+        self._in_tree: bool = True
+
+    @classmethod
+    def load(cls, path: str, train: bool):
+        root = load(path)
+        assert isinstance(root, Node)
+        return cls(root, train)
+
+    @property
+    def node(self):
+        return self._node
+
+    @property
+    def in_tree(self):
+        return self._in_tree
+
+    def reset(self, s: State):
+        p_state: PlayerState = s.player_states[0]
+        self._node = self._root.children[p_state.get_treasure_card_count(Zone.Hand) - 2]
+
+    def select(self, choices: Iterable[Card], C: float) -> Node:
+        '''Select the node that maximizes the UCB score'''
+        max_score = -sys.maxsize - 1
+        next_node = None
+        for c in choices:
+            for node in self.node.children:
+                if str(node.card) == str(c):
+                    val = node.score(C)
+                    if val > max_score:
+                        max_score = val
+                        next_node = node
+
+        if not next_node:
+            self._in_tree = False
+        else:
+            self._node = next_node
+
+        return next_node
