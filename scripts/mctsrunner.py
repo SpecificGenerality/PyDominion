@@ -5,7 +5,6 @@ from aiutils import save
 from config import GameConfig
 from enums import StartingSplit
 from env import DefaultEnvironment, Environment
-from mcts import Node
 from player import MCTSPlayer
 from rollout import MLPRollout
 from state import DecisionResponse, DecisionState, FeatureType, State
@@ -21,24 +20,24 @@ def train_mcts(env: Environment, epochs: int, **kwargs):
         state: State = env.reset()
         done = False
         expanded = False
+        flip = False
         while not done:
             action = DecisionResponse([])
             d: DecisionState = state.decision
-            next_node: Node = player.makeDecision(state, action)
+            player.makeDecision(state, action)
 
-            if next_node:
-                player.node.n += 1
-            elif not expanded:
+            if not expanded:
                 cards = d.card_choices + [None]
                 player.node.add_unique_children(cards)
                 player.node = player.node.get_child_node(action.single_card)
-                player.node.n += 1
+                # Previous node is player zero action, so current node is player one action.
+                flip = (state.player == 1)
                 expanded = True
 
             obs, reward, done, _ = env.step(action)
 
-        player.node.v += reward
-        player.node.parent.backpropagate(lambda x: max(x))
+        delta = reward * (1 if flip else -1)
+        player.node.backpropagate(delta)
 
         if save_epochs > 0 and epoch % save_epochs == 0:
             save(path, player.root)

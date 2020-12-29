@@ -209,12 +209,12 @@ class MCTSPlayer(Player):
 
     def reset(self, **kwargs):
         p_state: PlayerState = kwargs['p_state']
-        if self.train:
-            self.root.n += 1
+        # if self.train:
+        #     self.root.n += 1
         # advance MCTS from virtual root to the correct start position (2/3/4/5 coppers)
         self.node = self.root.children[p_state.get_treasure_card_count(Zone.Hand) - 2]
-        if self.train:
-            self.node.n += 1
+        # if self.train:
+        #     self.node.n += 1
 
     def get_next_node(self, choices: List[Card], C):
         '''Select the node that maximizes the UCB score'''
@@ -238,6 +238,8 @@ class MCTSPlayer(Player):
             response.single_card = d.card_choices[0]
         else:
             choices = list(filter(lambda x: not isinstance(x, Curse), d.card_choices + [None]))
+
+            # TODO: Change this to check if leaf?
             if not self.node.children:
                 response.single_card = self.rollout.select(choices, state=s)
                 return None

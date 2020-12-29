@@ -12,7 +12,7 @@ class Node:
         # TODO: For non-sandbox, maybe states should be stored?
         # self.state = s
         self.parent = parent
-        # the card played to get from parent to current
+        # the action := the card played to get from parent to current
         self.card = card
         # number of times visited
         self.n = n
@@ -22,18 +22,23 @@ class Node:
 
     # UCB1 formula
     def score(self, C):
-        return self.v + C * np.sqrt(np.log(self.parent.n) / self.n) if self.n > 0 else sys.maxsize
+        return self.v / self.n + C * np.sqrt(np.log(self.parent.n) / self.n) if self.n > 0 else sys.maxsize
 
     def update_v(self, f: Callable[[Iterable], float]):
-        vals = [n.v for n in self.children if n.n > 0]
+        vals = np.array([n.v for n in self.children if n.n > 0])
         self.v = f(vals)
 
-    def backpropagate(self, f: Callable[[Iterable], float]):
+    def update(self, delta: int):
+        self.v += delta
+        self.n += 1
+
+    def backpropagate(self, delta: int):
+        self.update(delta)
+
         if self.parent == self:
             return
 
-        self.update_v(f)
-        self.parent.backpropagate(f)
+        self.parent.backpropagate(-delta)
         return
 
     def add_unique_children(self, cards: List[Card]):
