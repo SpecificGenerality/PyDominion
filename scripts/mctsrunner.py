@@ -5,19 +5,21 @@ from aiutils import save
 from config import GameConfig
 from enums import StartingSplit
 from env import DefaultEnvironment, Environment
+from mcts import GameTree
 from player import MCTSPlayer
 from rollout import MLPRollout
 from state import DecisionResponse, DecisionState, FeatureType, State
 from tqdm import tqdm
 
 
-def train_mcts(env: Environment, epochs: int, **kwargs):
+def train_mcts(env: Environment, tree: GameTree, epochs: int, **kwargs):
     save_epochs = kwargs['save_epochs']
     path = kwargs['path']
     player: MCTSPlayer = env.players[0]
 
     for epoch in tqdm(range(epochs)):
         state: State = env.reset()
+        tree.reset(state)
         done = False
         expanded = False
         flip = False
@@ -28,19 +30,19 @@ def train_mcts(env: Environment, epochs: int, **kwargs):
 
             if not expanded:
                 cards = d.card_choices + [None]
-                player.node.add_unique_children(cards)
-                player.node = player.node.get_child_node(action.single_card)
-                # Previous node is player zero action, so current node is player one action.
+                tree.node.add_unique_children(cards)
+                # Previous node is starting player action, so current node is opponent player action.
                 flip = (state.player == 1)
                 expanded = True
 
             obs, reward, done, _ = env.step(action)
+            tree.advance(action.single_card)
 
         delta = reward * (1 if flip else -1)
-        player.node.backpropagate(delta)
+        tree.node.backpropagate(delta)
 
         if save_epochs > 0 and epoch % save_epochs == 0:
-            save(path, player.root)
+            save(path, tree._root)
 
 
 def main(args):
@@ -48,13 +50,15 @@ def main(args):
 
     rollout = MLPRollout.load(path=args.rollout)
 
-    player = MCTSPlayer(rollout=rollout, train=True, C=lambda x: np.sqrt(2))
+    tree = GameTree(train=True)
+
+    player = MCTSPlayer(rollout=rollout, tree=tree, C=lambda x: np.sqrt(2))
 
     players = [player, player]
 
     env = DefaultEnvironment(config, players)
 
-    train_mcts(env, args.n, save_epochs=args.save_epochs, path=args.path)
+    train_mcts(env, tree, args.n, save_epochs=args.save_epochs, path=args.path)
 
 
 if __name__ == '__main__':

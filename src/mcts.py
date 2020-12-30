@@ -6,7 +6,7 @@ import numpy as np
 from aiutils import load
 from card import Card
 from cursecard import Curse
-from enums import Zone
+from enums import GameConstants, Zone
 from state import PlayerState, State
 
 
@@ -39,10 +39,8 @@ class Node:
     def backpropagate(self, delta: int):
         self.update(delta)
 
-        if self.parent == self:
-            return
-
-        self.parent.backpropagate(-delta)
+        if self.parent and self.parent != self:
+            self.parent.backpropagate(-delta)
         return
 
     def add_unique_children(self, cards: List[Card]):
@@ -85,11 +83,15 @@ class Node:
 
 
 class GameTree:
-    def __init__(self, root: Node, train: bool = False):
+    def __init__(self, root: Node = Node(), train: bool = False):
         self._root: Node = root
         self._node: Node = root
         self.train: bool = train
         self._in_tree: bool = True
+
+        # To prevent clobbering trees loaded from file
+        if not self._root.children:
+            self._root.children = [Node(parent=self._root) for i in range(GameConstants.StartingHands)]
 
     @classmethod
     def load(cls, path: str, train: bool):
