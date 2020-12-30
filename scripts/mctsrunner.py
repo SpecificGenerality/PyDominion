@@ -44,6 +44,8 @@ def train_mcts(env: Environment, tree: GameTree, epochs: int, **kwargs):
         if save_epochs > 0 and epoch % save_epochs == 0:
             save(path, tree._root)
 
+    save(path, tree._root)
+
 
 def main(args):
     config = GameConfig(split=StartingSplit.StartingRandomSplit, prosperity=False, num_players=2, sandbox=args.sandbox, feature_type=args.ftype, device=args.device)
