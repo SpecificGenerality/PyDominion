@@ -5,7 +5,7 @@ from aiutils import save
 from config import GameConfig
 from enums import StartingSplit
 from env import DefaultEnvironment, Environment
-from mcts import GameTree
+from mcts import GameTree, Node
 from player import MCTSPlayer
 from rollout import MLPRollout
 from state import DecisionResponse, DecisionState, FeatureType, State
@@ -26,9 +26,9 @@ def train_mcts(env: Environment, tree: GameTree, epochs: int, **kwargs):
         while not done:
             action = DecisionResponse([])
             d: DecisionState = state.decision
-            player.makeDecision(state, action)
+            next_node: Node = player.makeDecision(state, action)
 
-            if not expanded:
+            if not expanded and not next_node:
                 cards = d.card_choices + [None]
                 tree.node.add_unique_children(cards)
                 # Previous node is starting player action, so current node is opponent player action.
@@ -54,7 +54,7 @@ def main(args):
 
     tree = GameTree(train=True)
 
-    player = MCTSPlayer(rollout=rollout, tree=tree, C=lambda x: np.sqrt(2))
+    player = MCTSPlayer(rollout=rollout, tree=tree, C=lambda x: np.sqrt(args.C))
 
     players = [player, player]
 
@@ -69,6 +69,7 @@ if __name__ == '__main__':
     parser.add_argument('-ftype', required=True, type=lambda x: {'full': FeatureType.FullFeature, 'reduced': FeatureType.ReducedFeature}.get(x.lower()))
     parser.add_argument('-rollout', type=str, help='Path to rollout model')
     parser.add_argument('-path', type=str, help='Path to save MCTS model')
+    parser.add_argument('-C', type=float, help='Exploration constant')
     parser.add_argument('--save-epochs', type=int, default=0, help='Number of epochs between saves')
     parser.add_argument('--sandbox', action='store_true', help='Uses no action cards when set.')
     parser.add_argument('-device', default='cuda')

@@ -76,9 +76,16 @@ class MLPRollout(RolloutModel):
         scores = y_pred[:, label_idx].detach().cpu().numpy()
 
         # Softmax over scores
-        D = softmax(scores)
+        # D = softmax(scores)
+        # choice = np.random.choice(choices, p=D)
 
-        return np.random.choice(choices, p=D)
+        # Epsilon greedy
+        if np.random.rand() < 0.05:
+            choice = np.random.choice(choices)
+        else:
+            choice = choices[np.argmax(scores)]
+
+        return choice
 
     def augment_data(self, data):
         return
