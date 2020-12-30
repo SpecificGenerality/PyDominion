@@ -2,7 +2,7 @@ import logging
 import os
 import time
 from argparse import ArgumentParser
-from typing import Iterable, List
+from typing import List
 
 import numpy as np
 from ai import MCTS
@@ -10,12 +10,12 @@ from aiconfig import data_dir
 from aiutils import save
 from config import GameConfig
 from enums import Rollout, StartingSplit
-from game import Game
+from env import DefaultEnvironment, Environment
 from mcts import GameTree
-from player import MCTSPlayer, Player, load_players
+from player import MCTSPlayer, load_players
 from rollout import LinearRegressionRollout
 from simulationdata import SimulationData
-from state import FeatureType
+from state import DecisionResponse, DecisionState, FeatureType, State
 from tqdm import tqdm
 
 
@@ -45,30 +45,34 @@ def test_C(trials=10, iters=500):
     save(os.path.join(data_dir, 'C-lr'), agent.data)
 
 
-def simulate(n: int, config: GameConfig, players: Iterable[Player], save_data=False, data_path=None):
-
+def simulate(env: Environment, n: int, tree: GameTree) -> SimulationData:
     sim_data = SimulationData()
 
     for i in tqdm(range(n)):
-        dominion = Game(config, players)
-        dominion.new_game()
-
-        for i, player in enumerate(players):
-            if isinstance(player, MCTSPlayer):
-                player.reset(p_state=dominion.state.player_states[i])
-
+        state: State = env.reset()
+        if tree:
+            tree.reset(state)
+        done = False
         t_start = time.time()
-        dominion.run(T=args.T)
+        while not done:
+            action: DecisionResponse = DecisionResponse([])
+            d: DecisionState = state.decision
+            player = env.players[d.controlling_player]
+            player.makeDecision(state, action)
+
+            obs, reward, done, _ = env.step(action)
+            # TODO: Is there a better way of incorporating the tree?
+            if tree:
+                tree.advance(action.single_card)
         t_end = time.time()
-        sim_data.update(dominion, t_end - t_start)
+        sim_data.update(env.game, t_end - t_start)
 
-    sim_data.finalize(dominion)
-
-    if save_data:
-        save(data_path, sim_data)
+    sim_data.finalize(env.game)
 
     print('===SUMMARY===')
     print(sim_data.summary)
+
+    return sim_data
 
 
 def main(args: ArgumentParser):
@@ -90,7 +94,11 @@ def main(args: ArgumentParser):
         tree = None
 
     players = load_players(args.players, args.models, config, tree=tree)
-    simulate(args.n, config, players, args.save_data, args.data_path)
+    env = DefaultEnvironment(config, players)
+    sim_data = simulate(env, args.n, tree)
+
+    if args.save_data:
+        save(args.data_path, sim_data)
 
 
 if __name__ == '__main__':

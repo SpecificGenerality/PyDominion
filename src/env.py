@@ -9,6 +9,11 @@ from state import DecisionResponse, DecisionState, State
 
 
 class Environment(ABC):
+    def __init__(self, config: GameConfig, players: Iterable[Player]):
+        self.config = config
+        self.players = players
+        self.game = Game(config, players)
+
     @abstractmethod
     def reset(self) -> State:
         '''Reset the environment for another training epoch'''
@@ -25,17 +30,12 @@ class Environment(ABC):
 
 class DefaultEnvironment(Environment):
     def __init__(self, config: GameConfig, players: Iterable[Player]):
-        self.config = config
-        self.players = players
-        self.game = Game(config, players)
+        super(DefaultEnvironment, self).__init__(config, players)
 
     def reset(self, **kwargs) -> State:
         self.game = Game(self.config, self.players)
         self.game.new_game()
         self.game.state.advance_next_decision()
-
-        for player in self.players:
-            player.reset(p_state=self.game.state.player_states[0])
 
         s: State = self.game.state
         d: DecisionState = s.decision

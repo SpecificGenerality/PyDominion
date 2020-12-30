@@ -123,7 +123,18 @@ class GameTree:
 
         if not next_node:
             self._in_tree = False
-        else:
-            self._node = next_node
 
         return next_node
+
+    def advance(self, action: Card):
+        '''Transitions to the next node, if it exists'''
+        for child in self.node.children:
+            if str(child.card) == str(action):
+                self._node = child
+
+                if self._node.is_leaf():
+                    self._in_tree = False
+
+                return True
+        self._in_tree = False
+        return False
