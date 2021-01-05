@@ -6,8 +6,9 @@ from config import GameConfig
 from enums import StartingSplit
 from env import DefaultEnvironment, Environment
 from mcts import GameTree, Node
-from player import MCTSPlayer
-from rollout import MLPRollout
+from buyagenda import BigMoneyBuyAgenda
+from player import MCTSPlayer, Player, HeuristicPlayer
+from rollout import MLPRollout, RandomRollout
 from state import DecisionResponse, DecisionState, FeatureType, State
 from tqdm import tqdm
 
@@ -15,7 +16,6 @@ from tqdm import tqdm
 def train_mcts(env: Environment, tree: GameTree, epochs: int, **kwargs):
     save_epochs = kwargs['save_epochs']
     path = kwargs['path']
-    player: MCTSPlayer = env.players[0]
 
     for epoch in tqdm(range(epochs)):
         state: State = env.reset()
@@ -26,6 +26,8 @@ def train_mcts(env: Environment, tree: GameTree, epochs: int, **kwargs):
         while not done:
             action = DecisionResponse([])
             d: DecisionState = state.decision
+            player: Player = env.players[0] if tree.in_tree else env.players[1]
+
             next_node: Node = player.makeDecision(state, action)
 
             if not expanded and not next_node:
@@ -50,13 +52,13 @@ def train_mcts(env: Environment, tree: GameTree, epochs: int, **kwargs):
 def main(args):
     config = GameConfig(split=StartingSplit.StartingRandomSplit, prosperity=False, num_players=2, sandbox=args.sandbox, feature_type=args.ftype, device=args.device)
 
-    rollout = MLPRollout.load(path=args.rollout)
+    rollout = MLPRollout.load(path=args.rollout) if args.rollout else RandomRollout()
 
     tree = GameTree(train=True)
 
     player = MCTSPlayer(rollout=rollout, tree=tree, C=lambda x: np.sqrt(args.C))
-
-    players = [player, player]
+    opponent = HeuristicPlayer(agenda=BigMoneyBuyAgenda())
+    players = [player, opponent]
 
     env = DefaultEnvironment(config, players)
 

@@ -25,7 +25,7 @@ class Node:
 
     # UCB1 formula
     def score(self, C):
-        return self.v / self.n + C * np.sqrt(np.log(self.parent.n) / self.n) if self.n > 0 else sys.maxsize
+        return self.v / self.n + C * np.sqrt(2 * np.log(self.parent.n) / self.n) if self.n > 0 else sys.maxsize
 
     # TODO: Deprecate this?
     def update_v(self, f: Callable[[Iterable], float]):
