@@ -20,6 +20,27 @@ class MLP(nn.Module):
         return x
 
 
+class BuyMLP(nn.Module):
+    def __init__(self, D_in: int, H: int, D_out: int):
+        super(BuyMLP, self).__init__()
+        self.D_in = D_in
+        self.H = H
+        self.D_out = D_out
+
+        self.fc1 = nn.Linear(D_in, H)
+        self.fc2 = nn.Linear(H, D_out)
+        self.sigmoid = nn.Sigmoid()
+        self.relu = nn.LeakyReLU()
+
+    def forward(self, x):
+        x = self.fc1(x)
+        x = self.relu(x)
+        x = self.fc2(x)
+        x = self.sigmoid(x)
+
+        return x
+
+
 class SandboxMLP(nn.Module):
     def __init__(self, D_in: int, H: int, D_out: int, lr=1e-3, gamma=1, lambd=0.7, device='cuda'):
         super(SandboxMLP, self).__init__()

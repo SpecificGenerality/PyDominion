@@ -14,9 +14,9 @@ from player import Player, load_players
 from sklearn.linear_model import LinearRegression, LogisticRegression, Ridge
 from sklearn.metrics import confusion_matrix
 from state import DecisionResponse, State
-from torch.utils.data.dataloader import DataLoader
-from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
+
+from mlprunner import train_mlp
 
 
 def sample_training_batch(n: int, p: float, config: GameConfig, players: Iterable[Player], one_hot=False) -> Tuple[np.array, np.array]:
@@ -51,48 +51,6 @@ def sample_training_batch(n: int, p: float, config: GameConfig, players: Iterabl
             y.extend([reward + 1] * (len(X) - len(y)))
 
     return np.array(X), np.array(y)
-
-
-def train_mlp(X, y, model: nn.Module, epochs: int, **kwargs) -> float:
-    save_epochs = kwargs['save_epochs']
-    path = kwargs['path']
-    dataset = []
-
-    print('Generating dataset for dataloader...')
-    for i in tqdm(range(len(X))):
-        dataset.append((torch.tensor(X[i]).cuda(), torch.tensor(y[i]).cuda()))
-
-    dataloader = DataLoader(dataset, batch_size=1, shuffle=True)
-
-    criterion = nn.CrossEntropyLoss()
-    optim = torch.optim.Adam(model.parameters())
-
-    model.cuda()
-    model.train()
-    writer = SummaryWriter()
-
-    print('Training MLP...')
-
-    for epoch in tqdm(range(epochs)):
-        running_loss = 0.0
-        for i, data in enumerate(dataloader):
-            inputs, labels = data
-
-            optim.zero_grad()
-            y_pred = model.forward(inputs)
-            loss = criterion(y_pred, labels)
-            loss.backward()
-            optim.step()
-
-            running_loss += loss.item()
-
-        if save_epochs > 0 and epoch % save_epochs == 0:
-            torch.save(model, path)
-
-        writer.add_scalar("Loss/train", running_loss, epoch)
-
-    writer.flush()
-    return test_mlp(X, y, model)
 
 
 def test_mlp(X: np.array, y: np.array, model: nn.Module) -> float:
@@ -137,7 +95,8 @@ def main(args: ArgumentParser):
 
         if args.reg_cls == MLP:
             model = MLP(config.feature_size, (config.feature_size + 1) // 2)
-            acc = train_mlp(X, y, model, args.epochs, save_epochs=args.save_epochs, path=args.path)
+            train_mlp(X, y, model, nn.CrossEntropyLoss(), args.epochs, save_epochs=args.save_epochs, path=args.path)
+            acc = test_mlp(X, y, model)
             print(f'Acc = {acc}')
             torch.save(model, args.path)
         else:

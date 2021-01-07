@@ -1,21 +1,35 @@
 from argparse import ArgumentParser
 
 import numpy as np
-from aiutils import save
+import torch.nn as nn
+from aiutils import save, softmax
+from buffer import Buffer
 from buyagenda import BigMoneyBuyAgenda
 from config import GameConfig
 from enums import StartingSplit
 from env import DefaultEnvironment, Environment
 from mcts import GameTree
+from mlp import BuyMLP
 from player import HeuristicPlayer, MCTSPlayer, Player
 from rollout import MLPRollout, RandomRollout
 from state import DecisionResponse, DecisionState, FeatureType, State
 from tqdm import tqdm
 
+from mlprunner import train_mlp
 
-def train_mcts(env: Environment, tree: GameTree, epochs: int, **kwargs):
+
+def train_mcts(env: Environment, tree: GameTree, epochs: int, train_epochs: int, **kwargs):
     save_epochs = kwargs['save_epochs']
     path = kwargs['path']
+    mlp_path = kwargs['mlp_path']
+
+    buf = Buffer()
+    D_in = len(env.game.config.feature_size)
+    H = D_in // 2
+    # +1 for None
+    D_out = len(env.game.config.kingdom_size + 1)
+
+    model = BuyMLP(D_in, H, D_out)
 
     for epoch in tqdm(range(epochs)):
         state: State = env.reset()
@@ -35,6 +49,13 @@ def train_mcts(env: Environment, tree: GameTree, epochs: int, **kwargs):
 
             player.makeDecision(state, action)
 
+            if tree.in_tree and d.controlling_player == 0:
+                x = state.feature.to_numpy()
+                L = [(node.card, node.n) for node in tree.node.children]
+                cards, vals = zip(*L)
+                y = Buffer.to_distribution(cards, state.feature.idxs, softmax(vals))
+                buf.store(x, y)
+
             # Advance to the next node within the tree, implicitly adding a node the first time we exit tree
             if tree.in_tree:
                 tree.advance(action.single_card)
@@ -53,6 +74,10 @@ def train_mcts(env: Environment, tree: GameTree, epochs: int, **kwargs):
         if save_epochs > 0 and epoch % save_epochs == 0:
             save(path, tree._root)
 
+        if epoch % train_epochs == 0:
+            X, y = zip(*buf.buf)
+            train_mlp(X, y, model, nn.MSELoss(), epochs=20, save_epochs=20, path=mlp_path)
+
     save(path, tree._root)
 
 
@@ -69,7 +94,7 @@ def main(args):
 
     env = DefaultEnvironment(config, players)
 
-    train_mcts(env, tree, args.n, save_epochs=args.save_epochs, path=args.path)
+    train_mcts(env, tree, args.n, save_epochs=args.save_epochs, train_epochs=args.train_epochs, path=args.path, mlp_path=args.mlp_path)
 
 
 if __name__ == '__main__':
@@ -78,8 +103,10 @@ if __name__ == '__main__':
     parser.add_argument('-ftype', required=True, type=lambda x: {'full': FeatureType.FullFeature, 'reduced': FeatureType.ReducedFeature}.get(x.lower()))
     parser.add_argument('-rollout', type=str, help='Path to rollout model')
     parser.add_argument('-path', type=str, help='Path to save MCTS model')
+    parser.add_argument('-mlp-path', type=str, help='Path to save MLP policy.')
     parser.add_argument('-C', default=2, type=float, help='Exploration constant')
     parser.add_argument('--save-epochs', type=int, default=0, help='Number of epochs between saves')
+    parser.add_argument('--train-epochs', type=int, default=1000, help='How often to train MLP')
     parser.add_argument('--sandbox', action='store_true', help='Uses no action cards when set.')
     parser.add_argument('-device', default='cuda')
 
