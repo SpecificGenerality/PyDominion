@@ -28,19 +28,24 @@ def train_mcts(env: Environment, tree: GameTree, epochs: int, **kwargs):
             d: DecisionState = state.decision
             player: Player = env.players[d.controlling_player] if tree.in_tree else env.players[1]
 
-            player.makeDecision(state, action)
-
-            if not expanded and tree.node.is_leaf():
+            # Add any states now visible due to randomness
+            if tree.in_tree:
                 cards = d.card_choices + [None]
                 tree.node.add_unique_children(cards)
+
+            player.makeDecision(state, action)
+
+            # Advance to the next node within the tree, implicitly adding a node the first time we exit tree
+            if tree.in_tree:
+                tree.advance(action.single_card)
+
+            # First time we go out of tree, enter rollout phase
+            if not expanded and not tree.in_tree:
                 # Previous node is starting player action, so current node is opponent player action.
                 flip = (state.player == 1)
                 expanded = True
 
-            tree.advance(action.single_card)
-
             obs, reward, done, _ = env.step(action)
-            tree.advance(action.single_card)
 
         delta = (state.get_player_score(0) - state.get_player_score(1)) * (-1 if flip else 1)
         tree.node.backpropagate(delta)

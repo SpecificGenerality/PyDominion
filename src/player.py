@@ -201,17 +201,12 @@ class MCTSPlayer(Player):
             if not self.tree.in_tree:
                 response.single_card = self.rollout.select(choices, state=s)
 
-            # In-tree and training case
-            if self.tree.train:
-                self.tree.node.add_unique_children(choices)
-
             # the next node in the tree is the one that maximizes the UCB1 score
             try:
                 card = self.tree.select(choices, self.get_C())
             except ValueError:
                 card = self.rollout.select(choices, state=s)
 
-            # self.node = next_node
             response.single_card = card
 
 
