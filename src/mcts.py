@@ -113,22 +113,24 @@ class GameTree:
         p_state: PlayerState = s.player_states[0]
         self._node = self._root.children[p_state.get_treasure_card_count(Zone.Hand) + p_state.get_treasure_card_count(Zone.Play) - 2]
 
-    def select(self, choices: Iterable[Card], C: float) -> Node:
+    def select(self, choices: Iterable[Card], C: float) -> Card:
         '''Select the node that maximizes the UCB score'''
         max_score = -sys.maxsize - 1
-        next_node = None
+        card: Card = None
+        found = False
         for c in choices:
             for node in self.node.children:
                 if str(node.card) == str(c):
+                    found = True
                     val = node.score(C)
                     if val > max_score:
                         max_score = val
-                        next_node = node
+                        card = node.card
 
-        if not next_node:
-            self._in_tree = False
+        if not found:
+            raise ValueError('None of choices represented in child nodes.')
 
-        return next_node
+        return card
 
     def advance(self, action: Card):
         '''Transitions to the next node, if it exists'''

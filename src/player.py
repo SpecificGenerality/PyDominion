@@ -197,22 +197,22 @@ class MCTSPlayer(Player):
         else:
             choices = list(filter(lambda x: not isinstance(x, Curse), d.card_choices + [None]))
 
+            # Rollout (out-of-tree) case
             if not self.tree.in_tree:
                 response.single_card = self.rollout.select(choices, state=s)
-                return None
 
+            # In-tree and training case
             if self.tree.train:
                 self.tree.node.add_unique_children(choices)
 
             # the next node in the tree is the one that maximizes the UCB1 score
-            next_node = self.tree.select(choices, self.get_C())
-            if not next_node:
-                response.single_card = self.rollout.select(choices, state=s)
-                return None
+            try:
+                card = self.tree.select(choices, self.get_C())
+            except ValueError:
+                card = self.rollout.select(choices, state=s)
 
             # self.node = next_node
-            response.single_card = next_node.card
-            return next_node
+            response.single_card = card
 
 
 class HeuristicPlayer(Player):

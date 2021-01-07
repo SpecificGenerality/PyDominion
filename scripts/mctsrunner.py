@@ -5,7 +5,7 @@ from aiutils import save
 from config import GameConfig
 from enums import StartingSplit
 from env import DefaultEnvironment, Environment
-from mcts import GameTree, Node
+from mcts import GameTree
 from buyagenda import BigMoneyBuyAgenda
 from player import MCTSPlayer, Player, HeuristicPlayer
 from rollout import MLPRollout, RandomRollout
@@ -26,21 +26,23 @@ def train_mcts(env: Environment, tree: GameTree, epochs: int, **kwargs):
         while not done:
             action = DecisionResponse([])
             d: DecisionState = state.decision
-            player: Player = env.players[0] if tree.in_tree else env.players[1]
+            player: Player = env.players[d.controlling_player] if tree.in_tree else env.players[1]
 
-            next_node: Node = player.makeDecision(state, action)
+            player.makeDecision(state, action)
 
-            if not expanded and not next_node:
+            if not expanded and tree.node.is_leaf():
                 cards = d.card_choices + [None]
                 tree.node.add_unique_children(cards)
                 # Previous node is starting player action, so current node is opponent player action.
                 flip = (state.player == 1)
                 expanded = True
 
+            tree.advance(action.single_card)
+
             obs, reward, done, _ = env.step(action)
             tree.advance(action.single_card)
 
-        delta = reward * (1 if flip else -1)
+        delta = (state.get_player_score(0) - state.get_player_score(1)) * (-1 if flip else 1)
         tree.node.backpropagate(delta)
 
         if save_epochs > 0 and epoch % save_epochs == 0:
@@ -71,7 +73,7 @@ if __name__ == '__main__':
     parser.add_argument('-ftype', required=True, type=lambda x: {'full': FeatureType.FullFeature, 'reduced': FeatureType.ReducedFeature}.get(x.lower()))
     parser.add_argument('-rollout', type=str, help='Path to rollout model')
     parser.add_argument('-path', type=str, help='Path to save MCTS model')
-    parser.add_argument('-C', type=float, help='Exploration constant')
+    parser.add_argument('-C', default=2, type=float, help='Exploration constant')
     parser.add_argument('--save-epochs', type=int, default=0, help='Number of epochs between saves')
     parser.add_argument('--sandbox', action='store_true', help='Uses no action cards when set.')
     parser.add_argument('-device', default='cuda')
