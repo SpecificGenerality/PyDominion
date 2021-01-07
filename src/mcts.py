@@ -138,7 +138,7 @@ class GameTree:
             if str(child.card) == str(action):
                 self._node = child
 
-                if self._node.is_leaf():
+                if self._node.n == 0:
                     self._in_tree = False
 
                 return True
