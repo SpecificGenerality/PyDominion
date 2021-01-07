@@ -2,12 +2,12 @@ from argparse import ArgumentParser
 
 import numpy as np
 from aiutils import save
+from buyagenda import BigMoneyBuyAgenda
 from config import GameConfig
 from enums import StartingSplit
 from env import DefaultEnvironment, Environment
 from mcts import GameTree
-from buyagenda import BigMoneyBuyAgenda
-from player import MCTSPlayer, Player, HeuristicPlayer
+from player import HeuristicPlayer, MCTSPlayer, Player
 from rollout import MLPRollout, RandomRollout
 from state import DecisionResponse, DecisionState, FeatureType, State
 from tqdm import tqdm

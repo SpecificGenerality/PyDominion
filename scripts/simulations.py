@@ -9,6 +9,7 @@ from ai import MCTS
 from aiconfig import data_dir
 from aiutils import save
 from config import GameConfig
+from constants import BUY
 from enums import Rollout, StartingSplit
 from env import DefaultEnvironment, Environment
 from mcts import GameTree
@@ -64,6 +65,7 @@ def simulate(env: Environment, n: int, tree: GameTree) -> SimulationData:
             # TODO: Is there a better way of incorporating the tree?
             if tree:
                 tree.advance(action.single_card)
+
         t_end = time.time()
         sim_data.update(env.game, t_end - t_start)
 
@@ -76,7 +78,6 @@ def simulate(env: Environment, n: int, tree: GameTree) -> SimulationData:
 
 
 def main(args: ArgumentParser):
-
     if args.debug:
         logging.basicConfig(level=logging.INFO)
     if args.split == 0:
@@ -94,7 +95,12 @@ def main(args: ArgumentParser):
         tree = None
 
     players = load_players(args.players, args.models, config, tree=tree)
-    env = DefaultEnvironment(config, players)
+    logger = logging.getLogger()
+
+    if args.log_buys:
+        logger.setLevel(BUY)
+
+    env = DefaultEnvironment(config, players, logger=logger)
     sim_data = simulate(env, args.n, tree)
 
     if args.save_data:
@@ -113,6 +119,7 @@ if __name__ == '__main__':
     parser.add_argument('--players', nargs='+', type=str, choices=['H', 'LOG', 'R', 'BM', 'TDBM', 'UCT', 'MLP', 'GMLP'], help='Strategy of AI opponent.')
     parser.add_argument('--device', default='cuda', type=str, help='Hardware to use for neural network models.')
     parser.add_argument('--models', nargs='+', type=str, help='Path to AI models')
+    parser.add_argument('--log-buys', action='store_true', help='Whether or not to log buys')
     parser.add_argument('--save_data', action='store_true', help='Whether the data should be saved')
     parser.add_argument('--data_path', type=str, help='Where to save data file')
     parser.add_argument('--debug', action='store_true', help='Turn logging settings to DEBUG')

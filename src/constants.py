@@ -7,6 +7,8 @@ from victorycard import Duchy, Estate, Gardens, Province
 
 SANDBOX_CARDS = [Copper, Silver, Gold, Estate, Duchy, Province, Curse]
 
+BUY = 25
+
 BASE_CARD_NAME = {
         'Artisan': Artisan,
         'Bandit': Bandit,

@@ -105,7 +105,6 @@ class GreedyMLPPlayer(Player):
             card_idx = torch.argmax(y_pred[:, label_idx])
 
             response.single_card = choices[card_idx]
-            print(response.single_card)
 
 
 class MLPPlayer(Player):
@@ -158,7 +157,6 @@ class MLPPlayer(Player):
                 vals.append(self.mlp(x).item())
 
             choice = self.select(p, choices, vals)
-            # print(f'{p}: {choice}')
             response.single_card = choice
 
 
@@ -200,6 +198,7 @@ class MCTSPlayer(Player):
             # Rollout (out-of-tree) case
             if not self.tree.in_tree:
                 response.single_card = self.rollout.select(choices, state=s)
+                return
 
             # the next node in the tree is the one that maximizes the UCB1 score
             try:
