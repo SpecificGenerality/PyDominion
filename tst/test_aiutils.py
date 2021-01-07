@@ -1,8 +1,8 @@
 import unittest
 
 import numpy as np
-from aiutils import (best_path, get_branching_factor_stats,
-                     get_most_visited_paths_at_depth, get_path)
+from mctsutils import (best_path, get_branching_factor_stats,
+                       get_most_visited_paths_at_depth, get_path)
 from mcts import Node
 
 
@@ -29,7 +29,7 @@ class TestAIUtils(unittest.TestCase):
         self.assertEqual(best_path(self.root), [self.root, self.best_child, self.best_grandchild, self.test_leaf])
 
     def test_get_branching_factors(self):
-        np.testing.assert_allclose(get_branching_factor_stats(self.root), (2 / 3, 4/3))
+        np.testing.assert_allclose(get_branching_factor_stats(self.root), (2 / 3, 4 / 3))
 
     def test_get_path(self):
         self.assertEqual(get_path(self.root, self.test_leaf), [self.root, self.best_child, self.best_grandchild, self.test_leaf])

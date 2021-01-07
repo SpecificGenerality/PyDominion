@@ -13,13 +13,12 @@ from buyagenda import BigMoneyBuyAgenda, BuyAgenda, TDBigMoneyBuyAgenda
 from card import Card
 from config import GameConfig
 from cursecard import Curse
-from enums import DecisionType, GameConstants, Phase, Zone
+from enums import DecisionType, Phase
 from heuristics import PlayerHeuristic
 from heuristicsutils import heuristic_select_cards
-from mcts import Node
+from mcts import GameTree
 from mlp import SandboxMLP
-from playerstate import PlayerState
-from rollout import RandomRollout
+from rollout import MLPRollout, RandomRollout, RolloutModel
 from state import (DecisionResponse, DecisionState, DiscardDownToN,
                    PutOnDeckDownToN, RemodelExpand, State)
 from utils import remove_first_card
@@ -30,18 +29,21 @@ from victorycard import Estate, VictoryCard
 # try random + greedy
 # TODO: add reset function
 class Player(ABC):
-    @abstractmethod
-    def makeDecision(self, s: State, response: DecisionResponse):
-        '''Given the current state s of the game, make a decision given the choices in s and modify response.'''
-        pass
-
     @classmethod
     @abstractmethod
     def load(cls, **kwargs):
         pass
 
+    @abstractmethod
+    def makeDecision(self, s: State, response: DecisionResponse):
+        '''Given the current state s of the game, make a decision given the choices in s and modify response.'''
+        pass
+
 
 class GreedyLogisticPlayer(Player):
+    def __init__(self, model: LogisticRegression):
+        self.model: LogisticRegression = model
+
     @classmethod
     def load(cls, **kwargs):
         if 'path' not in kwargs:
@@ -49,12 +51,6 @@ class GreedyLogisticPlayer(Player):
 
         model = load(kwargs['path'])
         return cls(model)
-
-    def __init__(self, model: LogisticRegression):
-        self.model: LogisticRegression = model
-
-    def reset(self):
-        return
 
     def makeDecision(self, s: State, response: DecisionResponse):
         d: DecisionState = s.decision
@@ -90,9 +86,6 @@ class GreedyMLPPlayer(Player):
         model.cuda()
         return cls(model)
 
-    def reset(self):
-        return
-
     def makeDecision(self, s: State, response: DecisionResponse):
         d: DecisionState = s.decision
         p: int = s.player
@@ -112,7 +105,6 @@ class GreedyMLPPlayer(Player):
             card_idx = torch.argmax(y_pred[:, label_idx])
 
             response.single_card = choices[card_idx]
-            print(response.single_card)
 
 
 class MLPPlayer(Player):
@@ -138,9 +130,6 @@ class MLPPlayer(Player):
 
     def eps(self):
         return max(1 / (self.iters + 1), self.min_eps)
-
-    def reset(self):
-        return
 
     def select(self, player: int, choices: List[Card], vals: List[float]):
         '''Epsilon-greedy action selection'''
@@ -168,62 +157,34 @@ class MLPPlayer(Player):
                 vals.append(self.mlp(x).item())
 
             choice = self.select(p, choices, vals)
-            # print(f'{p}: {choice}')
             response.single_card = choice
 
 
 # TODO: Expand MCTS to work outside of sandbox games
 class MCTSPlayer(Player):
-    def __init__(self, rollout, root=Node(), train=False, C=lambda x: max(1, min(25, 25 / np.sqrt(x)))):
-        self.train = train
-        self.root = root
-        self.root.parent = self.root
-        # To prevent clobbering trees loaded from file
-        if not root.children:
-            self.root.children = [Node(parent=self.root) for i in range(GameConstants.StartingHands)]
-        self.node = None
-        self.rollout = rollout
+    def __init__(self, rollout, tree: GameTree, train=False, C=lambda x: max(1, min(25, 25 / np.sqrt(x)))):
+        self.train: bool = train
+        self.tree: GameTree = tree
+        self.rollout: RolloutModel = rollout
         self.Cfx = C
 
     @classmethod
     def load(cls, **kwargs):
-        root_path = kwargs.pop('root_path')
-        rollout_path = kwargs.pop('rollout_path')
+        tree: GameTree = kwargs.pop('tree')
+        rollout_path: str = kwargs.pop('rollout_path')
 
+        # TODO: Fix this to work with other rollout models.
         try:
-            rollout_model = load(rollout_path)
+            rollout_model: MLPRollout = MLPRollout.load(path=rollout_path)
         except ImportError:
             logging.warning(f'Failed to load rollout from {rollout_path}, defaulting to random rollouts.')
             rollout_model = RandomRollout()
 
-        root = load(root_path)
-        return cls(rollout=rollout_model, root=root, train=False)
+        return cls(rollout=rollout_model, tree=tree, train=False)
 
     def get_C(self):
         '''Return time-varying C tuned for raw score reward'''
-        return self.Cfx(self.node.n)
-
-    def reset(self, p_state: PlayerState):
-        if self.train:
-            self.root.n += 1
-        # advance MCTS from virtual root to the correct start position (2/3/4/5 coppers)
-        self.node = self.root.children[p_state.get_treasure_card_count(Zone.Hand) - 2]
-        if self.train:
-            self.node.n += 1
-
-    def get_next_node(self, choices: List[Card], C):
-        '''Select the node that maximizes the UCB score'''
-        max_score = 0
-        next_node = None
-        for c in choices:
-            for node in self.node.children:
-                if str(node.card) == str(c):
-                    val = node.score(C)
-                    if val > max_score:
-                        max_score = val
-                        next_node = node
-
-        return next_node
+        return self.Cfx(self.tree.node.n)
 
     def makeDecision(self, s: State, response: DecisionResponse):
         d: DecisionState = s.decision
@@ -233,26 +194,28 @@ class MCTSPlayer(Player):
             response.single_card = d.card_choices[0]
         else:
             choices = list(filter(lambda x: not isinstance(x, Curse), d.card_choices + [None]))
-            if not self.node.children:
-                response.single_card = self.rollout.select(choices)
-                return None
 
-            if self.train:
-                self.node.add_unique_children(d.card_choices)
+            # Rollout (out-of-tree) case
+            if not self.tree.in_tree:
+                response.single_card = self.rollout.select(choices, state=s)
+                return
+
             # the next node in the tree is the one that maximizes the UCB1 score
-            next_node = self.get_next_node(d.card_choices, self.get_C())
-            if not next_node:
-                response.single_card = self.rollout.select(choices)
-                return None
+            try:
+                card = self.tree.select(choices, self.get_C())
+            except ValueError:
+                card = self.rollout.select(choices, state=s)
 
-            self.node = next_node
-            response.single_card = next_node.card
-            return next_node
+            response.single_card = card
 
 
 class HeuristicPlayer(Player):
     def __init__(self, agenda: BuyAgenda):
         self.heuristic = PlayerHeuristic(agenda)
+
+    @classmethod
+    def load(cls, **kwargs):
+        return cls(agenda=kwargs.pop('agenda'))
 
     def makePhaseDecision(self, s: State, response: DecisionResponse):
         d: DecisionState = s.decision
@@ -294,17 +257,14 @@ class HeuristicPlayer(Player):
             else:
                 self.heuristic.makeBaseDecision(s, response)
 
-    def reset(self) -> None:
-        return
-
-    @classmethod
-    def load(cls, **kwargs):
-        return cls(agenda=kwargs.pop('agenda'))
-
 
 class RandomPlayer(Player):
     def __init__(self, train: bool = False):
         self.train = train
+
+    @classmethod
+    def load(cls, **kwargs):
+        return cls(train=kwargs['train'])
 
     def train(self):
         self.train = True
@@ -332,18 +292,15 @@ class RandomPlayer(Player):
         else:
             logging.error('Invalid decision type')
 
-    @classmethod
-    def load(cls, **kwargs):
-        return cls(train=kwargs['train'])
-
-    def reset(self) -> None:
-        return
-
     def __str__(self):
         return 'Random Player'
 
 
 class HumanPlayer(Player):
+    @classmethod
+    def load(cls, **kwargs):
+        return cls()
+
     def makeDecision(self, s: State, response: DecisionResponse):
         d: DecisionState = s.decision
         if d.type == DecisionType.DecisionSelectCards:
@@ -378,13 +335,6 @@ class HumanPlayer(Player):
         else:
             logging.error(f'Player {s.player} given invalid decision type.')
 
-    @classmethod
-    def load(cls, **kwargs):
-        return cls()
-
-    def reset(self) -> None:
-        return
-
     def __str__(self):
         return "Human Player"
 
@@ -398,7 +348,7 @@ class PlayerInfo:
         return f'{self.controller} {self.id}'
 
 
-def load_players(player_types: List[str], models: List[str], config: GameConfig, train=False) -> List[Player]:
+def load_players(player_types: List[str], models: List[str], config: GameConfig, train=False, **kwargs) -> List[Player]:
     players = []
     for p_type in player_types:
         if p_type == 'R':
@@ -408,7 +358,7 @@ def load_players(player_types: List[str], models: List[str], config: GameConfig,
         elif p_type == 'TDBM':
             players.append(HeuristicPlayer.load(agenda=TDBigMoneyBuyAgenda()))
         elif p_type == 'UCT':
-            players.append(MCTSPlayer.load(root_path=models.pop(0), rollout_path=models.pop(0)))
+            players.append(MCTSPlayer.load(tree=kwargs.pop('tree'), rollout_path=models.pop(0)))
         elif p_type == 'MLP':
             players.append(MLPPlayer.load(path=models.pop(0), config=config))
         elif p_type == 'LOG':

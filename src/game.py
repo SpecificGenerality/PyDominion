@@ -4,7 +4,7 @@ from typing import List
 import numpy as np
 
 from config import GameConfig
-from player import HumanPlayer, Player, PlayerInfo
+from player import Player, PlayerInfo
 from state import DecisionResponse, DecisionType, State
 
 
@@ -13,11 +13,6 @@ class Game:
         self.config = config
         self.state = State(config)
         self.players = [PlayerInfo(i, player) for i, player in enumerate(players)]
-
-        if any(isinstance(player, HumanPlayer) for player in players):
-            logging.basicConfig(format='%(message)s', level=logging.INFO)
-        else:
-            logging.basicConfig(level=logging.WARNING)
 
     @property
     def done(self):

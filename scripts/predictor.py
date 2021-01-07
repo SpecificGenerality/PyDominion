@@ -12,6 +12,7 @@ from env import DefaultEnvironment
 from mlp import MLP
 from player import Player, load_players
 from sklearn.linear_model import LinearRegression, LogisticRegression, Ridge
+from sklearn.metrics import confusion_matrix
 from state import DecisionResponse, State
 from torch.utils.data.dataloader import DataLoader
 from torch.utils.tensorboard import SummaryWriter
@@ -102,7 +103,11 @@ def test_mlp(X: np.array, y: np.array, model: nn.Module) -> float:
     with torch.no_grad():
         y_pred = model(inputs)
 
-    return (torch.argmax(y_pred, dim=1) == labels).sum().item() / len(y)
+    y_pred_classes = torch.argmax(y_pred, dim=1)
+    y_pred_classes_np = y_pred_classes.cpu().numpy()
+    cm = confusion_matrix(y, y_pred_classes_np)
+
+    return (y_pred_classes == labels).sum().item() / len(y), cm.diagonal() / cm.sum(axis=1)
 
 
 def train_linear_model(X, y, predict_model) -> float:
@@ -151,8 +156,8 @@ def main(args: ArgumentParser):
         X, y = sample_training_batch(args.n, args.p, config, players)
 
         if args.reg_cls == MLP:
-            acc = test_mlp(X, y, model)
-            print(f'Acc = {acc}')
+            acc, cl_acc = test_mlp(X, y, model)
+            print(f'Acc = {acc}, {cl_acc}')
         else:
             score = reg.score(X, y)
             print(f'R_sq = {score}')

@@ -1,38 +1,21 @@
 import sys
-from typing import Callable, List
+from typing import Callable, Iterable, List
 
 import numpy as np
 
+from aiutils import load
 from card import Card
 from cursecard import Curse
-from state import State
-
-
-class MCTSState:
-    def __init__(self, s: State):
-        self.player = s.decision.controlling_player
-        # In sandbox mode, hand is not important for making decisions
-        # self.hand = Counter([str(c) for c in s.player_states[self.player].hand])
-        self.deck = s.get_player_card_counts(self.player)
-        self.supply = s.supply
-
-    # Two MCTS states are equal if
-    #   1) The hands are equal up to multiplicity
-    #   2) The decks and supplies are equal after binning
-    def __eq__(self, other):
-        assert self.player == other.player, 'MCTSError: Different players in game tree'
-
-        # if self.hand != other.hand:
-        #     return False
-        return self.deck == other.deck and self.supply == other.supply
+from enums import GameConstants, Zone
+from state import PlayerState, State
 
 
 class Node:
     def __init__(self, parent=None, card=None, n=0, v=0):
         # TODO: For non-sandbox, maybe states should be stored?
         # self.state = s
-        # the card played to get from parent to current
         self.parent = parent
+        # the action := the card played to get from parent to current
         self.card = card
         # number of times visited
         self.n = n
@@ -42,11 +25,23 @@ class Node:
 
     # UCB1 formula
     def score(self, C):
-        return self.v + C * np.sqrt(np.log(self.parent.n) / self.n) if self.n > 0 else sys.maxsize
+        return self.v / self.n + C * np.sqrt(2 * np.log(self.parent.n) / self.n) if self.n > 0 else sys.maxsize
 
-    def update_v(self, f: Callable[[List], float]):
-        vals = [n.v for n in self.children if n.n > 0]
+    # TODO: Deprecate this?
+    def update_v(self, f: Callable[[Iterable], float]):
+        vals = np.array([n.v for n in self.children if n.n > 0])
         self.v = f(vals)
+
+    def update(self, delta: int):
+        self.v += delta
+        self.n += 1
+
+    def backpropagate(self, delta: int):
+        self.update(delta)
+
+        if self.parent and self.parent != self:
+            self.parent.backpropagate(-delta)
+        return
 
     def add_unique_children(self, cards: List[Card]):
         for c in cards:
@@ -85,3 +80,67 @@ class Node:
 
     def __repr__(self):
         return str(self)
+
+
+class GameTree:
+    def __init__(self, root: Node = Node(), train: bool = False):
+        self._root: Node = root
+        self._node: Node = root
+        self.train: bool = train
+        self._in_tree: bool = True
+
+        self._root.parent = self._root
+        # To prevent clobbering trees loaded from file
+        if not self._root.children:
+            self._root.children = [Node(parent=self._root) for _ in range(GameConstants.StartingHands)]
+
+    @classmethod
+    def load(cls, path: str, train: bool):
+        root = load(path)
+        assert isinstance(root, Node)
+        return cls(root, train)
+
+    @property
+    def node(self):
+        return self._node
+
+    @property
+    def in_tree(self):
+        return self._in_tree
+
+    def reset(self, s: State):
+        self._in_tree = True
+        p_state: PlayerState = s.player_states[0]
+        self._node = self._root.children[p_state.get_treasure_card_count(Zone.Hand) + p_state.get_treasure_card_count(Zone.Play) - 2]
+
+    def select(self, choices: Iterable[Card], C: float) -> Card:
+        '''Select the node that maximizes the UCB score'''
+        max_score = -sys.maxsize - 1
+        card: Card = None
+        found = False
+        for c in choices:
+            for node in self.node.children:
+                if str(node.card) == str(c):
+                    found = True
+                    val = node.score(C)
+                    if val > max_score:
+                        max_score = val
+                        card = node.card
+
+        if not found:
+            raise ValueError('None of choices represented in child nodes.')
+
+        return card
+
+    def advance(self, action: Card):
+        '''Transitions to the next node, if it exists'''
+        for child in self.node.children:
+            if str(child.card) == str(action):
+                self._node = child
+
+                if self._node.n == 0:
+                    self._in_tree = False
+
+                return True
+        self._in_tree = False
+        return False

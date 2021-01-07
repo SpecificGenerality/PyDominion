@@ -1,19 +1,29 @@
 import pickle
-from collections import Counter, deque
+from collections import Counter
 from typing import List
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-
-from card import Card
-from mcts import Node
+import torch
 
 
 def load(checkpoint: str):
     '''Load and return a saved object'''
-    node = pickle.load(open(checkpoint, 'rb'))
-    return node
+    node = None
+    try:
+        node = pickle.load(open(checkpoint, 'rb'))
+        return node
+    except pickle.UnpicklingError:
+        pass
+
+    try:
+        node = torch.load(checkpoint)
+        return node
+    except ImportError:
+        pass
+
+    raise ImportError(f'Failed to load model at {checkpoint} via torch and pickle.')
 
 
 def save(file: str, obj):
@@ -22,22 +32,10 @@ def save(file: str, obj):
         pickle.dump(obj, output, 4)
 
 
-def print_path(path: List[Node]):
-    print('-->'.join([str(node.card) for node in path]))
-
-
-def path_helper(curr: Node, acc: List[Node], key):
-    if curr.n > 0 and curr.children:
-        child = max(curr.children, key=key)
-        acc.append(child)
-        path_helper(child, acc, key=key)
-
-
-def best_path(root: Node) -> List[Node]:
-    '''Return the max-valued path from root to leaf'''
-    path = [root]
-    path_helper(root, path, lambda x: x.v)
-    return path
+def softmax(x):
+    '''Compute softmax values for each sets of scores in x.'''
+    e_x = np.exp(x - np.max(x))
+    return e_x / e_x.sum(axis=0)
 
 
 def update_mean(n: int, prev_mean: float, x: float):
@@ -51,62 +49,6 @@ def update_var(n: int, prev_var: float, prev_mean: float, x: float):
         return 0
     else:
         return (n - 2) / (n - 1) * prev_var + 1 / n * (x - prev_mean) ** 2
-
-
-def get_branching_factor_stats(root: Node) -> List[int]:
-    '''Calculate the mean and variance of tree branching factor'''
-    Q = deque(root.children)
-    mean, var = 0, 0
-    # bfs
-    while Q:
-        k = 1
-        N = len(Q)
-        for i in range(N):
-            n: Node = Q.popleft()
-            x = sum(1 if not n.is_leaf() else 0 for c in n.children)
-            prev_mean = mean
-            mean = update_mean(k, prev_mean, x)
-            var = update_var(k, var, prev_mean, x)
-            Q = Q + deque(list(filter(lambda x: not x.is_leaf(), n.children)))
-            k += 1
-    return mean, var
-
-
-def get_path(root: Node, leaf: Node):
-    '''Get the path from leaf to root'''
-    path = []
-    curr = leaf
-    while curr and curr != root:
-        path.append(curr)
-        curr = curr.parent
-
-    if curr == root:
-        path.append(root)
-
-    path.reverse()
-    return path
-
-
-def get_most_visited_paths_at_depth(root: Node, k: int, p: int):
-    '''Return the p most traversed length-k path from game start nodes (not virtual root).'''
-    Q = deque(root.children)
-    # find the level-k nodes via bfs
-    for i in range(1, k + 1):
-        level_length = len(Q)
-        for j in range(level_length):
-            n = Q.popleft()
-            Q = Q + deque(list(filter(lambda x: x and x.n > 0, n.children)))
-
-    paths = sorted(Q, key=lambda x: x.n, reverse=True)
-    for i, n in enumerate(paths):
-        paths[i] = get_path(root, n)[1:]
-
-    return paths[:p]
-
-
-def get_buy_sequence(path: List[Node]) -> List[Card]:
-    '''Given a path, return the associated list of card buys.'''
-    return [n.card for n in path]
 
 
 def plot_card_counts_stacked(decks: List[Counter], limit=None, skip=1, trim=None):
