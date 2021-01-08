@@ -18,12 +18,12 @@ from tqdm import tqdm
 from mlprunner import train_mlp
 
 
-def train_mcts(env: Environment, tree: GameTree, epochs: int, train_epochs: int, **kwargs):
+def train_mcts(env: Environment, tree: GameTree, epochs: int, train_epochs: int, train_epochs_interval: int, **kwargs):
     save_epochs = kwargs['save_epochs']
     path = kwargs['path']
     mlp_path = kwargs['mlp_path']
 
-    buf = Buffer()
+    buf = Buffer(capacity=kwargs['capacity'])
     D_in = env.game.config.feature_size
     # +1 for None
     D_out = env.game.config.num_cards + 1
@@ -74,9 +74,9 @@ def train_mcts(env: Environment, tree: GameTree, epochs: int, train_epochs: int,
         if save_epochs > 0 and epoch % save_epochs == 0:
             save(path, tree._root)
 
-        if (epoch + 1) % train_epochs == 0:
+        if (epoch + 1) % train_epochs_interval == 0:
             X, y = zip(*buf.buf)
-            train_mlp(X, y, model, nn.MSELoss(), epochs=20, save_epochs=20, path=mlp_path)
+            train_mlp(X, y, model, nn.MSELoss(), epochs=train_epochs, save_epochs=20, path=mlp_path, lr=kwargs['alpha'])
 
     save(path, tree._root)
 
@@ -94,7 +94,7 @@ def main(args):
 
     env = DefaultEnvironment(config, players)
 
-    train_mcts(env, tree, args.n, save_epochs=args.save_epochs, train_epochs=args.train_epochs, path=args.path, mlp_path=args.mlp_path)
+    train_mcts(env, tree, args.n, save_epochs=args.save_epochs, train_epochs=args.train_epochs, train_epochs_interval=args.train_epochs_interval, path=args.path, mlp_path=args.mlp_path, alpha=args.alpha, capacity=args.buffer_cap)
 
 
 if __name__ == '__main__':
@@ -105,8 +105,11 @@ if __name__ == '__main__':
     parser.add_argument('-path', type=str, help='Path to save MCTS model')
     parser.add_argument('-mlp-path', type=str, help='Path to save MLP policy.')
     parser.add_argument('-C', default=2, type=float, help='Exploration constant')
+    parser.add_argument('--buffer-cap', default=10000, type=int, help='Capacity of replay buffer')
+    parser.add_argument('--alpha', default=0.001, type=float, help="Learning rates")
     parser.add_argument('--save-epochs', type=int, default=0, help='Number of epochs between saves')
-    parser.add_argument('--train-epochs', type=int, default=1000, help='How often to train MLP')
+    parser.add_argument('--train-epochs', type=int, default=30, help='Number of MLP training epochs')
+    parser.add_argument('--train-epochs-interval', type=int, default=1000, help='How often to train MLP')
     parser.add_argument('--sandbox', action='store_true', help='Uses no action cards when set.')
     parser.add_argument('-device', default='cuda')
 

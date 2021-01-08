@@ -6,8 +6,8 @@ from tqdm import tqdm
 
 
 def train_mlp(X, y, model: nn.Module, criterion, epochs: int, **kwargs) -> None:
-    save_epochs = kwargs['save_epochs']
-    path = kwargs['path']
+    save_epochs = kwargs.pop('save_epochs')
+    path = kwargs.pop('path')
     dataset = []
 
     print('Generating dataset for dataloader...')
@@ -16,7 +16,7 @@ def train_mlp(X, y, model: nn.Module, criterion, epochs: int, **kwargs) -> None:
 
     dataloader = DataLoader(dataset, batch_size=1, shuffle=True)
 
-    optim = torch.optim.Adam(model.parameters())
+    optim = torch.optim.Adam(model.parameters(), **kwargs)
 
     model.cuda()
     model.train()
