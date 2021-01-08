@@ -24,10 +24,10 @@ def train_mcts(env: Environment, tree: GameTree, epochs: int, train_epochs: int,
     mlp_path = kwargs['mlp_path']
 
     buf = Buffer()
-    D_in = len(env.game.config.feature_size)
-    H = D_in // 2
+    D_in = env.game.config.feature_size
     # +1 for None
-    D_out = len(env.game.config.kingdom_size + 1)
+    D_out = env.game.config.num_cards + 1
+    H = (D_in + D_out) // 2
 
     model = BuyMLP(D_in, H, D_out)
 
@@ -54,7 +54,7 @@ def train_mcts(env: Environment, tree: GameTree, epochs: int, train_epochs: int,
                 L = [(node.card, node.n) for node in tree.node.children]
                 cards, vals = zip(*L)
                 y = Buffer.to_distribution(cards, state.feature.idxs, softmax(vals))
-                buf.store(x, y)
+                buf.store(x, np.array(y, dtype=np.float32))
 
             # Advance to the next node within the tree, implicitly adding a node the first time we exit tree
             if tree.in_tree:
@@ -74,7 +74,7 @@ def train_mcts(env: Environment, tree: GameTree, epochs: int, train_epochs: int,
         if save_epochs > 0 and epoch % save_epochs == 0:
             save(path, tree._root)
 
-        if epoch % train_epochs == 0:
+        if (epoch + 1) % train_epochs == 0:
             X, y = zip(*buf.buf)
             train_mlp(X, y, model, nn.MSELoss(), epochs=20, save_epochs=20, path=mlp_path)
 
