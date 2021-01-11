@@ -68,7 +68,8 @@ def train_mcts(env: Environment, tree: GameTree, epochs: int, train_epochs: int,
 
             obs, reward, done, _ = env.step(action)
 
-        delta = (state.get_player_score(0) - state.get_player_score(1)) * (-1 if flip else 1)
+        # delta = (state.get_player_score(0) - state.get_player_score(1)) * (-1 if flip else 1)
+        delta = reward * (-1 if flip else 1)
         tree.node.backpropagate(delta)
 
         if save_epochs > 0 and epoch % save_epochs == 0:

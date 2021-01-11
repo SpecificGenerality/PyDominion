@@ -1,5 +1,6 @@
 import logging
 import random
+import sys
 from abc import ABC
 from collections import Counter
 from typing import List
@@ -10,7 +11,7 @@ from sklearn.linear_model import LinearRegression
 
 from aiutils import softmax
 from card import Card
-from mlp import MLP
+from mlp import MLP, BuyMLP
 from state import State
 from supply import Supply
 
@@ -89,6 +90,42 @@ class MLPRollout(RolloutModel):
 
     def augment_data(self, data):
         return
+
+
+class BuyMLPRollout(RolloutModel):
+    def __init__(self, model: BuyMLP):
+        self.model = model
+
+    @classmethod
+    def load(cls, **kwargs):
+        path = kwargs['path']
+        model = torch.load(path)
+        model.cuda()
+        model.eval()
+        return cls(model)
+
+    def update(self, **data):
+        return
+
+    def select(self, choices, **kwargs):
+        s: State = kwargs['state']
+
+        scores = self.model(s.feature.to_tensor())
+        print(scores)
+        max_score = -sys.maxsize
+        choice = None
+
+        for card in choices:
+            if card is None:
+                idx = len(s.feature.idxs)
+            else:
+                idx = s.feature.idxs[str(card)]
+            score = scores[idx]
+            if score > max_score:
+                max_score = score
+                choice = card
+
+        return choice
 
 
 class HistoryHeuristicRollout(RolloutModel):

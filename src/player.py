@@ -18,7 +18,7 @@ from heuristics import PlayerHeuristic
 from heuristicsutils import heuristic_select_cards
 from mcts import GameTree
 from mlp import SandboxMLP
-from rollout import MLPRollout, RandomRollout, RolloutModel
+from rollout import BuyMLPRollout, MLPRollout, RandomRollout, RolloutModel
 from state import (DecisionResponse, DecisionState, DiscardDownToN,
                    PutOnDeckDownToN, RemodelExpand, State)
 from utils import remove_first_card
@@ -175,7 +175,7 @@ class MCTSPlayer(Player):
 
         # TODO: Fix this to work with other rollout models.
         try:
-            rollout_model: MLPRollout = MLPRollout.load(path=rollout_path)
+            rollout_model: BuyMLPRollout = BuyMLPRollout.load(path=rollout_path)
         except ImportError:
             logging.warning(f'Failed to load rollout from {rollout_path}, defaulting to random rollouts.')
             rollout_model = RandomRollout()
