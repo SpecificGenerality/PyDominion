@@ -18,7 +18,8 @@ from heuristics import PlayerHeuristic
 from heuristicsutils import heuristic_select_cards
 from mcts import GameTree
 from mlp import SandboxMLP
-from rollout import BuyMLPRollout, MLPRollout, RandomRollout, RolloutModel
+from rollout import (BuyMLPRollout, MLPRollout, RandomRollout, RolloutModel,
+                     load_rollout)
 from state import (DecisionResponse, DecisionState, DiscardDownToN,
                    PutOnDeckDownToN, RemodelExpand, State)
 from utils import remove_first_card
@@ -172,10 +173,11 @@ class MCTSPlayer(Player):
     def load(cls, **kwargs):
         tree: GameTree = kwargs.pop('tree')
         rollout_path: str = kwargs.pop('rollout_path')
+        rollout_type: str = kwargs.pop('rollout_type')
 
         # TODO: Fix this to work with other rollout models.
         try:
-            rollout_model: BuyMLPRollout = BuyMLPRollout.load(path=rollout_path)
+            rollout_model = load_rollout(rollout_type=rollout_type, model=rollout_path)
         except ImportError:
             logging.warning(f'Failed to load rollout from {rollout_path}, defaulting to random rollouts.')
             rollout_model = RandomRollout()
@@ -358,7 +360,7 @@ def load_players(player_types: List[str], models: List[str], config: GameConfig,
         elif p_type == 'TDBM':
             players.append(HeuristicPlayer.load(agenda=TDBigMoneyBuyAgenda()))
         elif p_type == 'UCT':
-            players.append(MCTSPlayer.load(tree=kwargs.pop('tree'), rollout_path=models.pop(0)))
+            players.append(MCTSPlayer.load(tree=kwargs.pop('tree'), rollout_type=models.pop(0), rollout_path=models.pop(0)))
         elif p_type == 'MLP':
             players.append(MLPPlayer.load(path=models.pop(0), config=config))
         elif p_type == 'LOG':

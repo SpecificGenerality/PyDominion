@@ -2,18 +2,20 @@ import logging
 import random
 import sys
 from abc import ABC
-from collections import Counter
-from typing import List
+from collections import Counter, defaultdict
+from typing import List, Tuple
 
 import numpy as np
 import torch
 from sklearn.linear_model import LinearRegression
 
-from aiutils import softmax
+from aiutils import load, save, softmax, update_mean
 from card import Card
+from enums import Zone
 from mlp import MLP, BuyMLP
 from state import State
 from supply import Supply
+from victorycard import Province
 
 
 class RolloutModel(ABC):
@@ -111,7 +113,6 @@ class BuyMLPRollout(RolloutModel):
         s: State = kwargs['state']
 
         scores = self.model(s.feature.to_tensor())
-        print(scores)
         max_score = -sys.maxsize
         choice = None
 
@@ -129,35 +130,60 @@ class BuyMLPRollout(RolloutModel):
 
 
 class HistoryHeuristicRollout(RolloutModel):
-    def __init__(self, tau=0.5, train=False):
-        self.mast = {}
+    def __init__(self, mast=defaultdict(dict), tau=0.5, train=False):
+        self.mast = mast
         self.tau = tau
         self.train = train
 
     @classmethod
     def load(cls, **kwargs):
-        raise NotImplementedError()
+        path = kwargs['path']
+        state_dict = load(path)
+        mast = state_dict['mast']
+        tau = state_dict['tau']
+        return cls(mast, tau, False)
 
-    def update(self, **data):
+    def save(self, path: str):
+        state_dict = {'mast': self.mast, 'tau': self.tau}
+        save(path, state_dict)
+
+    def update(self, **kwargs):
         '''Update history heuristic with card buys from last rollout'''
-        cards: List[Card] = data['cards']
-        score: int = data['score']
+        data: List[Tuple[int, int, Card]] = kwargs['cards']
+        score: int = kwargs['score']
 
-        for c in cards:
-            if str(c) in self.mast:
-                n = self.mast[str(c)][1]
-                x_bar = self.mast[str(c)][0]
-                self.mast[str(c)] = (x_bar / (n + 1) * n + score / (n + 1), n + 1)
+        for n_provinces, avg_coins, c in data:
+            submast = self.mast[(n_provinces, avg_coins)]
+            if str(c) in submast:
+                n = submast[str(c)][1]
+                prev_mean = submast[str(c)][0]
+                submast[str(c)] = (update_mean(n + 1, prev_mean, score), n + 1)
             else:
-                self.mast[str(c)] = (score, 1)
+                submast[str(c)] = (score, 1)
 
     def select(self, choices, **kwargs):
         '''Create Gibbs distribution over choices given mast and return card choice'''
-        D = [np.exp(self.mast.get(str(c), (50 if self.train else 0, 0))[0] / self.tau) for c in choices]
-        D /= sum(D)
+        state: State = kwargs['state']
+        num_coins = state.player_states[0].get_total_coin_count(Zone.Play)
+        n_provinces = state.supply[Province]
+        submast = self.mast[(n_provinces, num_coins)]
+
+        D = np.zeros(len(choices))
+        for i, c in enumerate(choices):
+            avg_reward, n = submast.get(str(c), (-1, 0))
+            # Always choose any previously unexplored action
+            if n == 0 and self.train:
+                return c
+            D[i] = avg_reward / self.tau
+
+        if not self.train:
+            return choices[np.argmax(D)]
+
+        D = softmax(D)
 
         return np.random.choice(choices, p=D)
 
+    # TODO: Deprecate/fix
     def augment_data(self, data):
         '''Add the tau parameter and mast values to dict'''
         data['tau'] = self.tau
@@ -232,3 +258,30 @@ class LinearRegressionRollout(RolloutModel):
 
     def __str__(self):
         return 'LinearRegressionRollout'
+
+
+def load_rollout(rollout_type: str, model: str) -> RolloutModel:
+    r_type_lower = rollout_type.lower()
+    if r_type_lower == 'r':
+        return RandomRollout()
+    elif r_type_lower == 'hh':
+        return HistoryHeuristicRollout.load(path=model)
+    elif r_type_lower == 'mlp':
+        return MLPRollout.load(path=model)
+
+    raise ValueError(f'Invalid rollout type: {rollout_type}')
+
+
+def init_rollouts(rollout_types: List[str], **kwargs) -> List[RolloutModel]:
+    rollouts = []
+
+    for r_type in rollout_types:
+        r_type_lower = r_type.lower()
+        if r_type_lower == 'r':
+            rollouts.append(RandomRollout())
+        elif r_type_lower == 'hh':
+            rollouts.append(HistoryHeuristicRollout(train=True))
+        elif r_type_lower == 'mlp':
+            rollouts.append(MLPRollout(mlp=MLP(D_in=kwargs['D_in'], H=kwargs['H'])))
+
+    return rollouts
