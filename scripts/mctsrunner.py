@@ -44,7 +44,7 @@ def train_mcts(env: Environment, tree: GameTree, epochs: int, train_epochs: int,
         while not done:
             action = DecisionResponse([])
             d: DecisionState = state.decision
-            player: Player = env.players[0] if tree.in_tree else env.players[1]
+            player: Player = env.players[d.controlling_player] if tree.in_tree else env.players[1]
 
             # Add any states now visible due to randomness
             if tree.in_tree:
@@ -53,8 +53,9 @@ def train_mcts(env: Environment, tree: GameTree, epochs: int, train_epochs: int,
 
             player.makeDecision(state, action)
 
+            agent_counts, opp_counts = state.get_player_card_counts(0), state.get_player_card_counts(1)
             if d.controlling_player == 0:
-                data['cards'].append((state.supply[Province], state.player_states[0].get_total_coin_count(Zone.Play), action.single_card))
+                data['cards'].append((agent_counts[str(Province())], opp_counts[str(Province())], state.player_states[0].get_total_coin_count(Zone.Play), action.single_card))
 
             # if tree.in_tree and d.controlling_player == 0:
             #     x = state.feature.to_numpy()

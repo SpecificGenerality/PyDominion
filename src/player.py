@@ -18,8 +18,7 @@ from heuristics import PlayerHeuristic
 from heuristicsutils import heuristic_select_cards
 from mcts import GameTree
 from mlp import SandboxMLP
-from rollout import (BuyMLPRollout, MLPRollout, RandomRollout, RolloutModel,
-                     load_rollout)
+from rollout import RandomRollout, RolloutModel, load_rollout
 from state import (DecisionResponse, DecisionState, DiscardDownToN,
                    PutOnDeckDownToN, RemodelExpand, State)
 from utils import remove_first_card

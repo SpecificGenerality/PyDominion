@@ -152,8 +152,9 @@ class HistoryHeuristicRollout(RolloutModel):
         data: List[Tuple[int, int, Card]] = kwargs['cards']
         score: int = kwargs['score']
 
-        for n_provinces, avg_coins, c in data:
-            submast = self.mast[(n_provinces, avg_coins)]
+        for agent_provinces, opp_provinces, coins, c in data:
+            coins = max(min(coins, 8), 2)
+            submast = self.mast[(agent_provinces, opp_provinces, coins)]
             if str(c) in submast:
                 n = submast[str(c)][1]
                 prev_mean = submast[str(c)][0]
@@ -165,8 +166,10 @@ class HistoryHeuristicRollout(RolloutModel):
         '''Create Gibbs distribution over choices given mast and return card choice'''
         state: State = kwargs['state']
         num_coins = state.player_states[0].get_total_coin_count(Zone.Play)
-        n_provinces = state.supply[Province]
-        submast = self.mast[(n_provinces, num_coins)]
+        agent_counts, opp_counts = state.get_player_card_counts(0), state.get_player_card_counts(1)
+        # n_provinces = state.supply[Province]
+        num_coins = max(min(8, num_coins), 2)
+        submast = self.mast[(agent_counts[str(Province())], opp_counts[str(Province())], num_coins)]
 
         D = np.zeros(len(choices))
         for i, c in enumerate(choices):
