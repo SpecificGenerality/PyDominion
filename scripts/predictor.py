@@ -9,7 +9,7 @@ import torch.nn as nn
 from config import GameConfig
 from enums import FeatureType, StartingSplit
 from env import DefaultEnvironment
-from mlp import MLP
+from mlp import PredictorMLP
 from player import Player, load_players
 from sklearn.linear_model import LinearRegression, LogisticRegression, Ridge
 from sklearn.metrics import confusion_matrix
@@ -42,13 +42,15 @@ def sample_training_batch(n: int, p: float, config: GameConfig, players: Iterabl
 
         X.append(obs.feature.to_numpy())
 
+        win_loss = 1 if reward == 1 else 0
+
         # TODO: Fix this hardcode
         if one_hot:
-            label = np.zeros(3)
-            label[(reward + 1)] = 1
+            label = np.zeros(2)
+            label[win_loss] = 1
             y.append(label)
         else:
-            y.extend([reward + 1] * (len(X) - len(y)))
+            y.extend([win_loss] * (len(X) - len(y)))
 
     return np.array(X), np.array(y)
 
@@ -93,8 +95,8 @@ def main(args: ArgumentParser):
     if not args.predict:
         X, y = sample_training_batch(args.n, args.p, config, players)
 
-        if args.reg_cls == MLP:
-            model = MLP(config.feature_size, (config.feature_size + 1) // 2)
+        if args.reg_cls == PredictorMLP:
+            model = PredictorMLP(config.feature_size, (config.feature_size + 1) // 2, D_out=2)
             train_mlp(X, y, model, nn.CrossEntropyLoss(), args.epochs, save_epochs=args.save_epochs, path=args.path)
             acc = test_mlp(X, y, model)
             print(f'Acc = {acc}')
@@ -107,14 +109,14 @@ def main(args: ArgumentParser):
 
         np.savez(os.path.join('data', os.path.split(args.path)[-1]))
     else:
-        if args.reg_cls == MLP:
+        if args.reg_cls == PredictorMLP:
             model = torch.load(args.path)
         else:
             reg = pickle.load(open(args.path, 'rb'))
 
         X, y = sample_training_batch(args.n, args.p, config, players)
 
-        if args.reg_cls == MLP:
+        if args.reg_cls == PredictorMLP:
             acc, cl_acc = test_mlp(X, y, model)
             print(f'Acc = {acc}, {cl_acc}')
         else:
@@ -128,7 +130,7 @@ if __name__ == '__main__':
     parser.add_argument('-path', required=True, type=str, help='Path to save (load) model for train (predict)')
     parser.add_argument('-p', required=True, default=-1, type=float, help='Sampling probability for each turn. Pass negative value to only sample terminal state.')
     parser.add_argument('-ftype', required=True, type=lambda x: {'full': FeatureType.FullFeature, 'reduced': FeatureType.ReducedFeature}.get(x.lower()))
-    parser.add_argument('-reg-cls', type=lambda x: {'ols': LinearRegression, 'ridge': Ridge, 'logistic': LogisticRegression, 'mlp': MLP}.get(x.lower()))
+    parser.add_argument('-reg-cls', type=lambda x: {'ols': LinearRegression, 'ridge': Ridge, 'logistic': LogisticRegression, 'mlp': PredictorMLP}.get(x.lower()))
     parser.add_argument('--sandbox', action='store_true', help='Uses no action cards when set.')
     parser.add_argument('--predict', action='store_true', help='Predicts using linear regressor and random rollouts')
     parser.add_argument('--players', nargs='+', type=str, choices=['R', 'BM', 'TDBM', 'UCT', 'MLP'], help='AI strategy')

@@ -1,21 +1,17 @@
+import os
 from argparse import ArgumentParser
 
 import numpy as np
-import torch.nn as nn
 from aiutils import save
-from buffer import Buffer
-from buyagenda import BigMoneyBuyAgenda
 from config import GameConfig
-from enums import StartingSplit, Zone
+from enums import StartingSplit
 from env import DefaultEnvironment, Environment
 from mcts import GameTree
-from mlp import MLP
-from player import HeuristicPlayer, MCTSPlayer, Player
+from player import MCTSPlayer, Player, init_players
+from rollout import (ClassifierMLPRollout, HistoryHeuristicRollout,
+                     PredictorMLPRollout, RolloutModel, init_rollouts)
 from state import DecisionResponse, DecisionState, FeatureType, State
 from tqdm import tqdm
-from victorycard import Province
-
-from mlprunner import train_mlp
 
 
 def train_mcts(env: Environment, tree: GameTree, epochs: int, train_epochs: int, train_epochs_interval: int, **kwargs):
@@ -23,22 +19,14 @@ def train_mcts(env: Environment, tree: GameTree, epochs: int, train_epochs: int,
     path = kwargs.pop('path')
     rollout_path = kwargs.pop('rollout_path')
 
-    buf = Buffer(capacity=kwargs.pop('capacity'))
-    # +3: province counts and coins, +1: None
-    D_in = env.game.config.num_cards + 4
-    # w/l/t
-    D_out = 3
-    H = (D_in + D_out) // 2
-
-    model = MLP(D_in, H)
-
     for epoch in tqdm(range(epochs)):
         state: State = env.reset()
         tree.reset(state)
         done = False
         expanded = False
         flip = False
-        data = {'features': [], 'labels': []}
+        data = {'features': [], 'rewards': [], 'cards': [], 'idxs': state.feature.idxs}
+        data['model_name'] = os.path.split(path)[-1]
         while not done:
             action = DecisionResponse([])
             d: DecisionState = state.decision
@@ -51,24 +39,10 @@ def train_mcts(env: Environment, tree: GameTree, epochs: int, train_epochs: int,
 
             player.makeDecision(state, action)
 
-            agent_counts, opp_counts = state.get_player_card_counts(0), state.get_player_card_counts(1)
-            if d.controlling_player == 0:
-                x = np.zeros(D_in)
-                x[:3] = [agent_counts[str(Province())], opp_counts[str(Province())], state.player_states[0].get_total_coin_count(Zone.Play)]
-                # one-hot
-                offset = 3
-                if action.single_card is not None:
-                    x[offset + state.feature.idxs[str(action.single_card)]] = 1
-                else:
-                    x[-1] = 1
+            if isinstance(player, MCTSPlayer):
+                x = state.feature.to_numpy()
                 data['features'].append(x)
-
-            # if tree.in_tree and d.controlling_player == 0:
-            #     x = state.feature.to_numpy()
-            #     L = [(node.card, node.n) for node in tree.node.children]
-            #     cards, vals = zip(*L)
-            #     y = Buffer.to_distribution(cards, state.feature.idxs, softmax(vals))
-            #     buf.store(x, np.array(y, dtype=np.float32))
+                data['cards'].append(action.single_card)
 
             # Advance to the next node within the tree, implicitly adding a node the first time we exit tree
             if tree.in_tree:
@@ -82,18 +56,25 @@ def train_mcts(env: Environment, tree: GameTree, epochs: int, train_epochs: int,
 
             obs, reward, done, _ = env.step(action)
 
-        buf.batch_store(np.array(data['features'], dtype=np.float32), [reward + 1] * len(data['features']))
-        # delta = (state.get_player_score(0) - state.get_player_score(1)) * (-1 if flip else 1)
+        data['rewards'].extend([reward] * (len(data['features']) - len(data['cards'])))
         delta = reward * (-1 if flip else 1)
-        # env.players[0].rollout.update(**data)
         tree.node.backpropagate(delta)
 
         if save_epochs > 0 and epoch % save_epochs == 0:
             save(path, tree._root)
-            # env.players[0].rollout.save(rollout_path)
-        if (epoch + 1) % train_epochs_interval == 0:
-            X, y = zip(*buf.buf)
-            train_mlp(X, y, model, nn.CrossEntropyLoss(), epochs=train_epochs, save_epochs=20, path=rollout_path)
+
+            for player in env.game.players:
+                if isinstance(player, MCTSPlayer):
+                    player.rollout.save(rollout_path)
+
+        for player in env.game.players:
+            if isinstance(player, MCTSPlayer):
+                rollout: RolloutModel = player.rollout
+                if isinstance(rollout, HistoryHeuristicRollout):
+                    rollout.update(**data)
+                elif isinstance(rollout, ClassifierMLPRollout) or isinstance(rollout, PredictorMLPRollout):
+                    if (epoch + 1) % train_epochs_interval == 0:
+                        rollout.update(**data)
 
     save(path, tree._root)
 
@@ -103,9 +84,17 @@ def main(args):
 
     tree = GameTree(train=True)
 
-    player = MCTSPlayer(rollout=None, tree=tree, C=lambda x: np.sqrt(args.C))
-    opponent = HeuristicPlayer(agenda=BigMoneyBuyAgenda())
-    players = [player, opponent]
+    D_in = config.feature_size
+    H = (config.feature_size + 1) // 2
+
+    player = MCTSPlayer(rollout=init_rollouts(args.rollout, D_in=D_in, H=H), tree=tree, C=lambda x: np.sqrt(args.C))
+
+    opponent = init_players([args.opponent], train=True)[0]
+
+    if not isinstance(opponent, MCTSPlayer):
+        players = [player, opponent]
+    else:
+        players = [player, player]
 
     env = DefaultEnvironment(config, players)
 
@@ -116,6 +105,7 @@ if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('-n', default=10000, type=int, help='Number of training iterations')
     parser.add_argument('-ftype', required=True, type=lambda x: {'full': FeatureType.FullFeature, 'reduced': FeatureType.ReducedFeature}.get(x.lower()))
+    parser.add_argument('-opponent', type=str, choices=['H', 'LOG', 'R', 'BM', 'TDBM', 'UCT', 'MLP', 'GMLP'], help='Strategy of AI opponent.')
     parser.add_argument('-rollout', nargs='+', type=str, help='Type of rollout')
     parser.add_argument('-rollout-path', type=str, help='Path to save rollout model')
     parser.add_argument('-path', type=str, help='Path to save MCTS model')

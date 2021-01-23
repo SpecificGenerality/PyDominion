@@ -1,11 +1,12 @@
 import torch
 import torch.nn as nn
+from aiconfig import log_dir
 from torch.utils.data.dataloader import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
 
-def train_mlp(X, y, model: nn.Module, criterion, epochs: int, **kwargs) -> None:
+def train_mlp(X, y, model: nn.Module, criterion, epochs: int, model_name='', **kwargs) -> None:
     save_epochs = kwargs.pop('save_epochs')
     path = kwargs.pop('path')
     dataset = []
@@ -20,7 +21,8 @@ def train_mlp(X, y, model: nn.Module, criterion, epochs: int, **kwargs) -> None:
 
     model.cuda()
     model.train()
-    writer = SummaryWriter()
+
+    writer = SummaryWriter(log_dir=log_dir, comment=model_name)
 
     print('Training MLP...')
 

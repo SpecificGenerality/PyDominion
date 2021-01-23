@@ -7,12 +7,15 @@ from typing import List, Tuple
 
 import numpy as np
 import torch
+import torch.nn as nn
+from mlprunner import train_mlp
 from sklearn.linear_model import LinearRegression
 
 from aiutils import load, save, softmax, update_mean
+from buffer import Buffer
 from card import Card
-from enums import Zone
-from mlp import MLP, BuyMLP
+from enums import FeatureTransform, Zone
+from mlp import ClassifierMLP, PredictorMLP
 from state import State
 from supply import Supply
 from victorycard import Province
@@ -53,9 +56,10 @@ class RandomRollout(RolloutModel):
         return 'RandomRollout'
 
 
-class MLPRollout(RolloutModel):
-    def __init__(self, mlp: MLP):
+class ClassifierMLPRollout(RolloutModel):
+    def __init__(self, mlp: ClassifierMLP, buf: Buffer):
         self.model = mlp
+        self.buf = buf
 
     @classmethod
     def load(cls, **kwargs):
@@ -66,6 +70,9 @@ class MLPRollout(RolloutModel):
         return cls(model)
 
     def update(self, **data):
+        self.buf.batch_store(data['features'], np.array(data['rewards'], dtype=int) + 1)
+        X, y = self.buf.unzip()
+        train_mlp(X, y, self.model, nn.CrossEntropyLoss(), data['epochs'], data['model_name'])
         return
 
     def select(self, choices, **kwargs):
@@ -73,7 +80,7 @@ class MLPRollout(RolloutModel):
         p: int = s.player
 
         # Calculate values of next-step states
-        X = s.lookahead_batch_featurize(choices)
+        X = s.feature.batch_transform(FeatureTransform.OneHotCard, cards=choices)
         label_idx = 0 if p == 1 else 2
         y_pred = self.model.forward(X)
         scores = y_pred[:, label_idx].detach().cpu().numpy()
@@ -94,8 +101,8 @@ class MLPRollout(RolloutModel):
         return
 
 
-class BuyMLPRollout(RolloutModel):
-    def __init__(self, model: BuyMLP):
+class PredictorMLPRollout(RolloutModel):
+    def __init__(self, model: PredictorMLP):
         self.model = model
 
     @classmethod
@@ -270,7 +277,7 @@ def load_rollout(rollout_type: str, model: str) -> RolloutModel:
     elif r_type_lower == 'hh':
         return HistoryHeuristicRollout.load(path=model)
     elif r_type_lower == 'mlp':
-        return MLPRollout.load(path=model)
+        return ClassifierMLPRollout.load(path=model)
 
     raise ValueError(f'Invalid rollout type: {rollout_type}')
 
@@ -285,6 +292,10 @@ def init_rollouts(rollout_types: List[str], **kwargs) -> List[RolloutModel]:
         elif r_type_lower == 'hh':
             rollouts.append(HistoryHeuristicRollout(train=True))
         elif r_type_lower == 'mlp':
-            rollouts.append(MLPRollout(mlp=MLP(D_in=kwargs['D_in'], H=kwargs['H'])))
+            if 'D_out' in kwargs:
+                model = PredictorMLP(D_in=kwargs['D_in'], H=kwargs['H'], D_out=kwargs['D_out'])
+            else:
+                model = PredictorMLP(D_in=kwargs['D_in'], H=kwargs['H'], D_out=1)
+            rollouts.append(PredictorMLPRollout(model=model))
 
     return rollouts

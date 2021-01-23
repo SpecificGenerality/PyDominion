@@ -10,6 +10,10 @@ class FeatureType(Enum):
     ReducedFeature = auto()
 
 
+class FeatureTransform(Enum):
+    OneHotCard = auto()
+
+
 class GameConstants(IntEnum):
     BaseKingdomSize = 10
     StartingHands = 4

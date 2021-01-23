@@ -18,7 +18,7 @@ from heuristics import PlayerHeuristic
 from heuristicsutils import heuristic_select_cards
 from mcts import GameTree
 from mlp import SandboxMLP
-from rollout import RandomRollout, RolloutModel, load_rollout
+from rollout import RandomRollout, RolloutModel, load_rollout, init_rollouts
 from state import (DecisionResponse, DecisionState, DiscardDownToN,
                    PutOnDeckDownToN, RemodelExpand, State)
 from utils import remove_first_card
@@ -162,8 +162,7 @@ class MLPPlayer(Player):
 
 # TODO: Expand MCTS to work outside of sandbox games
 class MCTSPlayer(Player):
-    def __init__(self, rollout, tree: GameTree, train=False, C=lambda x: max(1, min(25, 25 / np.sqrt(x)))):
-        self.train: bool = train
+    def __init__(self, rollout, tree: GameTree, C=lambda x: max(1, min(25, 25 / np.sqrt(x)))):
         self.tree: GameTree = tree
         self.rollout: RolloutModel = rollout
         self.Cfx = C
@@ -371,5 +370,23 @@ def load_players(player_types: List[str], models: List[str], config: GameConfig,
 
     if models:
         logging.warning(f'Possible extraneous model paths passed. Remaining paths: {models}')
+
+    return players
+
+
+def init_players(player_types: List[str], train=True, **kwargs) -> List[Player]:
+    players = []
+
+    for p_type in player_types:
+        if p_type == 'R':
+            players.append(RandomPlayer(train=train))
+        elif p_type == 'BM':
+            players.append(HeuristicPlayer.load(agenda=BigMoneyBuyAgenda()))
+        elif p_type == 'TDBM':
+            players.append(HeuristicPlayer.load(agenda=TDBigMoneyBuyAgenda()))
+        elif p_type == 'UCT':
+            # there will ever only be one MCTSPlayer initialized (as opposed to loaded) since the game tree is shared
+            rollout = init_rollouts(rollout_type=[kwargs['rollout_type']], **kwargs)[0]
+            players.append(MCTSPlayer(rollout=rollout, tree=GameTree(train=train)))
 
     return players

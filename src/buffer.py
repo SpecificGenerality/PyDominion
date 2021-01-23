@@ -1,5 +1,5 @@
 from collections import deque
-from typing import Iterable, List, Mapping
+from typing import Iterable, List, Mapping, Tuple
 
 import numpy as np
 
@@ -34,3 +34,6 @@ class Buffer:
         n = len(X)
         for i in range(n):
             self.store(X[i], D[i])
+
+    def unzip(self) -> Tuple[List[np.array], List[np.array]]:
+        return zip(*self.buf)

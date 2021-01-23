@@ -2,9 +2,9 @@ import torch
 import torch.nn as nn
 
 
-class MLP(nn.Module):
-    def __init__(self, D_in: int, H: int):
-        super(MLP, self).__init__()
+class ClassifierMLP(nn.Module):
+    def __init__(self, D_in: int, H: int, D_out=3):
+        super(ClassifierMLP, self).__init__()
         self.D_in = D_in
         self.H = H
         self.fc1 = nn.Linear(D_in, H)
@@ -20,9 +20,9 @@ class MLP(nn.Module):
         return x
 
 
-class BuyMLP(nn.Module):
-    def __init__(self, D_in: int, H: int, D_out: int):
-        super(BuyMLP, self).__init__()
+class PredictorMLP(nn.Module):
+    def __init__(self, D_in: int, H: int, D_out: int = 1):
+        super(PredictorMLP, self).__init__()
         self.D_in = D_in
         self.H = H
         self.D_out = D_out
