@@ -94,7 +94,7 @@ def main(args: ArgumentParser):
     else:
         tree = None
 
-    players = load_players(args.players, args.models, config, tree=tree)
+    players = load_players(args.players, args.models, tree=tree)
     logger = logging.getLogger()
 
     if args.log_buys:

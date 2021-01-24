@@ -11,14 +11,13 @@ from sklearn.linear_model import LogisticRegression
 from aiutils import load
 from buyagenda import BigMoneyBuyAgenda, BuyAgenda, TDBigMoneyBuyAgenda
 from card import Card
-from config import GameConfig
 from cursecard import Curse
 from enums import DecisionType, Phase
 from heuristics import PlayerHeuristic
 from heuristicsutils import heuristic_select_cards
 from mcts import GameTree
-from mlp import SandboxMLP
-from rollout import RandomRollout, RolloutModel, load_rollout, init_rollouts
+from mlp import PredictorMLP
+from rollout import RandomRollout, RolloutModel, init_rollouts, load_rollout
 from state import (DecisionResponse, DecisionState, DiscardDownToN,
                    PutOnDeckDownToN, RemodelExpand, State)
 from utils import remove_first_card
@@ -107,9 +106,9 @@ class GreedyMLPPlayer(Player):
             response.single_card = choices[card_idx]
 
 
-class MLPPlayer(Player):
-    def __init__(self, mlp: SandboxMLP, train: bool = True, tau=0.5):
-        self.mlp = mlp
+class PredictorMLPPlayer(Player):
+    def __init__(self, model: PredictorMLP, train: bool = True, tau=0.5):
+        self.model = model
         self.train = train
         self.tau = tau
         self.iters = 0
@@ -119,13 +118,8 @@ class MLPPlayer(Player):
     def load(cls, **kwargs):
         if 'path' not in kwargs:
             raise KeyError('Model path missing from kwargs.')
-        if 'config' not in kwargs:
-            raise KeyError('Config missing from kwargs.')
 
-        config = kwargs.pop('config')
-        model = SandboxMLP(config.feature_size, (config.feature_size + 1) // 2, 1)
-        model.load_state_dict(torch.load(kwargs.pop('path')))
-        model.cuda()
+        model = load(kwargs.pop('path'), **kwargs)
         return cls(model, train=False)
 
     def eps(self):
@@ -133,7 +127,7 @@ class MLPPlayer(Player):
 
     def select(self, player: int, choices: List[Card], vals: List[float]):
         '''Epsilon-greedy action selection'''
-        if np.random.rand() < self.eps():
+        if self.train and np.random.rand() < self.eps():
             return np.random.choice(choices)
 
         if player == 0:
@@ -152,9 +146,8 @@ class MLPPlayer(Player):
             vals = []
             choices = d.card_choices + [None]
 
-            for card in choices:
-                x = s.featurize(lookahead=True, lookahead_card=card)
-                vals.append(self.mlp(x).item())
+            X = s.lookahead_batch_featurize(choices)
+            vals = self.model(X).detach().cpu().numpy()
 
             choice = self.select(p, choices, vals)
             response.single_card = choice
@@ -348,7 +341,7 @@ class PlayerInfo:
         return f'{self.controller} {self.id}'
 
 
-def load_players(player_types: List[str], models: List[str], config: GameConfig, train=False, **kwargs) -> List[Player]:
+def load_players(player_types: List[str], models: List[str], train=False, **kwargs) -> List[Player]:
     players = []
     for p_type in player_types:
         if p_type == 'R':
@@ -360,7 +353,7 @@ def load_players(player_types: List[str], models: List[str], config: GameConfig,
         elif p_type == 'UCT':
             players.append(MCTSPlayer.load(tree=kwargs.pop('tree'), rollout_type=models.pop(0), rollout_path=models.pop(0)))
         elif p_type == 'MLP':
-            players.append(MLPPlayer.load(path=models.pop(0), config=config))
+            players.append(PredictorMLPPlayer.load(path=models.pop(0), **kwargs))
         elif p_type == 'LOG':
             players.append(GreedyLogisticPlayer.load(path=models.pop(0)))
         elif p_type == 'GMLP':
