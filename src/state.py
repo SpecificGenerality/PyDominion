@@ -150,6 +150,10 @@ class StateFeature(ABC):
 
 
 class ReducedStateFeature(StateFeature):
+    @classmethod
+    def default_sandbox_feature(cls):
+        return torch.tensor([46, 10, 8, 8, 8, 40, 30, 7, 0, 3, 0, 0, 0, 0, 7, 0, 3, 0, 0, 0, 0], dtype=torch.float32)
+
     def __init__(self, config: GameConfig, supply: Supply, player_states: List[PlayerState], device='cpu'):
         super(ReducedStateFeature, self).__init__(config, supply)
 

@@ -31,6 +31,7 @@ class PredictorMLP(nn.Module):
         self.fc2 = nn.Linear(H, D_out)
         self.sigmoid = nn.Sigmoid()
         self.relu = nn.LeakyReLU()
+        self.tanh = nn.Tanh()
 
     def forward(self, x):
         x = self.fc1(x)

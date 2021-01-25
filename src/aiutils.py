@@ -8,7 +8,7 @@ import pandas as pd
 import torch
 
 
-def load(checkpoint: str):
+def load(checkpoint: str, **kwargs):
     '''Load and return a saved object'''
     node = None
     try:
@@ -18,7 +18,7 @@ def load(checkpoint: str):
         pass
 
     try:
-        node = torch.load(checkpoint)
+        node = torch.load(checkpoint, **kwargs)
         return node
     except ImportError:
         pass
