@@ -252,8 +252,8 @@ class ReducedStateFeature(StateFeature):
 
     def to_numpy(self) -> np.array:
         if self.device == 'cpu':
-            return self.feature.numpy()
-        return self.feature.cpu().numpy()
+            return self.feature.detach().clone().numpy()
+        return self.feature.cpu().clone().numpy()
 
     def to_tensor(self) -> torch.tensor:
         return self.feature
