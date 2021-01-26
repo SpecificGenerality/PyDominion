@@ -37,14 +37,16 @@ def sample_training_batch(n: int, p: float, config: GameConfig, players: Iterabl
             player.makeDecision(state, action)
             obs, reward, done, _ = env.step(action)
 
-            if p <= 1:
+            feature = obs.feature.to_numpy()
+            if p <= 1 and p > 0:
                 if rng.uniform(0, 1) < p:
-                    X.append(obs.feature.to_numpy())
+                    X.append(feature)
             else:
                 if obs.player_states[d.controlling_player].turns < p:
-                    X.append(obs.feature.to_numpy())
+                    X.append(feature)
 
-        # X.append(obs.feature.to_numpy())
+        if p <= 0:
+            X.append(feature)
 
         win_loss = 1 if reward == 1 else 0
 
