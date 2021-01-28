@@ -26,6 +26,9 @@ def train_mlp(X, y, model: nn.Module, criterion, epochs: int, model_name: str = 
 
     writer = SummaryWriter(log_dir=os.path.join(log_dir, model_name, ''))
 
+    X_tensor = torch.tensor(X).cuda()
+    y_tensor = torch.tensor(y).cuda()
+
     print('Training MLP...')
 
     for epoch in tqdm(range(epochs)):
@@ -44,6 +47,14 @@ def train_mlp(X, y, model: nn.Module, criterion, epochs: int, model_name: str = 
         if save_epochs > 0 and epoch % save_epochs == 0:
             torch.save(model, path)
 
-        writer.add_scalar("Loss/train", running_loss, epoch)
+        if isinstance(criterion, nn.BCELoss):
+            y_pred = model(X_tensor).detach()
+            y_labels = y_tensor.reshape(y_pred.shape)
+            output = (y_pred > 0.5)
+            correct = (output == y_labels).sum().item()
+            acc = correct / len(y_labels)
+            writer.add_scalar("Acc/train", acc, epoch)
+        else:
+            writer.add_scalar("Loss/train", running_loss, epoch)
 
     writer.flush()

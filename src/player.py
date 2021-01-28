@@ -155,10 +155,9 @@ class PredictorMLPPlayer(Player):
 
 # TODO: Expand MCTS to work outside of sandbox games
 class MCTSPlayer(Player):
-    def __init__(self, rollout, tree: GameTree, C=lambda x: max(1, min(25, 25 / np.sqrt(x)))):
+    def __init__(self, rollout, tree: GameTree):
         self.tree: GameTree = tree
         self.rollout: RolloutModel = rollout
-        self.Cfx = C
 
     @classmethod
     def load(cls, **kwargs):
@@ -170,14 +169,10 @@ class MCTSPlayer(Player):
         try:
             rollout_model = load_rollout(rollout_type=rollout_type, model=rollout_path)
         except ImportError:
-            logging.warning(f'Failed to load rollout from {rollout_path}, defaulting to random rollouts.')
+            logging.error(f'Failed to load rollout from {rollout_path}, defaulting to random rollouts.')
             rollout_model = RandomRollout()
 
-        return cls(rollout=rollout_model, tree=tree, train=False)
-
-    def get_C(self):
-        '''Return time-varying C tuned for raw score reward'''
-        return self.Cfx(self.tree.node.n)
+        return cls(rollout=rollout_model, tree=tree)
 
     def makeDecision(self, s: State, response: DecisionResponse):
         d: DecisionState = s.decision
@@ -195,7 +190,7 @@ class MCTSPlayer(Player):
 
             # the next node in the tree is the one that maximizes the UCB1 score
             try:
-                card = self.tree.select(choices, self.get_C())
+                card = self.tree.select(choices)
             except ValueError:
                 card = self.rollout.select(choices, state=s)
 
@@ -351,7 +346,7 @@ def load_players(player_types: List[str], models: List[str], train=False, **kwar
         elif p_type == 'TDBM':
             players.append(HeuristicPlayer.load(agenda=TDBigMoneyBuyAgenda()))
         elif p_type == 'UCT':
-            players.append(MCTSPlayer.load(tree=kwargs.pop('tree'), rollout_type=models.pop(0), rollout_path=models.pop(0)))
+            players.append(MCTSPlayer.load(tree=kwargs.pop('tree'), rollout_type=kwargs.pop('rollout_type'), rollout_path=models.pop(0)))
         elif p_type == 'MLP':
             players.append(PredictorMLPPlayer.load(path=models.pop(0), **kwargs))
         elif p_type == 'LOG':
@@ -379,7 +374,7 @@ def init_players(player_types: List[str], train=True, **kwargs) -> List[Player]:
             players.append(HeuristicPlayer.load(agenda=TDBigMoneyBuyAgenda()))
         elif p_type == 'UCT':
             # there will ever only be one MCTSPlayer initialized (as opposed to loaded) since the game tree is shared
-            rollout = init_rollouts(rollout_type=[kwargs['rollout_type']], **kwargs)[0]
-            players.append(MCTSPlayer(rollout=rollout, tree=GameTree(train=train)))
+            rollout = init_rollouts(rollout_types=[kwargs.pop('rollout_type')], **kwargs)[0]
+            players.append(MCTSPlayer(rollout=rollout, tree=kwargs.pop('tree')))
 
     return players

@@ -261,6 +261,9 @@ class ReducedStateFeature(StateFeature):
     def __len__(self) -> int:
         return self.feature.__len__()
 
+    def __getitem__(self, item):
+        return self.feature.__getitem__(item)
+
 
 class FullStateFeature(StateFeature):
     def __init__(self, config: GameConfig, supply: Supply, player_states: List[PlayerState], device='cuda'):

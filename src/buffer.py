@@ -20,7 +20,7 @@ class Buffer:
 
         return x
 
-    def __init__(self, capacity=100000):
+    def __init__(self, capacity=10000):
         self.buf = deque(maxlen=capacity)
         self.capacity = capacity
 
@@ -37,3 +37,6 @@ class Buffer:
 
     def unzip(self) -> Tuple[List[np.array], List[np.array]]:
         return zip(*self.buf)
+
+    def __len__(self):
+        return len(self.buf)

@@ -3,13 +3,13 @@ import random
 import sys
 from abc import ABC
 from collections import Counter, defaultdict
-from typing import List, Tuple
+from typing import DefaultDict, List, Tuple
 
 import numpy as np
 import torch
 import torch.nn as nn
 from mlprunner import train_mlp
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import LinearRegression, LogisticRegression
 
 from aiutils import load, save, softmax, update_mean
 from buffer import Buffer
@@ -204,6 +204,67 @@ class HistoryHeuristicRollout(RolloutModel):
         return 'HistoryHeuristicRollout'
 
 
+class LogisticRegressionEnsembleRollout(RolloutModel):
+    def __init__(self, models=defaultdict(LogisticRegression), train=False):
+        self.models: DefaultDict[LogisticRegression] = models
+        self.buffers: DefaultDict[Buffer] = defaultdict(Buffer)
+        self.train = train
+
+    def save(self, path: str):
+        state_dict = {}
+        state_dict['models'] = self.models
+        save(path, state_dict)
+
+    @classmethod
+    def load(cls, path: str):
+        state_dict = load(path)
+        return cls(models=state_dict['models'], train=False)
+
+    def update(self, **data):
+        features = data['features']
+        idxs = data['idxs']
+        # convert to win/loss reward
+        rewards = list(map(lambda x: 1 if x > 0 else 0, data['rewards']))
+        state_idx = idxs[str(Province())]
+        for i, feature in enumerate(features):
+            # get number of Provinces left in supply
+            model_idx = int(feature[state_idx].item())
+            # allow models to share data
+            if model_idx <= 7:
+                self.buffers[model_idx + 1].store(feature, rewards[i])
+            buf = self.buffers[model_idx]
+            buf.store(feature, rewards[i])
+
+        for i, buf in self.buffers.items():
+            try:
+                X, y = buf.unzip()
+                self.models[i] = self.models[i].fit(X, np.array(y, dtype=int))
+            except ValueError:
+                return
+
+    def select(self, choices, **kwargs):
+        state: State = kwargs['state']
+        # Get the correct model from the ensemble
+        state_idx = state.feature.idxs[str(Province())]
+        model_idx = int(state.feature[state_idx].item())
+
+        model = self.models[model_idx]
+
+        try:
+            X = state.lookahead_batch_featurize(choices).cpu()
+            if not self.train or (self.train and np.random.rand() > 0.05):
+                y = model.predict_proba(X)
+                if state.decision.controlling_player == 0:
+                    card_idx = np.argmax(y)
+                else:
+                    card_idx = np.argmin(y)
+                return choices[card_idx]
+            else:
+                return np.random.choice(choices)
+        except Exception:
+            return np.random.choice(choices)
+
+
 class LinearRegressionRollout(RolloutModel):
     def __init__(self, iters: int, G: Supply, tau=0.5, train=False, eps=10e-10):
         self.supply: List[str] = G.get_supply_card_types() + [str(None)]
@@ -278,6 +339,8 @@ def load_rollout(rollout_type: str, model: str) -> RolloutModel:
         return HistoryHeuristicRollout.load(path=model)
     elif r_type_lower == 'mlp':
         return ClassifierMLPRollout.load(path=model)
+    elif r_type_lower == 'mlog':
+        return LogisticRegressionEnsembleRollout.load(path=model)
 
     raise ValueError(f'Invalid rollout type: {rollout_type}')
 
@@ -287,15 +350,20 @@ def init_rollouts(rollout_types: List[str], **kwargs) -> List[RolloutModel]:
 
     for r_type in rollout_types:
         r_type_lower = r_type.lower()
+        rollout = None
         if r_type_lower == 'r':
-            rollouts.append(RandomRollout())
+            rollout = RandomRollout()
         elif r_type_lower == 'hh':
-            rollouts.append(HistoryHeuristicRollout(train=True))
+            rollout = HistoryHeuristicRollout(train=True)
         elif r_type_lower == 'mlp':
             if 'D_out' in kwargs:
                 model = PredictorMLP(D_in=kwargs['D_in'], H=kwargs['H'], D_out=kwargs['D_out'])
             else:
                 model = PredictorMLP(D_in=kwargs['D_in'], H=kwargs['H'], D_out=1)
-            rollouts.append(PredictorMLPRollout(model=model))
-
+            rollout = PredictorMLPRollout(model=model)
+        elif r_type_lower == 'mlog':
+            rollout = LogisticRegressionEnsembleRollout(train=True)
+        else:
+            raise ValueError('Invalid rollout type.')
+        rollouts.append(rollout)
     return rollouts

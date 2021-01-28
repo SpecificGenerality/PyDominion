@@ -7,14 +7,15 @@ from config import GameConfig
 from enums import StartingSplit
 from env import DefaultEnvironment, Environment
 from mcts import GameTree
-from player import MCTSPlayer, Player, init_players
+from player import MCTSPlayer, Player
 from rollout import (ClassifierMLPRollout, HistoryHeuristicRollout,
-                     PredictorMLPRollout, RolloutModel, init_rollouts)
+                     LogisticRegressionEnsembleRollout, PredictorMLPRollout,
+                     RolloutModel, init_rollouts)
 from state import DecisionResponse, DecisionState, FeatureType, State
 from tqdm import tqdm
 
 
-def train_mcts(env: Environment, tree: GameTree, epochs: int, train_epochs: int, train_epochs_interval: int, **kwargs):
+def train_mcts(env: Environment, tree: GameTree, epochs: int, train_epochs_interval: int, **kwargs):
     save_epochs = kwargs['save_epochs']
     path = kwargs.pop('path')
     rollout_path = kwargs.pop('rollout_path')
@@ -30,7 +31,7 @@ def train_mcts(env: Environment, tree: GameTree, epochs: int, train_epochs: int,
         while not done:
             action = DecisionResponse([])
             d: DecisionState = state.decision
-            player: Player = env.players[d.controlling_player] if tree.in_tree else env.players[1]
+            player: Player = env.players[d.controlling_player]
 
             # Add any states now visible due to randomness
             if tree.in_tree:
@@ -56,25 +57,27 @@ def train_mcts(env: Environment, tree: GameTree, epochs: int, train_epochs: int,
 
             obs, reward, done, _ = env.step(action)
 
-        data['rewards'].extend([reward] * (len(data['features']) - len(data['cards'])))
-        delta = reward * (-1 if flip else 1)
-        tree.node.backpropagate(delta)
+        data['rewards'].extend([reward] * (len(data['features']) - len(data['rewards'])))
+        start_idx = 1 if flip else 0
+        p0_score, p1_score = obs.get_player_score(0), obs.get_player_score(1)
+        tree.node.backpropagate((p0_score, p1_score), start_idx=start_idx)
 
         if save_epochs > 0 and epoch % save_epochs == 0:
             save(path, tree._root)
 
-            for player in env.game.players:
+            for player in env.players:
                 if isinstance(player, MCTSPlayer):
                     player.rollout.save(rollout_path)
 
-        for player in env.game.players:
+        for player in env.players:
             if isinstance(player, MCTSPlayer):
                 rollout: RolloutModel = player.rollout
                 if isinstance(rollout, HistoryHeuristicRollout):
                     rollout.update(**data)
-                elif isinstance(rollout, ClassifierMLPRollout) or isinstance(rollout, PredictorMLPRollout):
+                elif isinstance(rollout, ClassifierMLPRollout) or isinstance(rollout, PredictorMLPRollout) or isinstance(rollout, LogisticRegressionEnsembleRollout):
                     if (epoch + 1) % train_epochs_interval == 0:
                         rollout.update(**data)
+                break
 
     save(path, tree._root)
 
@@ -87,14 +90,9 @@ def main(args):
     D_in = config.feature_size
     H = (config.feature_size + 1) // 2
 
-    player = MCTSPlayer(rollout=init_rollouts(args.rollout, D_in=D_in, H=H), tree=tree, C=lambda x: np.sqrt(args.C))
+    player = MCTSPlayer(rollout=init_rollouts(args.rollout, D_in=D_in, H=H)[0], tree=tree, C=lambda x: np.sqrt(args.C))
 
-    opponent = init_players([args.opponent], train=True)[0]
-
-    if not isinstance(opponent, MCTSPlayer):
-        players = [player, opponent]
-    else:
-        players = [player, player]
+    players = [player, player]
 
     env = DefaultEnvironment(config, players)
 
