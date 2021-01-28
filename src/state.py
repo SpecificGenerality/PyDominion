@@ -182,7 +182,7 @@ class ReducedStateFeature(StateFeature):
     def draw_card(self, player: int, card: Card) -> None:
         return
 
-    def discard_card(self, player: int, card: Card) -> None:
+    def discard_card(self, player: int, card: Card, zone: Zone) -> None:
         return
 
     def discard_hand(self, player: int) -> None:
