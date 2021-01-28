@@ -78,3 +78,16 @@ def get_most_visited_paths_at_depth(root: Node, k: int, p: int):
 def get_buy_sequence(path: List[Node]) -> List[Card]:
     '''Given a path, return the associated list of card buys.'''
     return [n.card for n in path]
+
+
+def get_depth(root: Node):
+    Q = deque(root.children)
+    depth = 0
+    while Q:
+        level_size = len(Q)
+        for i in range(level_size):
+            node = Q.popleft()
+            Q = Q + deque(list(filter(lambda x: x and x.n > 0, node.children)))
+        depth += 1
+
+    return depth

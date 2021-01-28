@@ -22,18 +22,6 @@ class TestMCTS(unittest.TestCase):
         self.root.add_unique_children(children)
         self.assertEquals(len(self.root.children), len(children))
 
-    def test_update_value(self) -> None:
-        children = [Estate(), Duchy(), Province()]
-        self.root.add_unique_children(children)
-        for child in self.root.children:
-            child.n = 1
-            child.v = 1
-
-        f = lambda x: sum([y+1 for y in x])
-        self.root.update_v(f)
-
-        self.assertEquals(self.root.v, 6)
-
     def test_get_child(self) -> None:
         children = [Estate(), Duchy(), Province()]
         self.root.add_unique_children(children)
