@@ -1,10 +1,11 @@
 ---
 name: dominion
-dependencies:  
+dependencies:
   - tqdm
-  - numpy 
+  - numpy
   - pandas
   - scikit-learn
   - matplotlib
   - rope
   - torch
+  - seaborn

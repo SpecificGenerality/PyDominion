@@ -98,7 +98,6 @@ class StateFeature(ABC):
         self.num_cards = len(supply)
         self.num_players = config.num_players
         self.idxs = dict([(str(k()), i) for i, k in enumerate(supply.keys())])
-        self.idxs[str(None)] = self.num_cards
 
     @abstractmethod
     def shuffle(self, player: int) -> None:
@@ -219,36 +218,6 @@ class ReducedStateFeature(StateFeature):
 
         dec_inc(feature, offset, base + offset)
         return feature
-
-    def transform(self, feature_transform: FeatureTransform, **kwargs) -> torch.tensor:
-        if not feature_transform:
-            return self.feature
-
-        if feature_transform == FeatureTransform.OneHotCard:
-            card = kwargs['card']
-            idx = self.idxs[str(card)]
-            # +1 for None
-            one_hot = torch.zeros(len(self.idxs), device=self.device)
-            one_hot[idx] = 1
-            return torch.cat((self.feature, one_hot), dim=0)
-
-    def batch_transform(self, feature_transform: FeatureTransform, **kwargs) -> torch.tensor:
-        if not feature_transform:
-            return
-
-        if feature_transform == FeatureTransform.OneHotCard:
-            cards = kwargs['cards']
-            n = len(cards)
-            m = len(self.feature) + len(self.idxs)
-            X = self.feature.zeros(n, m)
-            X[:, len(self.feature)] = self.feature.repeat(n, 1)
-
-            for i, card in enumerate(cards):
-                base = len(self.feature)
-                offset = self.idxs[str(card)]
-                X[i, base + offset] = 1
-
-            return X
 
     def to_numpy(self) -> np.array:
         if self.device == 'cpu':
