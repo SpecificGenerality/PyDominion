@@ -1,21 +1,18 @@
 import os
 from argparse import ArgumentParser
 
-import numpy as np
 from aiutils import save
 from config import GameConfig
 from enums import StartingSplit
 from env import DefaultEnvironment, Environment
 from mcts import GameTree
 from player import MCTSPlayer, Player
-from rollout import (ClassifierMLPRollout, HistoryHeuristicRollout,
-                     LogisticRegressionEnsembleRollout, PredictorMLPRollout,
-                     RolloutModel, init_rollouts)
+from rollout import init_rollouts
 from state import DecisionResponse, DecisionState, FeatureType, State
 from tqdm import tqdm
 
 
-def train_mcts(env: Environment, tree: GameTree, epochs: int, train_epochs_interval: int, **kwargs):
+def train_mcts(env: Environment, tree: GameTree, epochs: int, train_epochs_interval: int = 1000, **kwargs):
     save_epochs = kwargs['save_epochs']
     path = kwargs.pop('path')
     rollout_path = kwargs.pop('rollout_path')
@@ -68,17 +65,19 @@ def train_mcts(env: Environment, tree: GameTree, epochs: int, train_epochs_inter
             for player in env.players:
                 if isinstance(player, MCTSPlayer):
                     player.rollout.save(rollout_path)
+                    break
 
+        # mcts players share the tree, so only update once
         for player in env.players:
             if isinstance(player, MCTSPlayer):
-                rollout: RolloutModel = player.rollout
-                if isinstance(rollout, HistoryHeuristicRollout):
-                    rollout.update(**data)
-                elif isinstance(rollout, ClassifierMLPRollout) or isinstance(rollout, PredictorMLPRollout) or isinstance(rollout, LogisticRegressionEnsembleRollout):
-                    if (epoch + 1) % train_epochs_interval == 0:
-                        rollout.update(**data)
-                break
+                player.rollout.update(**data)
+                if (epoch + 1) % train_epochs_interval == 0:
+                    player.rollout.learn()
 
+    for player in env.players:
+        if isinstance(player, MCTSPlayer):
+            player.rollout.save(rollout_path)
+            break
     save(path, tree._root)
 
 
@@ -90,7 +89,7 @@ def main(args):
     D_in = config.feature_size
     H = (config.feature_size + 1) // 2
 
-    player = MCTSPlayer(rollout=init_rollouts(args.rollout, D_in=D_in, H=H)[0], tree=tree, C=lambda x: np.sqrt(args.C))
+    player = MCTSPlayer(rollout=init_rollouts(args.rollout, D_in=D_in, H=H)[0], tree=tree)
 
     players = [player, player]
 

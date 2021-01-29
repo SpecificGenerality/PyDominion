@@ -27,6 +27,9 @@ class Node:
     def score(self, C):
         return self.v / self.n + C * np.sqrt(2 * np.log(self.parent.n) / self.n) if self.n > 0 else sys.maxsize
 
+    def avg_value(self):
+        return self.v / self.n if self.n > 0 else -sys.maxsize
+
     def update(self, delta: int):
         self.v += delta
         self.n += 1
@@ -114,14 +117,17 @@ class GameTree:
     def select(self, choices: Iterable[Card]) -> Card:
         '''Select the node that maximizes the UCB score'''
         C = self.C(self.node.n)
-        max_score = -sys.maxsize - 1
+        max_score = -sys.maxsize
         card: Card = None
         found = False
         for c in choices:
             for node in self.node.children:
                 if str(node.card) == str(c):
                     found = True
-                    val = node.score(C)
+                    if self.train:
+                        val = node.score(C)
+                    else:
+                        val = node.avg_value()
                     if val > max_score:
                         max_score = val
                         card = node.card

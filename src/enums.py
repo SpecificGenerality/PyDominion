@@ -19,6 +19,8 @@ class GameConstants(IntEnum):
     StartingHands = 4
     BaseSupplySize = 7
     HandSize = 5
+    # 8 each of Estate, Duchy, Province + 3 starting Estates
+    FullScore = 123
 
 
 # TODO: Use auto() after upgrading pygame and running python3.7

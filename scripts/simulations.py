@@ -94,7 +94,7 @@ def main(args: ArgumentParser):
     else:
         tree = None
 
-    players = load_players(args.players, args.models, tree=tree)
+    players = load_players(args.players, args.models, tree=tree, train=False, rollout_type=args.rollout_type)
     logger = logging.getLogger()
 
     if args.log_buys:
@@ -117,6 +117,7 @@ if __name__ == '__main__':
     parser.add_argument('--split', default=0, type=int, help='Starting Copper/Estate split. 0: Random, 1: 25Split, 2: 34Split')
     parser.add_argument('--tree-path', type=str, help='Path to game tree.')
     parser.add_argument('--players', nargs='+', type=str, choices=['H', 'LOG', 'R', 'BM', 'TDBM', 'UCT', 'MLP', 'GMLP'], help='Strategy of AI opponent.')
+    parser.add_argument('--rollout-type', type=str, help='Type of rollout model.')
     parser.add_argument('--device', default='cuda', type=str, help='Hardware to use for neural network models.')
     parser.add_argument('--models', nargs='+', type=str, help='Path to AI models')
     parser.add_argument('--log-buys', action='store_true', help='Whether or not to log buys')

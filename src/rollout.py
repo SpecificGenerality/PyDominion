@@ -3,12 +3,13 @@ import random
 import sys
 from abc import ABC
 from collections import Counter, defaultdict
-from typing import DefaultDict, List, Tuple
+from typing import DefaultDict, Dict, List, Tuple
 
 import numpy as np
 import torch
 import torch.nn as nn
 from mlprunner import train_mlp
+from sklearn.exceptions import NotFittedError
 from sklearn.linear_model import LinearRegression, LogisticRegression
 
 from aiutils import load, save, softmax, update_mean
@@ -23,6 +24,9 @@ from victorycard import Province
 
 class RolloutModel(ABC):
     def update(self, **data):
+        pass
+
+    def learn(self):
         pass
 
     def select(self, choices: List[Card], **kwargs):
@@ -205,8 +209,8 @@ class HistoryHeuristicRollout(RolloutModel):
 
 
 class LogisticRegressionEnsembleRollout(RolloutModel):
-    def __init__(self, models=defaultdict(LogisticRegression), train=False):
-        self.models: DefaultDict[LogisticRegression] = models
+    def __init__(self, models=dict([(i, LogisticRegression(max_iter=10e5)) for i in range(9)]), train=False):
+        self.models: Dict[LogisticRegression] = models
         self.buffers: DefaultDict[Buffer] = defaultdict(Buffer)
         self.train = train
 
@@ -235,12 +239,10 @@ class LogisticRegressionEnsembleRollout(RolloutModel):
             buf = self.buffers[model_idx]
             buf.store(feature, rewards[i])
 
+    def learn(self):
         for i, buf in self.buffers.items():
-            try:
-                X, y = buf.unzip()
-                self.models[i] = self.models[i].fit(X, np.array(y, dtype=int))
-            except ValueError:
-                return
+            X, y = buf.unzip()
+            self.models[i] = self.models[i].fit(X, np.array(y, dtype=int))
 
     def select(self, choices, **kwargs):
         state: State = kwargs['state']
@@ -250,19 +252,24 @@ class LogisticRegressionEnsembleRollout(RolloutModel):
 
         model = self.models[model_idx]
 
+        X = state.lookahead_batch_featurize(choices).cpu()
         try:
-            X = state.lookahead_batch_featurize(choices).cpu()
-            if not self.train or (self.train and np.random.rand() > 0.05):
-                y = model.predict_proba(X)
-                if state.decision.controlling_player == 0:
-                    card_idx = np.argmax(y)
-                else:
-                    card_idx = np.argmin(y)
-                return choices[card_idx]
-            else:
-                return np.random.choice(choices)
-        except Exception:
+            y = model.predict_proba(X)
+        except NotFittedError:
             return np.random.choice(choices)
+
+        if not self.train:
+            if state.decision.controlling_player == 0:
+                card_idx = np.argmax(y[:, 0])
+            else:
+                card_idx = np.argmin(y[:, 0])
+            return choices[card_idx]
+        else:
+            if state.decision.controlling_player == 0:
+                D = softmax(y[:, 0])
+            else:
+                D = softmax(y[:, 1])
+            return np.random.choice(choices, p=D)
 
 
 class LinearRegressionRollout(RolloutModel):
