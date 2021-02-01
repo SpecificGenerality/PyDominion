@@ -1,6 +1,6 @@
 import pickle
 from collections import Counter
-from typing import List
+from typing import Iterable, List
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -49,6 +49,12 @@ def update_var(n: int, prev_var: float, prev_mean: float, x: float):
         return 0
     else:
         return (n - 2) / (n - 1) * prev_var + 1 / n * (x - prev_mean) ** 2
+
+
+def classification_rate(labels: Iterable[int]):
+    counts = Counter(labels)
+    n = len(labels)
+    return np.array(list(counts.keys())), np.array(list(counts.values())) / n
 
 
 def plot_card_counts_stacked(decks: List[Counter], limit=None, skip=1, trim=None):

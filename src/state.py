@@ -10,13 +10,13 @@ from actioncard import ActionCard, Merchant, Moat
 from card import Card
 from config import GameConfig
 from cursecard import Curse
-from enums import (DecisionType, DiscardZone, FeatureTransform, FeatureType,
-                   GainZone, GameConstants, Phase, TriggerState, Zone)
+from enums import (DecisionType, DiscardZone, FeatureType, GainZone,
+                   GameConstants, Phase, TriggerState, Zone)
 from playerstate import PlayerState
 from supply import Supply
 from treasurecard import Copper, Silver, TreasureCard
 from utils import dec_inc, mov_zero, remove_card, remove_first_card
-from victorycard import VictoryCard
+from victorycard import Duchy, Estate, Province, VictoryCard
 
 
 class DecisionResponse:
@@ -174,6 +174,27 @@ class ReducedStateFeature(StateFeature):
 
     def get_player_idx(self, player: int) -> int:
         return self.num_cards + player * self.num_cards
+
+    # TODO: Fix this hardcode when expanding to action-victory cards
+    @classmethod
+    def outcome(cls, feature: torch.tensor, idxs: dict, agent_offset: int, opp_offset: int):
+        province_idx = idxs[str(Province())]
+        duchy_idx = idxs[str(Duchy())]
+        estate_idx = idxs[str(Estate())]
+
+        agent_base = agent_offset
+        opp_base = opp_offset
+
+        # TODO: fix magic numbers
+        agent_score = feature[agent_base + province_idx] * 6 + feature[agent_base + duchy_idx] * 3 + feature[agent_base + estate_idx]
+        opp_score = feature[opp_base + province_idx] * 6 + feature[opp_base + duchy_idx] * 3 + feature[opp_base + estate_idx]
+
+        if agent_score > opp_score:
+            return 1
+        elif agent_score == opp_score:
+            return 0
+        else:
+            return -1
 
     def shuffle(self, player: int) -> None:
         return

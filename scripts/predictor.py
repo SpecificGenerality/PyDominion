@@ -19,7 +19,7 @@ from tqdm import tqdm
 from mlprunner import train_mlp
 
 
-def sample_training_batch(n: int, p: float, config: GameConfig, players: Iterable[Player], one_hot=False) -> Tuple[np.array, np.array]:
+def sample_training_batch(n: int, p: float, config: GameConfig, players: Iterable[Player], win_loss=False) -> Tuple[np.array, np.array]:
     env = DefaultEnvironment(config, players)
     X = []
     y = []
@@ -48,17 +48,14 @@ def sample_training_batch(n: int, p: float, config: GameConfig, players: Iterabl
         if p <= 0:
             X.append(feature)
 
-        win_loss = 1 if reward == 1 else 0
+        y.extend([reward] * (len(X) - len(y)))
 
-        # TODO: Fix this hardcode
-        if one_hot:
-            label = np.zeros(2)
-            label[win_loss] = 1
-            y.append(label)
-        else:
-            y.extend([win_loss] * (len(X) - len(y)))
+    y = np.array(y)
 
-    return np.array(X), np.array(y)
+    if win_loss:
+        y[y == -1] = 0
+
+    return np.array(X), y
 
 
 def test_mlp(X: np.array, y: np.array, model: nn.Module) -> float:
