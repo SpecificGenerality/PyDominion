@@ -54,7 +54,7 @@ def train_mlp(X, y, model: nn.Module, criterion, epochs: int, model_name: str = 
             correct = (output == y_labels).sum().item()
             acc = correct / len(y_labels)
             writer.add_scalar("Acc/train", acc, epoch)
-        else:
-            writer.add_scalar("Loss/train", running_loss, epoch)
+
+        writer.add_scalar("Loss/train", running_loss, epoch)
 
     writer.flush()
