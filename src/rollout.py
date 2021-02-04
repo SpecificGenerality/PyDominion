@@ -209,10 +209,11 @@ class HistoryHeuristicRollout(RolloutModel):
 
 
 class LogisticRegressionEnsembleRollout(RolloutModel):
-    def __init__(self, models=dict([(i, LogisticRegression(max_iter=10e5)) for i in range(9)]), train=False):
+    def __init__(self, models=dict([(i, LogisticRegression(max_iter=10e5)) for i in range(9)]), train=False, tau=0.005):
         self.models: Dict[LogisticRegression] = models
         self.buffers: DefaultDict[Buffer] = defaultdict(Buffer)
         self.train = train
+        self.tau = tau
 
     def save(self, path: str):
         state_dict = {}
@@ -242,7 +243,10 @@ class LogisticRegressionEnsembleRollout(RolloutModel):
     def learn(self):
         for i, buf in self.buffers.items():
             X, y = buf.unzip()
-            self.models[i] = self.models[i].fit(X, np.array(y, dtype=int))
+            try:
+                self.models[i] = self.models[i].fit(X, np.array(y, dtype=int))
+            except Exception as e:
+                logging.error(e)
 
     def select(self, choices, **kwargs):
         state: State = kwargs['state']
@@ -258,18 +262,20 @@ class LogisticRegressionEnsembleRollout(RolloutModel):
         except NotFittedError:
             return np.random.choice(choices)
 
-        if not self.train:
+        if not self.train or self.train and np.random.rand() > 0.01:
             if state.decision.controlling_player == 0:
                 card_idx = np.argmax(y[:, 1])
             else:
                 card_idx = np.argmin(y[:, 1])
             return choices[card_idx]
-        else:
-            if state.decision.controlling_player == 0:
-                D = softmax(y[:, 1])
-            else:
-                D = softmax(y[:, 0])
-            return np.random.choice(choices, p=D)
+
+        # else:
+        #     if state.decision.controlling_player == 0:
+        #         D = softmax(y[:, 1], t=self.tau)
+        #     else:
+        #         D = softmax(y[:, 0], t=self.tau)
+
+        return np.random.choice(choices)
 
 
 class LinearRegressionRollout(RolloutModel):

@@ -20,7 +20,7 @@ class Buffer:
 
         return x
 
-    def __init__(self, capacity=10000):
+    def __init__(self, capacity=20000):
         self.buf = deque(maxlen=capacity)
         self.capacity = capacity
 

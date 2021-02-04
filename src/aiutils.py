@@ -32,9 +32,9 @@ def save(file: str, obj):
         pickle.dump(obj, output, 4)
 
 
-def softmax(x):
+def softmax(x, t=1):
     '''Compute softmax values for each sets of scores in x.'''
-    e_x = np.exp(x - np.max(x))
+    e_x = np.exp(x / t - np.max(x / t))
     return e_x / e_x.sum(axis=0)
 
 

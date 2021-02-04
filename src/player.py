@@ -8,7 +8,7 @@ import numpy.random
 import torch
 from sklearn.linear_model import LogisticRegression
 
-from aiutils import load
+from aiutils import load, softmax
 from buyagenda import BigMoneyBuyAgenda, BuyAgenda, TDBigMoneyBuyAgenda
 from card import Card
 from cursecard import Curse
@@ -40,8 +40,10 @@ class Player(ABC):
 
 
 class GreedyLogisticPlayer(Player):
-    def __init__(self, model: LogisticRegression):
+    def __init__(self, model: LogisticRegression, train=False, tau=0.01):
         self.model: LogisticRegression = model
+        self.train: bool = train
+        self.tau = tau
 
     @classmethod
     def load(cls, **kwargs):
@@ -67,9 +69,12 @@ class GreedyLogisticPlayer(Player):
 
             y = self.model.predict_proba(X)
 
-            card_idx = np.argmax(y[:, label_idx])
+            if self.train:
+                card = np.random.choice(choices, p=softmax(y[:, label_idx], t=self.tau))
+            else:
+                card = choices[np.argmax(y[:, label_idx])]
 
-            response.single_card = choices[card_idx]
+            response.single_card = card
 
 
 class GreedyMLPPlayer(Player):
@@ -193,6 +198,38 @@ class MCTSPlayer(Player):
                 card = self.tree.select(choices)
             except ValueError:
                 card = self.rollout.select(choices, state=s)
+
+            response.single_card = card
+
+
+class RolloutPlayer(Player):
+    def __init__(self, rollout: RolloutModel):
+        self.rollout = rollout
+
+    @classmethod
+    def load(cls, **kwargs):
+        rollout_path: str = kwargs.pop('rollout_path')
+        rollout_type: str = kwargs.pop('rollout_type')
+
+        # TODO: Fix this to work with other rollout models.
+        try:
+            rollout_model = load_rollout(rollout_type=rollout_type, model=rollout_path)
+        except ImportError:
+            logging.error(f'Failed to load rollout from {rollout_path}, defaulting to random rollouts.')
+            rollout_model = RandomRollout()
+        return cls(rollout_model)
+
+    def makeDecision(self, s: State, response: DecisionResponse):
+        d: DecisionState = s.decision
+        if s.phase == Phase.ActionPhase:
+            assert False, 'MCTS does not support action cards yet'
+        elif s.phase == Phase.TreasurePhase:
+            response.single_card = d.card_choices[0]
+        else:
+            choices = d.card_choices + [None]
+
+            # the next node in the tree is the one that maximizes the UCB1 score
+            card = self.rollout.select(choices, state=s)
 
             response.single_card = card
 
