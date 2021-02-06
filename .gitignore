@@ -1,7 +1,6 @@
 # Experimental results
 data*
 models*
-*.ipynb
 figures*
 aiconfig.py
 src/runs/*

@@ -16,7 +16,7 @@ from playerstate import PlayerState
 from supply import Supply
 from treasurecard import Copper, Silver, TreasureCard
 from utils import dec_inc, mov_zero, remove_card, remove_first_card
-from victorycard import VictoryCard
+from victorycard import Duchy, Estate, Province, VictoryCard
 
 
 class DecisionResponse:
@@ -149,6 +149,10 @@ class StateFeature(ABC):
 
 
 class ReducedStateFeature(StateFeature):
+    @classmethod
+    def default_sandbox_feature(cls):
+        return torch.tensor([46, 10, 8, 8, 8, 40, 30, 7, 0, 3, 0, 0, 0, 0, 7, 0, 3, 0, 0, 0, 0], dtype=torch.float32)
+
     def __init__(self, config: GameConfig, supply: Supply, player_states: List[PlayerState], device='cpu'):
         super(ReducedStateFeature, self).__init__(config, supply)
 
@@ -171,13 +175,34 @@ class ReducedStateFeature(StateFeature):
     def get_player_idx(self, player: int) -> int:
         return self.num_cards + player * self.num_cards
 
+    # TODO: Fix this hardcode when expanding to action-victory cards
+    @classmethod
+    def outcome(cls, feature: torch.tensor, idxs: dict, agent_offset: int, opp_offset: int):
+        province_idx = idxs[str(Province())]
+        duchy_idx = idxs[str(Duchy())]
+        estate_idx = idxs[str(Estate())]
+
+        agent_base = agent_offset
+        opp_base = opp_offset
+
+        # TODO: fix magic numbers
+        agent_score = feature[agent_base + province_idx] * 6 + feature[agent_base + duchy_idx] * 3 + feature[agent_base + estate_idx]
+        opp_score = feature[opp_base + province_idx] * 6 + feature[opp_base + duchy_idx] * 3 + feature[opp_base + estate_idx]
+
+        if agent_score > opp_score:
+            return 1
+        elif agent_score == opp_score:
+            return 0
+        else:
+            return -1
+
     def shuffle(self, player: int) -> None:
         return
 
     def draw_card(self, player: int, card: Card) -> None:
         return
 
-    def discard_card(self, player: int, card: Card) -> None:
+    def discard_card(self, player: int, card: Card, zone: Zone) -> None:
         return
 
     def discard_hand(self, player: int) -> None:
@@ -217,14 +242,17 @@ class ReducedStateFeature(StateFeature):
 
     def to_numpy(self) -> np.array:
         if self.device == 'cpu':
-            return self.feature.numpy()
-        return self.feature.cpu().numpy()
+            return self.feature.detach().clone().numpy()
+        return self.feature.cpu().clone().numpy()
 
     def to_tensor(self) -> torch.tensor:
         return self.feature
 
     def __len__(self) -> int:
         return self.feature.__len__()
+
+    def __getitem__(self, item):
+        return self.feature.__getitem__(item)
 
 
 class FullStateFeature(StateFeature):

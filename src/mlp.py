@@ -2,9 +2,9 @@ import torch
 import torch.nn as nn
 
 
-class MLP(nn.Module):
-    def __init__(self, D_in: int, H: int):
-        super(MLP, self).__init__()
+class ClassifierMLP(nn.Module):
+    def __init__(self, D_in: int, H: int, D_out=3):
+        super(ClassifierMLP, self).__init__()
         self.D_in = D_in
         self.H = H
         self.fc1 = nn.Linear(D_in, H)
@@ -16,6 +16,27 @@ class MLP(nn.Module):
         x = self.fc1(x)
         x = self.relu(x)
         x = self.fc2(x)
+
+        return x
+
+
+class PredictorMLP(nn.Module):
+    def __init__(self, D_in: int, H: int, D_out: int = 1):
+        super(PredictorMLP, self).__init__()
+        self.D_in = D_in
+        self.H = H
+        self.D_out = D_out
+
+        self.fc1 = nn.Linear(D_in, H)
+        self.fc2 = nn.Linear(H, D_out)
+        self.sigmoid = nn.Sigmoid()
+        self.relu = nn.LeakyReLU()
+
+    def forward(self, x):
+        x = self.fc1(x)
+        x = self.relu(x)
+        x = self.fc2(x)
+        x = self.sigmoid(x)
 
         return x
 

@@ -1,6 +1,6 @@
 import pickle
 from collections import Counter
-from typing import List
+from typing import Iterable, List
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -8,7 +8,7 @@ import pandas as pd
 import torch
 
 
-def load(checkpoint: str):
+def load(checkpoint: str, **kwargs):
     '''Load and return a saved object'''
     node = None
     try:
@@ -18,7 +18,7 @@ def load(checkpoint: str):
         pass
 
     try:
-        node = torch.load(checkpoint)
+        node = torch.load(checkpoint, **kwargs)
         return node
     except ImportError:
         pass
@@ -32,9 +32,9 @@ def save(file: str, obj):
         pickle.dump(obj, output, 4)
 
 
-def softmax(x):
+def softmax(x, t=1):
     '''Compute softmax values for each sets of scores in x.'''
-    e_x = np.exp(x - np.max(x))
+    e_x = np.exp(x / t - np.max(x / t))
     return e_x / e_x.sum(axis=0)
 
 
@@ -49,6 +49,15 @@ def update_var(n: int, prev_var: float, prev_mean: float, x: float):
         return 0
     else:
         return (n - 2) / (n - 1) * prev_var + 1 / n * (x - prev_mean) ** 2
+
+
+def classification_rate(labels: Iterable[int], sort=True, reverse=True):
+    if sort:
+        counts = Counter(sorted(labels, reverse=reverse))
+    else:
+        counts = Counter(labels)
+    n = len(labels)
+    return np.array(list(counts.keys())), np.array(list(counts.values())) / n
 
 
 def plot_card_counts_stacked(decks: List[Counter], limit=None, skip=1, trim=None):

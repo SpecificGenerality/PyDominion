@@ -1,5 +1,5 @@
 import sys
-from typing import Callable, Iterable, List
+from typing import Callable, Iterable, List, Tuple
 
 import numpy as np
 
@@ -27,21 +27,21 @@ class Node:
     def score(self, C):
         return self.v / self.n + C * np.sqrt(2 * np.log(self.parent.n) / self.n) if self.n > 0 else sys.maxsize
 
-    # TODO: Deprecate this?
-    def update_v(self, f: Callable[[Iterable], float]):
-        vals = np.array([n.v for n in self.children if n.n > 0])
-        self.v = f(vals)
+    def avg_value(self):
+        return self.v / self.n if self.n > 0 else -sys.maxsize
 
     def update(self, delta: int):
         self.v += delta
         self.n += 1
 
-    def backpropagate(self, delta: int):
-        self.update(delta)
-
-        if self.parent and self.parent != self:
-            self.parent.backpropagate(-delta)
-        return
+    def backpropagate(self, rewards: Tuple, start_idx: int = 0):
+        n = len(rewards)
+        i = start_idx
+        node = self
+        while node.parent and node.parent != node:
+            node.update(rewards[i])
+            i = (i + 1) % n
+            node = node.parent
 
     def add_unique_children(self, cards: List[Card]):
         for c in cards:
@@ -83,16 +83,21 @@ class Node:
 
 
 class GameTree:
-    def __init__(self, root: Node = Node(), train: bool = False):
+    def __init__(self, root: Node = Node(), train: bool = False, C: Callable[[int], float] = lambda x: max(1, min(25, 25 / np.sqrt(x)))):
         self._root: Node = root
         self._node: Node = root
         self.train: bool = train
         self._in_tree: bool = True
+        self.C = C
 
         self._root.parent = self._root
         # To prevent clobbering trees loaded from file
         if not self._root.children:
             self._root.children = [Node(parent=self._root) for _ in range(GameConstants.StartingHands)]
+
+            # Second-level of children is for player two
+            for child in self._root.children:
+                child.children = [Node(parent=child) for _ in range(GameConstants.StartingHands)]
 
     @classmethod
     def load(cls, path: str, train: bool):
@@ -113,16 +118,23 @@ class GameTree:
         p_state: PlayerState = s.player_states[0]
         self._node = self._root.children[p_state.get_treasure_card_count(Zone.Hand) + p_state.get_treasure_card_count(Zone.Play) - 2]
 
-    def select(self, choices: Iterable[Card], C: float) -> Card:
+        # p_state: PlayerState = s.player_states[1]
+        # self._node = self._node.children[p_state.get_treasure_card_count(Zone.Hand) + p_state.get_treasure_card_count(Zone.Play) - 2]
+
+    def select(self, choices: Iterable[Card]) -> Card:
         '''Select the node that maximizes the UCB score'''
-        max_score = -sys.maxsize - 1
+        C = self.C(self.node.n)
+        max_score = -sys.maxsize
         card: Card = None
         found = False
         for c in choices:
             for node in self.node.children:
                 if str(node.card) == str(c):
                     found = True
-                    val = node.score(C)
+                    if self.train:
+                        val = node.score(C)
+                    else:
+                        val = node.avg_value()
                     if val > max_score:
                         max_score = val
                         card = node.card

@@ -39,7 +39,7 @@ class Environment(ABC):
 
 
 class DefaultEnvironment(Environment):
-    def __init__(self, config: GameConfig, players: Iterable[Player], logger):
+    def __init__(self, config: GameConfig, players: Iterable[Player], logger=logging.getLogger()):
         super(DefaultEnvironment, self).__init__(config, players, logger)
 
     def reset(self, **kwargs) -> State:
