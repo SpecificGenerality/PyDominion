@@ -95,6 +95,10 @@ class GameTree:
         if not self._root.children:
             self._root.children = [Node(parent=self._root) for _ in range(GameConstants.StartingHands)]
 
+            # Second-level of children is for player two
+            for child in self._root.children:
+                child.children = [Node(parent=child) for _ in range(GameConstants.StartingHands)]
+
     @classmethod
     def load(cls, path: str, train: bool):
         root = load(path)
@@ -113,6 +117,9 @@ class GameTree:
         self._in_tree = True
         p_state: PlayerState = s.player_states[0]
         self._node = self._root.children[p_state.get_treasure_card_count(Zone.Hand) + p_state.get_treasure_card_count(Zone.Play) - 2]
+
+        # p_state: PlayerState = s.player_states[1]
+        # self._node = self._node.children[p_state.get_treasure_card_count(Zone.Hand) + p_state.get_treasure_card_count(Zone.Play) - 2]
 
     def select(self, choices: Iterable[Card]) -> Card:
         '''Select the node that maximizes the UCB score'''

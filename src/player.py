@@ -328,6 +328,10 @@ class HumanPlayer(Player):
 
     def makeDecision(self, s: State, response: DecisionResponse):
         d: DecisionState = s.decision
+        if s.phase == Phase.TreasurePhase:
+            response.single_card = d.card_choices[0]
+            return
+
         if d.type == DecisionType.DecisionSelectCards:
             cardsToPick = -1
             d.print_card_choices()

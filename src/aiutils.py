@@ -51,8 +51,11 @@ def update_var(n: int, prev_var: float, prev_mean: float, x: float):
         return (n - 2) / (n - 1) * prev_var + 1 / n * (x - prev_mean) ** 2
 
 
-def classification_rate(labels: Iterable[int]):
-    counts = Counter(labels)
+def classification_rate(labels: Iterable[int], sort=True, reverse=True):
+    if sort:
+        counts = Counter(sorted(labels, reverse=reverse))
+    else:
+        counts = Counter(labels)
     n = len(labels)
     return np.array(list(counts.keys())), np.array(list(counts.values())) / n
 

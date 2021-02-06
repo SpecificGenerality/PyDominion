@@ -56,8 +56,11 @@ def train_mcts(env: Environment, tree: GameTree, epochs: int, train_epochs_inter
 
         data['rewards'].extend([reward] * (len(data['features']) - len(data['rewards'])))
         start_idx = 1 if flip else 0
-        p0_score, p1_score = obs.get_player_score(0), obs.get_player_score(1)
-        tree.node.backpropagate((p0_score, p1_score), start_idx=start_idx)
+
+        p0_reward = state.get_player_score(0)
+        p1_reward = state.get_player_score(1)
+
+        tree.node.backpropagate((p0_reward, p1_reward), start_idx=start_idx)
 
         if save_epochs > 0 and epoch % save_epochs == 0:
             save(path, tree._root)

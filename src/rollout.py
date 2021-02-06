@@ -209,7 +209,7 @@ class HistoryHeuristicRollout(RolloutModel):
 
 
 class LogisticRegressionEnsembleRollout(RolloutModel):
-    def __init__(self, models=dict([(i, LogisticRegression(max_iter=10e5)) for i in range(9)]), train=False, tau=0.005):
+    def __init__(self, models=dict([(i, LogisticRegression(max_iter=10e5, penalty='none')) for i in range(9)]), train=False, tau=0.005):
         self.models: Dict[LogisticRegression] = models
         self.buffers: DefaultDict[Buffer] = defaultdict(Buffer)
         self.train = train
