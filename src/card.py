@@ -6,36 +6,44 @@ class Card(ABC):
         self.copies = copies
         self.turns_left = turns_left
 
+    @classmethod
     @abstractmethod
-    def get_coin_cost(self) -> int:
+    def get_coin_cost(cls) -> int:
         pass
 
+    @classmethod
     @abstractmethod
-    def get_victory_points(self) -> int:
+    def get_victory_points(cls) -> int:
         pass
 
+    @classmethod
     @abstractmethod
-    def get_plus_victory_points(self) -> int:
+    def get_plus_victory_points(cls) -> int:
         pass
 
+    @classmethod
     @abstractmethod
-    def get_plus_actions(self) -> int:
+    def get_plus_actions(cls) -> int:
         pass
 
+    @classmethod
     @abstractmethod
-    def get_plus_buys(self) -> int:
+    def get_plus_buys(cls) -> int:
         pass
 
+    @classmethod
     @abstractmethod
-    def get_plus_cards(self) -> int:
+    def get_plus_cards(cls) -> int:
         pass
 
+    @classmethod
     @abstractmethod
-    def get_plus_coins(self) -> int:
+    def get_plus_coins(cls) -> int:
         pass
 
+    @classmethod
     @abstractmethod
-    def get_treasure(self) -> int:
+    def get_treasure(cls) -> int:
         pass
 
     def __hash__(self) -> str:

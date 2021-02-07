@@ -15,7 +15,7 @@ from state import (BureaucratAttack, DecisionResponse, DiscardCard,
                    EventMine, EventSentry, GainCard, PlayActionNTimes,
                    RemodelExpand, State, TrashCard)
 from treasurecard import Copper, Gold, Silver, TreasureCard
-from utils import get_first_index, move_card
+from utils import get_first_index
 from victorycard import Gardens
 
 

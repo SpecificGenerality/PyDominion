@@ -24,15 +24,7 @@ class BuyAgenda(ABC):
         pass
 
 
-# TODO: Do we need this?
-class MCTSBuyAgenda(BuyAgenda):
-    def buy(self, s: State, player: int, choices: List[Card]):
-        return super().buy(s, player, choices)
-
-    def forceBuy(self, s, player, choices):
-        return super().forceBuy(s, player, choices)
-
-
+# http://wiki.dominionstrategy.com/index.php/Big_Money#Terminal_draw_Big_Money
 class TDEBigMoneyBuyAgenda(BuyAgenda):
     def buy(self, s: State, player: int, choices: List[Card]):
         p_state: PlayerState = s.player_states[player]
@@ -42,7 +34,7 @@ class TDEBigMoneyBuyAgenda(BuyAgenda):
         if p_state.get_terminal_draw_density() < TD_DENSITY:
             card = get_max_plus_cards_card(choices)
             # print(f'TD Agenda buys {card}')
-            if card:
+            if card and card.get_plus_cards() >= 2:
                 return card
 
         # buy one chapel if we don't have one

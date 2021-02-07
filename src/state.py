@@ -1,12 +1,12 @@
 import logging
 from abc import ABC, abstractmethod
 from collections import Counter
-from typing import Iterable, List, Union
+from typing import Dict, Iterable, List, Type, Union
 
 import numpy as np
 import torch
 
-from actioncard import ActionCard, Merchant, Moat
+from actioncard import ActionCard, Chapel, Merchant, Moat
 from card import Card
 from config import GameConfig
 from cursecard import Curse
@@ -97,7 +97,16 @@ class StateFeature(ABC):
     def __init__(self, config: GameConfig, supply: Supply):
         self.num_cards = len(supply)
         self.num_players = config.num_players
-        self.idxs = dict([(str(k()), i) for i, k in enumerate(supply.keys())])
+        self.idxs: Dict[Type[Card], int] = dict([(k, i) for i, k in enumerate(supply.keys())])
+        self.rev_idxs: Dict[int, Type[Card]] = dict([(v, k) for k, v in self.idxs.items()])
+
+    def get_card_idx(self, card: Union[Card, Type[Card]]) -> int:
+        if isinstance(card, type):
+            return self.idxs[card]
+        return self.idxs[type(card)]
+
+    def get_idx_card(self, idx: int) -> Type[Card]:
+        return self.rev_idxs[idx]
 
     @abstractmethod
     def shuffle(self, player: int) -> None:
@@ -136,6 +145,38 @@ class StateFeature(ABC):
         pass
 
     @abstractmethod
+    def is_degenerate(self) -> bool:
+        pass
+
+    @abstractmethod
+    def contains_card(self, player: int, card: Card, zone: Zone) -> bool:
+        pass
+
+    @abstractmethod
+    def has_card(self, player: int, card: Card) -> bool:
+        pass
+
+    @abstractmethod
+    def get_card_counts(self, player: int) -> Counter:
+        pass
+
+    @abstractmethod
+    def get_action_card_count(self, zone: Zone) -> int:
+        pass
+
+    @abstractmethod
+    def get_treasure_card_count(self, zone: Zone) -> int:
+        pass
+
+    @abstractmethod
+    def get_victory_card_count(self, zone: Zone) -> int:
+        pass
+
+    @abstractmethod
+    def get_total_coin_count(self, zone: Zone) -> int:
+        pass
+
+    @abstractmethod
     def lookahead(self, player: int, card: Card) -> torch.tensor:
         pass
 
@@ -146,118 +187,11 @@ class StateFeature(ABC):
     @abstractmethod
     def to_tensor(self) -> torch.tensor:
         pass
-
-
-class ReducedStateFeature(StateFeature):
-    @classmethod
-    def default_sandbox_feature(cls):
-        return torch.tensor([46, 10, 8, 8, 8, 40, 30, 7, 0, 3, 0, 0, 0, 0, 7, 0, 3, 0, 0, 0, 0], dtype=torch.float32)
-
-    def __init__(self, config: GameConfig, supply: Supply, player_states: List[PlayerState], device='cpu'):
-        super(ReducedStateFeature, self).__init__(config, supply)
-
-        self.device = device
-        # +1 for supply
-        self.feature = torch.zeros((self.num_players + 1) * self.num_cards, device=self.device)
-
-        # Fill supply card counts
-        for k, v in supply.items():
-            idx = self.idxs[str(k())]
-            self.feature[idx] = v
-
-        # Fill player card counts
-        for i, p_state in enumerate(player_states):
-            offset = self.num_cards + i * self.num_cards
-            for card, count in p_state.get_card_counts().items():
-                idx = self.idxs[str(card)]
-                self.feature[idx + offset] = count
-
-    def get_player_idx(self, player: int) -> int:
-        return self.num_cards + player * self.num_cards
-
-    # TODO: Fix this hardcode when expanding to action-victory cards
-    @classmethod
-    def outcome(cls, feature: torch.tensor, idxs: dict, agent_offset: int, opp_offset: int):
-        province_idx = idxs[str(Province())]
-        duchy_idx = idxs[str(Duchy())]
-        estate_idx = idxs[str(Estate())]
-
-        agent_base = agent_offset
-        opp_base = opp_offset
-
-        # TODO: fix magic numbers
-        agent_score = feature[agent_base + province_idx] * 6 + feature[agent_base + duchy_idx] * 3 + feature[agent_base + estate_idx]
-        opp_score = feature[opp_base + province_idx] * 6 + feature[opp_base + duchy_idx] * 3 + feature[opp_base + estate_idx]
-
-        if agent_score > opp_score:
-            return 1
-        elif agent_score == opp_score:
-            return 0
-        else:
-            return -1
-
-    def shuffle(self, player: int) -> None:
-        return
-
-    def draw_card(self, player: int, card: Card) -> None:
-        return
-
-    def discard_card(self, player: int, card: Card, zone: Zone) -> None:
-        return
-
-    def discard_hand(self, player: int) -> None:
-        return
-
-    def gain_card(self, player: int, card: Card, gain_zone) -> None:
-        idx = self.get_player_idx(player)
-        offset = self.idxs[str(card)]
-
-        dec_inc(self.feature, offset, idx + offset)
-
-    def move_card(self, player, card, src_zone, dest_zone) -> None:
-        return
-
-    def play_card(self, player, card, zone) -> None:
-        return
-
-    def update_play_area(self, player: int) -> None:
-        return
-
-    def trash_card(self, player: int, card: Card, zone: Zone) -> None:
-        offset = self.idxs[str(card)]
-        base = self.get_player_idx(player)
-
-        self.feature[base + offset] = self.feature[base + offset] - 1
-
-    def lookahead(self, player: int, card: Card) -> torch.tensor:
-        if not card:
-            return self.feature
-
-        feature = self.feature.detach().clone()
-        offset = self.idxs[str(card)]
-        base = self.get_player_idx(player)
-
-        dec_inc(feature, offset, base + offset)
-        return feature
-
-    def to_numpy(self) -> np.array:
-        if self.device == 'cpu':
-            return self.feature.detach().clone().numpy()
-        return self.feature.cpu().clone().numpy()
-
-    def to_tensor(self) -> torch.tensor:
-        return self.feature
-
-    def __len__(self) -> int:
-        return self.feature.__len__()
-
-    def __getitem__(self, item):
-        return self.feature.__getitem__(item)
 
 
 class FullStateFeature(StateFeature):
     def __init__(self, config: GameConfig, supply: Supply, player_states: List[PlayerState], device='cuda'):
-        super(FullStateFeature, self).__init__(config, supply)
+        super().__init__(config, supply)
         # Hand/play, deck, discard
         self.num_zones = 3
 
@@ -266,20 +200,22 @@ class FullStateFeature(StateFeature):
         self.hand_offset = 1
         self.discard_offset = 2
 
+        self.player_width = self.num_zones * self.num_cards
+
         self.device = device
         # +1 for supply
         self.feature = torch.zeros((self.num_players * self.num_zones + 1) * self.num_cards, device=self.device)
 
         # Fill supply card counts
         for k, v in supply.items():
-            idx = self.idxs[str(k())]
+            idx = self.get_card_idx(k)
             self.feature[idx] = v
 
         # Fill player card counts
         for i, p_state in enumerate(player_states):
             offset = self.num_cards + i * self.num_zones * self.num_cards + self.deck_offset * self.num_cards
             for card, count in p_state.get_card_counts().items():
-                idx = self.idxs[str(card)]
+                idx = self.get_card_idx(card)
                 self.feature[idx + offset] = count
 
     def get_player_idx(self, player: int) -> int:
@@ -298,13 +234,6 @@ class FullStateFeature(StateFeature):
             raise ValueError(f'{zone} not supported.')
 
         return p_offset + z_offset_idx * self.num_cards
-
-    def get_card_offset(self, card: Card) -> int:
-        return self.idxs[str(card)]
-
-    # TODO: Account for imperfect information
-    def get_player_feature(self, player: int) -> torch.tensor:
-        return self.feature
 
     def shuffle(self, player: int) -> None:
         deck_idx = self.get_zone_idx(player, Zone.Deck)
@@ -326,7 +255,7 @@ class FullStateFeature(StateFeature):
 
     def gain_card(self, player: int, card: Card, zone: GainZone) -> None:
         src_offset = self.get_zone_idx(player, zone)
-        card_idx = self.idxs[str(card)]
+        card_idx = self.get_card_idx(card)
 
         self.feature[src_offset + card_idx] = self.feature[src_offset + card_idx] + 1
         self.feature[card_idx] = self.feature[card_idx] - 1
@@ -335,7 +264,7 @@ class FullStateFeature(StateFeature):
         src_base_idx = self.get_zone_idx(player, src_zone)
         dest_base_idx = self.get_zone_idx(player, dest_zone)
 
-        card_offset = self.idxs[str(card)]
+        card_offset = self.get_card_idx(card)
 
         src_idx = src_base_idx + card_offset
         dest_idx = dest_base_idx + card_offset
@@ -355,9 +284,79 @@ class FullStateFeature(StateFeature):
 
     def trash_card(self, player: int, card: Card, zone: Zone) -> None:
         src_offset = self.get_zone_idx(player, zone)
-        src_idx = src_offset + self.idxs[str(card)]
+        src_idx = src_offset + self.get_card_idx(card)
 
         self.feature[src_idx] = self.feature[src_idx] - 1
+
+    def contains_card(self, player: int, card: Card, zone: Zone) -> bool:
+        base = self.get_zone_idx(player, zone)
+        offset = self.get_card_idx(card)
+
+        return self.feature[base + offset] > 0
+
+    def has_card(self, player: int, card: Card) -> bool:
+        offset = self.get_card_idx(card)
+        p_offset = self.get_player_idx(player)
+        for zone_idx in range(self.num_zones):
+            base = p_offset + zone_idx * self.num_cards
+            if self.feature[base + offset] > 0:
+                return True
+
+        return False
+
+    def is_degenerate(self) -> bool:
+        supply_condition = self.feature[self.idxs[Copper]] == 0 and self.feature[self.idxs[Curse]] == 0
+        player_condition = False
+
+        for player in range(self.num_players):
+            player_idx = self.get_player_idx(player)
+            player_condition = player_condition and (sum(self.feature[player_idx:player_idx + self.player_width]).item() == 1 and self.has_card(player, Chapel))
+        return supply_condition and player_condition
+
+    def get_card_counts(self, player: int) -> Counter:
+        base = self.get_player_idx(player)
+        counts = Counter()
+
+        for zone_idx in range(self.num_zones):
+            for card_idx in range(self.num_cards):
+                offset = zone_idx * self.num_cards + card_idx
+                card_count = self.feature[base + offset]
+                card_class = self.rev_idxs[card_idx]
+                counts[str(card_class())] += card_count
+
+        return counts
+
+    def _get_card_count_by_type(self, player: int, zone: Zone, desired_card_class: Type) -> int:
+        base = self.get_player_idx(player)
+        count = 0
+        for zone_idx in range(self.num_zones):
+            for card_idx in range(self.num_cards):
+                offset = zone_idx * self.num_cards + card_idx
+                card_class: Type = self.rev_idxs[card_idx]
+                if issubclass(card_class, desired_card_class):
+                    count += self.feature[base + offset]
+        return count
+
+    def get_action_card_count(self, player: int, zone: Zone) -> int:
+        return self._get_card_count_by_type(player, zone, ActionCard)
+
+    def get_treasure_card_count(self, player: int, zone: Zone) -> int:
+        return self._get_card_count_by_type(player, zone, TreasureCard)
+
+    def get_victory_card_count(self, player: int, zone: Zone) -> int:
+        return self._get_card_count_by_type(player, zone, VictoryCard)
+
+    def get_total_coin_count(self, player: int, zone: Zone) -> int:
+        base = self.get_player_idx(player)
+        coins = 0
+
+        for zone_idx in range(self.num_zones):
+            for card_idx in range(self.num_cards):
+                offset = zone_idx * self.num_cards + card_idx
+                card_class: Type[Card] = self.rev_idxs[card_idx]
+                card_count = self.feature[base + offset]
+                coins += card_class.get_plus_coins() * card_count
+        return coins
 
     def lookahead(self, player: int, card: Card) -> torch.tensor:
         '''
@@ -372,7 +371,7 @@ class FullStateFeature(StateFeature):
         discard_zone_idx = self.get_zone_idx(player, Zone.Discard)
 
         if card is not None:
-            card_offset = self.get_card_offset(card)
+            card_offset = self.get_card_idx(card)
 
             # increment card count in discard
             feature[discard_zone_idx + card_offset] = feature[discard_zone_idx + card_offset] + 1
@@ -414,6 +413,129 @@ class FullStateFeature(StateFeature):
         return self.feature.__len__()
 
 
+class ReducedStateFeature(FullStateFeature):
+    @classmethod
+    def default_sandbox_feature(cls):
+        return torch.tensor([46, 10, 8, 8, 8, 40, 30, 7, 0, 3, 0, 0, 0, 0, 7, 0, 3, 0, 0, 0, 0], dtype=torch.float32)
+
+    def __init__(self, config: GameConfig, supply: Supply, player_states: List[PlayerState], device='cpu'):
+        super().__init__(config, supply, player_states, device)
+
+        # +1 for supply
+        self.reduced_feature = torch.zeros((self.num_players + 1) * self.num_cards, device=self.device)
+
+        # Fill supply card counts
+        for k, v in supply.items():
+            idx = self.get_card_idx(k)
+            self.reduced_feature[idx] = v
+
+        # Fill player card counts
+        for i, p_state in enumerate(player_states):
+            offset = self.num_cards + i * self.num_cards
+            for card, count in p_state.get_card_counts().items():
+                idx = self.get_card_idx(card)
+                self.reduced_feature[idx + offset] = count
+
+    def get_reduced_player_idx(self, player: int) -> int:
+        return self.num_cards + player * self.num_cards
+
+    # TODO: Fix this hardcode when expanding to action-victory cards
+    @classmethod
+    def outcome(cls, feature: torch.tensor, idxs: dict, agent_offset: int, opp_offset: int):
+        province_idx = idxs[str(Province())]
+        duchy_idx = idxs[str(Duchy())]
+        estate_idx = idxs[str(Estate())]
+
+        agent_base = agent_offset
+        opp_base = opp_offset
+
+        # TODO: fix magic numbers
+        agent_score = feature[agent_base + province_idx] * 6 + feature[agent_base + duchy_idx] * 3 + feature[agent_base + estate_idx]
+        opp_score = feature[opp_base + province_idx] * 6 + feature[opp_base + duchy_idx] * 3 + feature[opp_base + estate_idx]
+
+        if agent_score > opp_score:
+            return 1
+        elif agent_score == opp_score:
+            return 0
+        else:
+            return -1
+
+    def shuffle(self, player: int) -> None:
+        super().shuffle(player)
+        return
+
+    def draw_card(self, player: int, card: Card) -> None:
+        super().draw_card(player, card)
+        return
+
+    def discard_card(self, player: int, card: Card, zone: Zone) -> None:
+        super().discard_card(player, card, zone)
+        return
+
+    def discard_hand(self, player: int) -> None:
+        super().discard_hand(player)
+        return
+
+    def gain_card(self, player: int, card: Card, gain_zone) -> None:
+        super().gain_card(player, card, gain_zone)
+
+        idx = self.get_reduced_player_idx(player)
+        offset = self.get_card_idx(card)
+
+        dec_inc(self.reduced_feature, offset, idx + offset)
+
+    def move_card(self, player, card, src_zone, dest_zone) -> None:
+        super().move_card(player, card, src_zone, dest_zone)
+        return
+
+    def play_card(self, player, card, zone) -> None:
+        super().play_card(player, card, zone)
+        return
+
+    def update_play_area(self, player: int) -> None:
+        super().update_play_area(player)
+        return
+
+    def trash_card(self, player: int, card: Card, zone: Zone) -> None:
+        super().trash_card(player, card, zone)
+
+        offset = self.get_card_idx(card)
+        base = self.get_reduced_player_idx(player)
+
+        self.reduced_feature[base + offset] = self.reduced_feature[base + offset] - 1
+
+    def has_card(self, player: int, card: Card) -> bool:
+        base = self.get_reduced_player_idx(player)
+        offset = self.get_card_idx(card)
+
+        return self.reduced_feature[base + offset] > 0
+
+    def lookahead(self, player: int, card: Card) -> torch.tensor:
+        if not card:
+            return self.reduced_feature
+
+        feature = self.reduced_feature.detach().clone()
+        offset = self.get_card_idx(card)
+        base = self.get_reduced_player_idx(player)
+
+        dec_inc(feature, offset, base + offset)
+        return feature
+
+    def to_numpy(self) -> np.array:
+        if self.device == 'cpu':
+            return self.reduced_feature.detach().clone().numpy()
+        return self.reduced_feature.cpu().clone().numpy()
+
+    def to_tensor(self) -> torch.tensor:
+        return self.reduced_feature.detach().clone()
+
+    def __len__(self) -> int:
+        return self.reduced_feature.__len__()
+
+    def __getitem__(self, item):
+        return self.reduced_feature.__getitem__(item)
+
+
 class State:
     def __init__(self, config: GameConfig):
         self.players = [i for i in range(config.num_players)]
@@ -434,7 +556,7 @@ class State:
         p: int = self.player
 
         if not lookahead:
-            return self.feature.feature
+            return self.feature.reduced_feature
 
         return self.feature.lookahead(p, lookahead_card)
 

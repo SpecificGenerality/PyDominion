@@ -2,28 +2,36 @@ from card import Card
 
 
 class Curse(Card):
-    def get_plus_victory_points(self) -> int:
+    @classmethod
+    def get_plus_victory_points(cls) -> int:
         return 0
 
-    def get_victory_points(self) -> int:
+    @classmethod
+    def get_victory_points(cls) -> int:
         return -1
 
-    def get_plus_actions(self) -> int:
+    @classmethod
+    def get_plus_actions(cls) -> int:
         return 0
 
-    def get_plus_buys(self) -> int:
+    @classmethod
+    def get_plus_buys(cls) -> int:
         return 0
 
-    def get_plus_cards(self) -> int:
+    @classmethod
+    def get_plus_cards(cls) -> int:
         return 0
 
-    def get_coin_cost(self) -> int:
+    @classmethod
+    def get_coin_cost(cls) -> int:
         return 0
 
-    def get_plus_coins(self) -> int:
+    @classmethod
+    def get_plus_coins(cls) -> int:
         return 0
 
-    def get_treasure(self) -> int:
+    @classmethod
+    def get_treasure(cls) -> int:
         return 0
 
     def __str__(self):

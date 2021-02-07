@@ -6,13 +6,16 @@ class ActionCard(Card):
 
 
 class BaseActionCard(ActionCard):
-    def get_plus_victory_points(self) -> int:
+    @classmethod
+    def get_plus_victory_points(cls) -> int:
         return 0
 
-    def get_victory_points(self) -> int:
+    @classmethod
+    def get_victory_points(cls) -> int:
         return 0
 
-    def get_treasure(self):
+    @classmethod
+    def get_treasure(cls):
         return 0
 
 
@@ -25,39 +28,49 @@ class ReactionCard(ActionCard):
 
 
 class Cellar(BaseActionCard):
+    @classmethod
+    def get_coin_cost(cls) -> int:
+        return 2
+
+    @classmethod
+    def get_plus_actions(cls) -> int:
+        return 1
+
+    @classmethod
+    def get_plus_buys(cls) -> int:
+        return 0
+
+    @classmethod
+    def get_plus_cards(cls) -> int:
+        return 0
+
+    @classmethod
+    def get_plus_coins(cls) -> int:
+        return 0
+
     def __str__(self):
         return "Cellar"
 
-    def get_coin_cost(self) -> int:
-        return 2
-
-    def get_plus_actions(self) -> int:
-        return 1
-
-    def get_plus_buys(self) -> int:
-        return 0
-
-    def get_plus_cards(self) -> int:
-        return 0
-
-    def get_plus_coins(self) -> int:
-        return 0
-
 
 class Chapel(BaseActionCard):
-    def get_coin_cost(self) -> int:
+    @classmethod
+    def get_coin_cost(cls) -> int:
         return 2
 
-    def get_plus_actions(self) -> int:
+    @classmethod
+    def get_plus_actions(cls) -> int:
         return 0
 
-    def get_plus_buys(self) -> int:
+    @classmethod
+    def get_plus_buys(cls) -> int:
         return 0
 
-    def get_plus_cards(self) -> int:
+    @classmethod
+    def get_plus_cards(cls) -> int:
         return 0
 
-    def get_plus_coins(self) -> int:
+    @classmethod
+    def get_plus_coins(cls) -> int:
         return 0
 
     def __str__(self):
@@ -65,19 +78,24 @@ class Chapel(BaseActionCard):
 
 
 class Moat(BaseActionCard, ReactionCard):
-    def get_coin_cost(self) -> int:
+    @classmethod
+    def get_coin_cost(cls) -> int:
         return 2
 
-    def get_plus_actions(self) -> int:
+    @classmethod
+    def get_plus_actions(cls) -> int:
         return 0
 
-    def get_plus_buys(self) -> int:
+    @classmethod
+    def get_plus_buys(cls) -> int:
         return 0
 
-    def get_plus_cards(self) -> int:
+    @classmethod
+    def get_plus_cards(cls) -> int:
         return 2
 
-    def get_plus_coins(self) -> int:
+    @classmethod
+    def get_plus_coins(cls) -> int:
         return 0
 
     def __str__(self):
@@ -85,19 +103,24 @@ class Moat(BaseActionCard, ReactionCard):
 
 
 class Harbinger(BaseActionCard):
-    def get_coin_cost(self) -> int:
+    @classmethod
+    def get_coin_cost(cls) -> int:
         return 3
 
-    def get_plus_actions(self) -> int:
+    @classmethod
+    def get_plus_actions(cls) -> int:
         return 1
 
-    def get_plus_buys(self) -> int:
+    @classmethod
+    def get_plus_buys(cls) -> int:
         return 0
 
-    def get_plus_cards(self) -> int:
+    @classmethod
+    def get_plus_cards(cls) -> int:
         return 1
 
-    def get_plus_coins(self) -> int:
+    @classmethod
+    def get_plus_coins(cls) -> int:
         return 0
 
     def __str__(self):
@@ -105,19 +128,24 @@ class Harbinger(BaseActionCard):
 
 
 class Merchant(BaseActionCard):
-    def get_coin_cost(self) -> int:
+    @classmethod
+    def get_coin_cost(cls) -> int:
         return 3
 
-    def get_plus_actions(self) -> int:
+    @classmethod
+    def get_plus_actions(cls) -> int:
         return 1
 
-    def get_plus_buys(self) -> int:
+    @classmethod
+    def get_plus_buys(cls) -> int:
         return 0
 
-    def get_plus_cards(self) -> int:
+    @classmethod
+    def get_plus_cards(cls) -> int:
         return 1
 
-    def get_plus_coins(self) -> int:
+    @classmethod
+    def get_plus_coins(cls) -> int:
         return 0
 
     def __str__(self):
@@ -125,19 +153,24 @@ class Merchant(BaseActionCard):
 
 
 class Vassal(BaseActionCard):
-    def get_coin_cost(self) -> int:
+    @classmethod
+    def get_coin_cost(cls) -> int:
         return 3
 
-    def get_plus_actions(self) -> int:
+    @classmethod
+    def get_plus_actions(cls) -> int:
         return 0
 
-    def get_plus_buys(self) -> int:
+    @classmethod
+    def get_plus_buys(cls) -> int:
         return 0
 
-    def get_plus_cards(self) -> int:
+    @classmethod
+    def get_plus_cards(cls) -> int:
         return 0
 
-    def get_plus_coins(self) -> int:
+    @classmethod
+    def get_plus_coins(cls) -> int:
         return 2
 
     def __str__(self):
@@ -145,19 +178,24 @@ class Vassal(BaseActionCard):
 
 
 class Village(BaseActionCard):
-    def get_coin_cost(self) -> int:
+    @classmethod
+    def get_coin_cost(cls) -> int:
         return 3
 
-    def get_plus_actions(self) -> int:
+    @classmethod
+    def get_plus_actions(cls) -> int:
         return 2
 
-    def get_plus_buys(self) -> int:
+    @classmethod
+    def get_plus_buys(cls) -> int:
         return 0
 
-    def get_plus_cards(self) -> int:
+    @classmethod
+    def get_plus_cards(cls) -> int:
         return 1
 
-    def get_plus_coins(self) -> int:
+    @classmethod
+    def get_plus_coins(cls) -> int:
         return 0
 
     def __str__(self):
@@ -165,19 +203,24 @@ class Village(BaseActionCard):
 
 
 class Workshop(BaseActionCard):
-    def get_coin_cost(self) -> int:
+    @classmethod
+    def get_coin_cost(cls) -> int:
         return 3
 
-    def get_plus_actions(self) -> int:
+    @classmethod
+    def get_plus_actions(cls) -> int:
         return 0
 
-    def get_plus_buys(self) -> int:
+    @classmethod
+    def get_plus_buys(cls) -> int:
         return 0
 
-    def get_plus_cards(self) -> int:
+    @classmethod
+    def get_plus_cards(cls) -> int:
         return 0
 
-    def get_plus_coins(self) -> int:
+    @classmethod
+    def get_plus_coins(cls) -> int:
         return 0
 
     def __str__(self):
@@ -185,19 +228,24 @@ class Workshop(BaseActionCard):
 
 
 class Bureaucrat(BaseActionCard, AttackCard):
-    def get_coin_cost(self) -> int:
+    @classmethod
+    def get_coin_cost(cls) -> int:
         return 4
 
-    def get_plus_actions(self) -> int:
+    @classmethod
+    def get_plus_actions(cls) -> int:
         return 0
 
-    def get_plus_buys(self) -> int:
+    @classmethod
+    def get_plus_buys(cls) -> int:
         return 0
 
-    def get_plus_cards(self) -> int:
+    @classmethod
+    def get_plus_cards(cls) -> int:
         return 0
 
-    def get_plus_coins(self) -> int:
+    @classmethod
+    def get_plus_coins(cls) -> int:
         return 0
 
     def __str__(self):
@@ -205,19 +253,24 @@ class Bureaucrat(BaseActionCard, AttackCard):
 
 
 class Militia(BaseActionCard, AttackCard):
-    def get_coin_cost(self) -> int:
+    @classmethod
+    def get_coin_cost(cls) -> int:
         return 4
 
-    def get_plus_actions(self) -> int:
+    @classmethod
+    def get_plus_actions(cls) -> int:
         return 0
 
-    def get_plus_buys(self) -> int:
+    @classmethod
+    def get_plus_buys(cls) -> int:
         return 0
 
-    def get_plus_cards(self) -> int:
+    @classmethod
+    def get_plus_cards(cls) -> int:
         return 0
 
-    def get_plus_coins(self) -> int:
+    @classmethod
+    def get_plus_coins(cls) -> int:
         return 2
 
     def __str__(self):
@@ -225,19 +278,24 @@ class Militia(BaseActionCard, AttackCard):
 
 
 class Moneylender(BaseActionCard):
-    def get_coin_cost(self) -> int:
+    @classmethod
+    def get_coin_cost(cls) -> int:
         return 4
 
-    def get_plus_actions(self) -> int:
+    @classmethod
+    def get_plus_actions(cls) -> int:
         return 0
 
-    def get_plus_buys(self) -> int:
+    @classmethod
+    def get_plus_buys(cls) -> int:
         return 0
 
-    def get_plus_cards(self) -> int:
+    @classmethod
+    def get_plus_cards(cls) -> int:
         return 0
 
-    def get_plus_coins(self) -> int:
+    @classmethod
+    def get_plus_coins(cls) -> int:
         return 0
 
     def __str__(self):
@@ -245,19 +303,24 @@ class Moneylender(BaseActionCard):
 
 
 class Poacher(BaseActionCard):
-    def get_coin_cost(self) -> int:
+    @classmethod
+    def get_coin_cost(cls) -> int:
         return 4
 
-    def get_plus_actions(self) -> int:
+    @classmethod
+    def get_plus_actions(cls) -> int:
         return 1
 
-    def get_plus_buys(self) -> int:
+    @classmethod
+    def get_plus_buys(cls) -> int:
         return 0
 
-    def get_plus_cards(self) -> int:
+    @classmethod
+    def get_plus_cards(cls) -> int:
         return 1
 
-    def get_plus_coins(self) -> int:
+    @classmethod
+    def get_plus_coins(cls) -> int:
         return 1
 
     def __str__(self):
@@ -265,19 +328,24 @@ class Poacher(BaseActionCard):
 
 
 class Remodel(BaseActionCard):
-    def get_coin_cost(self) -> int:
+    @classmethod
+    def get_coin_cost(cls) -> int:
         return 4
 
-    def get_plus_actions(self) -> int:
+    @classmethod
+    def get_plus_actions(cls) -> int:
         return 0
 
-    def get_plus_buys(self) -> int:
+    @classmethod
+    def get_plus_buys(cls) -> int:
         return 0
 
-    def get_plus_cards(self) -> int:
+    @classmethod
+    def get_plus_cards(cls) -> int:
         return 0
 
-    def get_plus_coins(self) -> int:
+    @classmethod
+    def get_plus_coins(cls) -> int:
         return 0
 
     def __str__(self):
@@ -285,19 +353,24 @@ class Remodel(BaseActionCard):
 
 
 class Smithy(BaseActionCard):
-    def get_coin_cost(self) -> int:
+    @classmethod
+    def get_coin_cost(cls) -> int:
         return 4
 
-    def get_plus_actions(self) -> int:
+    @classmethod
+    def get_plus_actions(cls) -> int:
         return 0
 
-    def get_plus_buys(self) -> int:
+    @classmethod
+    def get_plus_buys(cls) -> int:
         return 0
 
-    def get_plus_cards(self) -> int:
+    @classmethod
+    def get_plus_cards(cls) -> int:
         return 3
 
-    def get_plus_coins(self) -> int:
+    @classmethod
+    def get_plus_coins(cls) -> int:
         return 0
 
     def __str__(self):
@@ -305,19 +378,24 @@ class Smithy(BaseActionCard):
 
 
 class ThroneRoom(BaseActionCard):
-    def get_coin_cost(self) -> int:
+    @classmethod
+    def get_coin_cost(cls) -> int:
         return 4
 
-    def get_plus_actions(self) -> int:
+    @classmethod
+    def get_plus_actions(cls) -> int:
         return 0
 
-    def get_plus_buys(self) -> int:
+    @classmethod
+    def get_plus_buys(cls) -> int:
         return 0
 
-    def get_plus_cards(self) -> int:
+    @classmethod
+    def get_plus_cards(cls) -> int:
         return 0
 
-    def get_plus_coins(self) -> int:
+    @classmethod
+    def get_plus_coins(cls) -> int:
         return 0
 
     def __str__(self):
@@ -325,19 +403,24 @@ class ThroneRoom(BaseActionCard):
 
 
 class Bandit(BaseActionCard):
-    def get_coin_cost(self) -> int:
+    @classmethod
+    def get_coin_cost(cls) -> int:
         return 5
 
-    def get_plus_actions(self) -> int:
+    @classmethod
+    def get_plus_actions(cls) -> int:
         return 0
 
-    def get_plus_buys(self) -> int:
+    @classmethod
+    def get_plus_buys(cls) -> int:
         return 0
 
-    def get_plus_cards(self) -> int:
+    @classmethod
+    def get_plus_cards(cls) -> int:
         return 0
 
-    def get_plus_coins(self) -> int:
+    @classmethod
+    def get_plus_coins(cls) -> int:
         return 0
 
     def __str__(self):
@@ -345,19 +428,24 @@ class Bandit(BaseActionCard):
 
 
 class CouncilRoom(BaseActionCard):
-    def get_coin_cost(self) -> int:
+    @classmethod
+    def get_coin_cost(cls) -> int:
         return 5
 
-    def get_plus_actions(self) -> int:
+    @classmethod
+    def get_plus_actions(cls) -> int:
         return 0
 
-    def get_plus_cards(self) -> int:
+    @classmethod
+    def get_plus_cards(cls) -> int:
         return 4
 
-    def get_plus_buys(self) -> int:
+    @classmethod
+    def get_plus_buys(cls) -> int:
         return 1
 
-    def get_plus_coins(self) -> int:
+    @classmethod
+    def get_plus_coins(cls) -> int:
         return 0
 
     def __str__(self):
@@ -365,19 +453,24 @@ class CouncilRoom(BaseActionCard):
 
 
 class Festival(BaseActionCard):
-    def get_coin_cost(self) -> int:
+    @classmethod
+    def get_coin_cost(cls) -> int:
         return 5
 
-    def get_plus_actions(self) -> int:
+    @classmethod
+    def get_plus_actions(cls) -> int:
         return 2
 
-    def get_plus_cards(self) -> int:
+    @classmethod
+    def get_plus_cards(cls) -> int:
         return 0
 
-    def get_plus_buys(self) -> int:
+    @classmethod
+    def get_plus_buys(cls) -> int:
         return 1
 
-    def get_plus_coins(self) -> int:
+    @classmethod
+    def get_plus_coins(cls) -> int:
         return 2
 
     def __str__(self):
@@ -385,19 +478,24 @@ class Festival(BaseActionCard):
 
 
 class Laboratory(BaseActionCard):
-    def get_coin_cost(self) -> int:
+    @classmethod
+    def get_coin_cost(cls) -> int:
         return 5
 
-    def get_plus_actions(self) -> int:
+    @classmethod
+    def get_plus_actions(cls) -> int:
         return 1
 
-    def get_plus_cards(self) -> int:
+    @classmethod
+    def get_plus_cards(cls) -> int:
         return 2
 
-    def get_plus_buys(self) -> int:
+    @classmethod
+    def get_plus_buys(cls) -> int:
         return 0
 
-    def get_plus_coins(self) -> int:
+    @classmethod
+    def get_plus_coins(cls) -> int:
         return 0
 
     def __str__(self):
@@ -405,19 +503,24 @@ class Laboratory(BaseActionCard):
 
 
 class Library(BaseActionCard):
-    def get_coin_cost(self) -> int:
+    @classmethod
+    def get_coin_cost(cls) -> int:
         return 5
 
-    def get_plus_actions(self) -> int:
+    @classmethod
+    def get_plus_actions(cls) -> int:
         return 0
 
-    def get_plus_cards(self) -> int:
+    @classmethod
+    def get_plus_cards(cls) -> int:
         return 0
 
-    def get_plus_buys(self) -> int:
+    @classmethod
+    def get_plus_buys(cls) -> int:
         return 0
 
-    def get_plus_coins(self) -> int:
+    @classmethod
+    def get_plus_coins(cls) -> int:
         return 0
 
     def __str__(self):
@@ -425,19 +528,24 @@ class Library(BaseActionCard):
 
 
 class Market(BaseActionCard):
-    def get_coin_cost(self) -> int:
+    @classmethod
+    def get_coin_cost(cls) -> int:
         return 5
 
-    def get_plus_actions(self) -> int:
+    @classmethod
+    def get_plus_actions(cls) -> int:
         return 1
 
-    def get_plus_cards(self) -> int:
+    @classmethod
+    def get_plus_cards(cls) -> int:
         return 1
 
-    def get_plus_buys(self) -> int:
+    @classmethod
+    def get_plus_buys(cls) -> int:
         return 1
 
-    def get_plus_coins(self) -> int:
+    @classmethod
+    def get_plus_coins(cls) -> int:
         return 1
 
     def __str__(self):
@@ -445,19 +553,24 @@ class Market(BaseActionCard):
 
 
 class Mine(BaseActionCard):
-    def get_coin_cost(self) -> int:
+    @classmethod
+    def get_coin_cost(cls) -> int:
         return 5
 
-    def get_plus_actions(self) -> int:
+    @classmethod
+    def get_plus_actions(cls) -> int:
         return 0
 
-    def get_plus_cards(self) -> int:
+    @classmethod
+    def get_plus_cards(cls) -> int:
         return 0
 
-    def get_plus_buys(self) -> int:
+    @classmethod
+    def get_plus_buys(cls) -> int:
         return 0
 
-    def get_plus_coins(self) -> int:
+    @classmethod
+    def get_plus_coins(cls) -> int:
         return 0
 
     def __str__(self):
@@ -465,19 +578,24 @@ class Mine(BaseActionCard):
 
 
 class Sentry(BaseActionCard):
-    def get_coin_cost(self) -> int:
+    @classmethod
+    def get_coin_cost(cls) -> int:
         return 5
 
-    def get_plus_actions(self) -> int:
+    @classmethod
+    def get_plus_actions(cls) -> int:
         return 1
 
-    def get_plus_cards(self) -> int:
+    @classmethod
+    def get_plus_cards(cls) -> int:
         return 1
 
-    def get_plus_buys(self) -> int:
+    @classmethod
+    def get_plus_buys(cls) -> int:
         return 0
 
-    def get_plus_coins(self) -> int:
+    @classmethod
+    def get_plus_coins(cls) -> int:
         return 0
 
     def __str__(self):
@@ -485,19 +603,24 @@ class Sentry(BaseActionCard):
 
 
 class Witch(BaseActionCard, AttackCard):
-    def get_coin_cost(self) -> int:
+    @classmethod
+    def get_coin_cost(cls) -> int:
         return 5
 
-    def get_plus_actions(self) -> int:
+    @classmethod
+    def get_plus_actions(cls) -> int:
         return 0
 
-    def get_plus_cards(self) -> int:
+    @classmethod
+    def get_plus_cards(cls) -> int:
         return 2
 
-    def get_plus_buys(self) -> int:
+    @classmethod
+    def get_plus_buys(cls) -> int:
         return 0
 
-    def get_plus_coins(self) -> int:
+    @classmethod
+    def get_plus_coins(cls) -> int:
         return 0
 
     def __str__(self):
@@ -505,19 +628,24 @@ class Witch(BaseActionCard, AttackCard):
 
 
 class Artisan(BaseActionCard):
-    def get_coin_cost(self) -> int:
+    @classmethod
+    def get_coin_cost(cls) -> int:
         return 6
 
-    def get_plus_actions(self) -> int:
+    @classmethod
+    def get_plus_actions(cls) -> int:
         return 0
 
-    def get_plus_cards(self) -> int:
+    @classmethod
+    def get_plus_cards(cls) -> int:
         return 0
 
-    def get_plus_buys(self) -> int:
+    @classmethod
+    def get_plus_buys(cls) -> int:
         return 0
 
-    def get_plus_coins(self) -> int:
+    @classmethod
+    def get_plus_coins(cls) -> int:
         return 0
 
     def __str__(self):

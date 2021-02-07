@@ -148,7 +148,7 @@ class PlayerState:
 
     def get_card_counts(self) -> Counter:
         cards = self.cards
-        return Counter([str(card) for card in cards])
+        return Counter([type(card) for card in cards])
 
     def get_terminal_action_density(self) -> float:
         cards = self.cards

@@ -4,34 +4,43 @@ from card import Card
 
 
 class VictoryCard(Card):
+    @classmethod
     @abstractmethod
-    def get_victory_points(self):
+    def get_victory_points(cls):
         pass
 
-    def get_plus_victory_points(self):
+    @classmethod
+    def get_plus_victory_points(cls):
         return 0
 
-    def get_plus_actions(self):
+    @classmethod
+    def get_plus_actions(cls):
         return 0
 
-    def get_plus_buys(self):
+    @classmethod
+    def get_plus_buys(cls):
         return 0
 
-    def get_plus_cards(self):
+    @classmethod
+    def get_plus_cards(cls):
         return 0
 
-    def get_plus_coins(self):
+    @classmethod
+    def get_plus_coins(cls):
         return 0
 
+    @classmethod
     def get_treasure(self):
         return 0
 
 
 class Estate(VictoryCard):
-    def get_coin_cost(self):
+    @classmethod
+    def get_coin_cost(cls):
         return 2
 
-    def get_victory_points(self):
+    @classmethod
+    def get_victory_points(cls):
         return 1
 
     def __str__(self):
@@ -39,10 +48,12 @@ class Estate(VictoryCard):
 
 
 class Duchy(VictoryCard):
-    def get_coin_cost(self):
+    @classmethod
+    def get_coin_cost(cls):
         return 5
 
-    def get_victory_points(self):
+    @classmethod
+    def get_victory_points(cls):
         return 3
 
     def __str__(self):
@@ -50,10 +61,12 @@ class Duchy(VictoryCard):
 
 
 class Province(VictoryCard):
-    def get_coin_cost(self):
+    @classmethod
+    def get_coin_cost(cls):
         return 8
 
-    def get_victory_points(self):
+    @classmethod
+    def get_victory_points(cls):
         return 6
 
     def __str__(self):
@@ -61,10 +74,12 @@ class Province(VictoryCard):
 
 
 class Colony(VictoryCard):
-    def get_coin_cost(self):
+    @classmethod
+    def get_coin_cost(cls):
         return 11
 
-    def get_victory_points(self):
+    @classmethod
+    def get_victory_points(cls):
         return 10
 
     def __str__(self):
@@ -72,10 +87,12 @@ class Colony(VictoryCard):
 
 
 class Gardens(VictoryCard):
-    def get_coin_cost(self) -> int:
+    @classmethod
+    def get_coin_cost(cls) -> int:
         return 4
 
-    def get_victory_points(self):
+    @classmethod
+    def get_victory_points(cls):
         return 0
 
     def __str__(self):
