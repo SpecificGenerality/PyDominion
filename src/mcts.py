@@ -7,7 +7,7 @@ from aiutils import load
 from card import Card
 from cursecard import Curse
 from enums import GameConstants, Zone
-from state import PlayerState, State
+from state import State
 
 
 class Node:
@@ -115,11 +115,10 @@ class GameTree:
 
     def reset(self, s: State):
         self._in_tree = True
-        p_state: PlayerState = s.player_states[0]
-        self._node = self._root.children[p_state.get_treasure_card_count(Zone.Hand) + p_state.get_treasure_card_count(Zone.Play) - 2]
+        self._node = self._root.children[s.get_treasure_card_count(s.player, Zone.Hand) + s.get_treasure_card_count(s.player, Zone.Play) - 2]
 
         # p_state: PlayerState = s.player_states[1]
-        # self._node = self._node.children[p_state.get_treasure_card_count(Zone.Hand) + p_state.get_treasure_card_count(Zone.Play) - 2]
+        # self._node = self._node.children[s.get_treasure_card_count(s.player, Zone.Hand) + s.get_treasure_card_count(s.player, Zone.Play) - 2]
 
     def select(self, choices: Iterable[Card]) -> Card:
         '''Select the node that maximizes the UCB score'''

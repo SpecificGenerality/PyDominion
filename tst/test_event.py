@@ -11,7 +11,7 @@ from state import DecisionResponse, ReorderCards
 
 class TestEvent(unittest.TestCase):
     def setUp(self) -> None:
-        self.config = GameConfig(StartingSplit.StartingRandomSplit, prosperity=False, num_players=2, sandbox=False)
+        self.config = GameConfig(StartingSplit.StartingRandomSplit, prosperity=False, num_players=2, sandbox=False, must_include=[Sentry, Moat, Militia])
         self.players = [Mock(), Mock()]
         self.game = Game(self.config, self.players)
 
@@ -21,8 +21,8 @@ class TestEvent(unittest.TestCase):
         # Inject necessary cards into players' hands
         attack_card = Militia()
         moat_card = Moat()
-        self.game.state.player_states[0].hand[0] = attack_card
-        self.game.state.player_states[1].hand[0] = moat_card
+        self.game.state.inject(0, attack_card)
+        self.game.state.inject(1, moat_card)
 
         self.game.state.advance_next_decision()
 
@@ -46,7 +46,7 @@ class TestEvent(unittest.TestCase):
         # Inject Sentry in player's hand
         sentry = Sentry()
 
-        self.game.state.player_states[0].hand[0] = sentry
+        self.game.state.inject(0, sentry)
 
         self.game.state.advance_next_decision()
 

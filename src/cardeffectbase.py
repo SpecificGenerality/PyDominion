@@ -172,7 +172,7 @@ class MineEffect(CardEffect):
 
     def play_action(self, s: State):
         p_state: PlayerState = s.player_states[s.player]
-        if p_state.get_treasure_card_count(Zone.Hand) > 0:
+        if s.get_treasure_card_count(s.player, Zone.Hand) > 0:
             s.decision.select_cards(self.c, 1, 1)
             s.decision.text = 'Select a treasure to trash:'
             for card in p_state.hand:

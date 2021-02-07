@@ -13,7 +13,7 @@ from victorycard import Estate
 
 class TestActionCard(unittest.TestCase):
     def setUp(self) -> None:
-        self.config = GameConfig(StartingSplit.StartingRandomSplit, False, 2)
+        self.config = GameConfig(StartingSplit.StartingRandomSplit, sandbox=False, num_players=2, must_include=[Merchant])
         self.players = [Mock(), Mock()]
         self.game = Game(self.config, self.players)
 
@@ -26,11 +26,11 @@ class TestActionCard(unittest.TestCase):
         merchant = Merchant()
         first_silver = Silver()
         second_silver = Silver()
-        p_state.hand[0] = merchant
-        p_state.hand[1] = first_silver
-        p_state.hand[2] = second_silver
-        p_state.hand[3] = Estate()
-        p_state.hand[4] = Estate()
+        self.game.state.inject(0, merchant)
+        self.game.state.inject(0, first_silver)
+        self.game.state.inject(0, second_silver)
+        self.game.state.inject(0, Estate())
+        self.game.state.inject(0, Estate())
 
         self.game.state.advance_next_decision()
 

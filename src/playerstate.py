@@ -2,12 +2,12 @@ import random
 from collections import Counter
 
 import utils
-from actioncard import ActionCard, Chapel
+from actioncard import ActionCard
 from card import Card
 from config import GameConfig
 from enums import DiscardZone, GainZone, StartingSplit, Zone
-from treasurecard import Copper, TreasureCard
-from victorycard import Estate, VictoryCard
+from treasurecard import Copper
+from victorycard import Estate
 
 
 class PlayerState:
@@ -23,7 +23,7 @@ class PlayerState:
         self._play_area = []
 
         if (game_config.starting_split == StartingSplit.Starting34Split):
-            self._deck = [Copper() for i in range(3)] + [Estate() for i in range(2)] + [Copper() for i in range(4)] + [Estate()]
+            self._deck = [Copper() for i in range(4)] + [Estate() for i in range(2)] + [Copper() for i in range(3)] + [Estate()]
         elif (game_config.starting_split == StartingSplit.Starting25Split):
             self._deck = [Copper() for i in range(5)] + [Estate() for i in range(3)] + [Copper() for i in range(2)]
         else:
@@ -143,9 +143,6 @@ class PlayerState:
 
         return trashed_card
 
-    def is_degenerate(self) -> None:
-        return self.num_cards == 1 and self.has_card(Chapel)
-
     def get_card_counts(self) -> Counter:
         cards = self.cards
         return Counter([type(card) for card in cards])
@@ -175,25 +172,6 @@ class PlayerState:
         else:
             raise ValueError(f'Playerstate does not have list corresponding to zone: {zone}.')
 
-    def get_action_card_count(self, zone: Zone) -> int:
-        cards = self._get_zone_cards(zone)
-        return sum(isinstance(card, ActionCard) for card in cards)
-
-    def get_treasure_card_count(self, zone: Zone) -> int:
-        cards = self._get_zone_cards(zone)
-        return sum(isinstance(card, TreasureCard) for card in cards)
-
-    def get_victory_card_count(self, zone: Zone) -> int:
-        cards = self._get_zone_cards(zone)
-        return sum(isinstance(card, VictoryCard) for card in cards)
-
-    def get_total_coin_count(self, zone: Zone) -> int:
-        cards = self._get_zone_cards(zone)
-        return sum(card.get_plus_coins() for card in cards)
-
     def contains_card(self, card: Card, zone: Zone) -> bool:
         cards = self._get_zone_cards(zone)
         return utils.contains_card(card, cards)
-
-    def has_card(self, card_class):
-        return any(isinstance(c, card_class) for c in self.cards)

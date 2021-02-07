@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Type
 
 from card import Card
 from constants import BASE_CARDS
@@ -10,7 +10,7 @@ class GameConfig:
                  prosperity: bool = False,
                  num_players: int = 2,
                  sandbox=True,
-                 must_include: List[Card] = [],
+                 must_include: List[Type[Card]] = [],
                  feature_type: FeatureType = FeatureType.ReducedFeature,
                  device: str = 'cpu'):
         self.starting_split = split
