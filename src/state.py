@@ -177,7 +177,7 @@ class StateFeature(ABC):
         pass
 
     @abstractmethod
-    def get_total_coin_count(self, player, zone: Zone) -> int:
+    def get_coin_count(self, player, zone: Zone) -> int:
         pass
 
     @abstractmethod
@@ -345,13 +345,11 @@ class FullStateFeature(StateFeature):
             yield card_class, count
 
     def _get_card_count_by_type(self, player: int, zone: Zone, desired_card_class: Type) -> int:
-        count = 0
         start = self.get_zone_idx(player, zone)
         end = start + self.num_cards
-        for card_class, card_count in self._card_count_iterator(start, end):
-            if issubclass(card_class, desired_card_class):
-                count += card_count
-        return count
+
+        return sum(card_count if issubclass(card_class, desired_card_class) else 0
+                   for card_class, card_count in self._card_count_iterator(start, end))
 
     def get_zone_card_count(self, player: int, zone: Zone) -> int:
         return self._get_card_count_by_type(player, zone, Card)
@@ -365,28 +363,41 @@ class FullStateFeature(StateFeature):
     def get_victory_card_count(self, player: int, zone: Zone) -> int:
         return self._get_card_count_by_type(player, zone, VictoryCard)
 
-    def get_total_coin_count(self, player: int, zone: Zone) -> int:
-        coins = 0
-
+    def get_coin_count(self, player: int, zone: Zone) -> int:
         start = self.get_zone_idx(player, zone)
         end = start + self.num_cards
-        for card_class, card_count in self._card_count_iterator(start, end):
-            coins += card_class.get_plus_coins() * card_count
 
-        return coins
+        return sum(card_class.get_plus_coins() * card_count
+                   for card_class, card_count in self._card_count_iterator(start, end))
+
+    def get_total_coin_count(self, player: int) -> int:
+        start = self.get_player_idx(player)
+        end = start + self.player_width
+
+        return sum(card_class.get_plus_coins() * card_count
+                   for card_class, card_count in self._card_count_iterator(start, end))
+
+    def get_effective_deck_size(self, player: int) -> int:
+        start = self.get_player_idx(player)
+        end = start + self.player_width
+
+        count = 0
+        for card_class, card_count in self._card_count_iterator(start, end):
+            if card_class.get_plus_actions() >= 1 and card_class.get_plus_cards() >= 1:
+                count += card_count
+
+        return count
 
     def get_terminal_draw_density(self, player: int) -> float:
         start = self.get_player_idx(player)
         end = start + self.player_width
 
         td_count = 0
-        count = 0
         for card_class, card_count in self._card_count_iterator(start, end):
-            count += card_count
             if issubclass(card_class, ActionCard) and card_class.get_plus_actions() == 0 and card_class.get_plus_cards() > 0:
                 td_count += card_count
 
-        return td_count / card_count
+        return td_count / self.get_effective_deck_size(player)
 
     def lookahead(self, player: int, card: Card) -> torch.tensor:
         '''
@@ -765,8 +776,11 @@ class State:
     def get_victory_card_count(self, player: int, zone: Zone) -> int:
         return self.feature.get_victory_card_count(player, zone)
 
-    def get_total_coin_count(self, player: int, zone: Zone) -> int:
-        return self.feature.get_total_coin_count(player, zone)
+    def get_coin_count(self, player: int, zone: Zone) -> int:
+        return self.feature.get_coin_count(player, zone)
+
+    def get_total_coin_count(self, player: int) -> int:
+        return self.feature.get_total_coin_count(player)
 
     def get_terminal_draw_density(self, player: int) -> float:
         return self.feature.get_terminal_draw_density(player)
