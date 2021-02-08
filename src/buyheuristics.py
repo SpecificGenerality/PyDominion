@@ -1,44 +1,40 @@
-from typing import List
+from typing import List, Type, Union
 
 from actioncard import Chapel
 from card import Card
 from heuristicsutils import get_highest_VP_card, get_max_plus_cards_card
 from treasurecard import Gold, Silver
-from utils import get_first_index
-from victorycard import Estate, Province
+from utils import get_card
+from victorycard import Estate, Province, VictoryCard
 
 TD_DENSITY = 0.1
 
 
 def big_money_buy(coins: int, choices: List[Card], remaining_provinces: int):
-    card_idx = -1
     if coins >= 8:
         # Province is guaranteed to exist while the game isn't over
-        card_idx = get_first_index(Province(), choices)
-        return choices[card_idx]
+        return get_card(Province, choices)
     elif coins == 6 or coins == 7:
-        card_idx = get_first_index(Gold(), choices)
-        if card_idx < 0:
+        card = get_card(Gold, choices)
+        if not card:
             # if the Golds ran out, then the game is probably almost over
             return get_highest_VP_card(choices)
         else:
-            return choices[card_idx]
+            return card
     elif coins == 5:
-        card_idx = get_first_index(Silver(), choices)
-        if remaining_provinces <= 4 or card_idx < 0:
+        card = get_card(Silver, choices)
+        if remaining_provinces <= 4 or not card:
             return get_highest_VP_card(choices)
         else:
-            return choices[card_idx]
+            return card
     elif coins == 3 or coins == 4:
-        card_idx = get_first_index(Silver(), choices)
-        if card_idx < 0:
+        card = get_card(Silver, choices)
+        if not card:
             return get_highest_VP_card(choices)
         else:
-            return choices[card_idx]
+            return card
     elif coins == 2 and remaining_provinces <= 3:
-        card_idx = get_first_index(Estate(), choices)
-        if card_idx >= 0:
-            return choices[card_idx]
+        return get_card(Estate, choices)
     return None
 
 
@@ -53,6 +49,11 @@ def chapel_buy(total_coins: int, has_chapel: bool, choices: List[Card]):
     if total_coins <= 3 or has_chapel:
         return None
 
-    card_idx = get_first_index(Chapel(), choices)
-    if card_idx >= 0:
-        return choices[card_idx]
+    return get_card(Chapel, choices)
+
+
+def greedy_score_function(card: Union[Type[Card], Card]):
+    score = card.get_coin_cost()
+    if isinstance(card, VictoryCard) or issubclass(card, VictoryCard):
+        score -= 0.5
+    return score

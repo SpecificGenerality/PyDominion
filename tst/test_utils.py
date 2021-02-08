@@ -1,27 +1,22 @@
 import unittest
 import numpy as np
-from utils import get_first_index, contains_card, remove_card, remove_first_card, move_card, running_mean
+from utils import contains_card, remove_card, remove_first_card, move_card, running_mean, get_card
 from victorycard import Estate, Province, Colony
 
 
 class TestUtils(unittest.TestCase):
-    def test_get_first_index(self):
+    def test_get_card(self):
         card = Colony()
+        card_type = Colony
 
         cards = []
-        self.assertEqual(get_first_index(card, cards), -1)
+        self.assertEqual(get_card(card, cards), None)
+        self.assertEqual(get_card(card_type, cards), None)
 
-        cards = [Estate(), Province()]
-
-        self.assertEqual(get_first_index(card, cards), -1)
-
-        cards = [Colony(), Estate(), Province()]
-
-        self.assertEqual(get_first_index(card, cards), 0)
-
-        cards = [Estate(), Colony(), Province(), Colony()]
-
-        self.assertEqual(get_first_index(card, cards), 1)
+        cards = [Province(), Colony()]
+        self.assertEqual(get_card(card, cards), cards[-1])
+        self.assertEqual(get_card(card_type, cards), cards[-1])
+        self.assertEqual(get_card(Estate, cards), None)
 
     def test_contains_card(self):
         card = Colony()

@@ -6,6 +6,8 @@ from config import GameConfig
 from enums import FeatureType, StartingSplit, Zone
 from game import Game
 from supply import Supply
+from treasurecard import Copper
+from victorycard import Estate
 
 
 class TestFullStateFeature(unittest.TestCase):
@@ -54,6 +56,9 @@ class TestFullStateFeature(unittest.TestCase):
         self.assertEqual(feature.get_zone_card_count(0, Zone.Deck), 5)
         self.assertEqual(feature.get_zone_card_count(0, Zone.Play), 0)
         self.assertEqual(feature.get_zone_card_count(0, Zone.Discard), 0)
+
+        self.assertEqual(feature.get_card_count(0, Copper), 7)
+        self.assertEqual(feature.get_card_count(0, Estate), 3)
 
         counts = feature.get_card_counts(0)
         for card_name, count in counts.items():

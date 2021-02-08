@@ -338,8 +338,8 @@ class FullStateFeature(StateFeature):
 
         return counts
 
-    def _card_count_iterator(self, start: int, end: int):
-        for i in range(start, end):
+    def _card_count_iterator(self, start: int, end: int, step=1):
+        for i in range(start, end, step):
             card_class: Type[Card] = self.rev_idxs[i % self.num_cards]
             count = self.feature[i]
             yield card_class, count
@@ -350,6 +350,15 @@ class FullStateFeature(StateFeature):
 
         return sum(card_count if issubclass(card_class, desired_card_class) else 0
                    for card_class, card_count in self._card_count_iterator(start, end))
+
+    def get_card_count(self, player: int, card: Union[Type[Card], Card]) -> int:
+        player_start = self.get_player_idx(player)
+        end = player_start + self.player_width
+        card_idx = self.get_card_idx(card)
+        start = player_start + card_idx
+        step = self.num_cards
+
+        return sum(card_count for _, card_count in self._card_count_iterator(start, end, step))
 
     def get_zone_card_count(self, player: int, zone: Zone) -> int:
         return self._get_card_count_by_type(player, zone, Card)
@@ -763,6 +772,9 @@ class State:
 
     def is_winner(self, player: int) -> bool:
         return self.get_player_score(player) == max(self.get_player_score(p) for p in self.players)
+
+    def get_card_count(self, player: int, card: Union[Type[Card], Card]) -> int:
+        return self.feature.get_card_count(player, card)
 
     def get_card_counts(self, player: int) -> Counter:
         return self.feature.get_card_counts(player)
