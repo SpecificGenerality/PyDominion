@@ -14,4 +14,3 @@ class TestPlayerState(unittest.TestCase):
 
     def test_accessors(self):
         self.assertEquals(self.p_state.num_cards, 10)
-        self.assertEquals(self.p_state.get_total_treasure_value(), 7)

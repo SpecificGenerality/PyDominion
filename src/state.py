@@ -338,15 +338,23 @@ class FullStateFeature(StateFeature):
 
         return counts
 
+    def _card_count_iterator(self, start: int, end: int):
+        for i in range(start, end):
+            card_class: Type[Card] = self.rev_idxs[i % self.num_cards]
+            count = self.feature[i]
+            yield card_class, count
+
     def _get_card_count_by_type(self, player: int, zone: Zone, desired_card_class: Type) -> int:
         count = 0
-        base = self.get_zone_idx(player, zone)
-        for card_idx in range(self.num_cards):
-            offset = card_idx
-            card_class: Type = self.rev_idxs[card_idx]
+        start = self.get_zone_idx(player, zone)
+        end = start + self.num_cards
+        for card_class, card_count in self._card_count_iterator(start, end):
             if issubclass(card_class, desired_card_class):
-                count += self.feature[base + offset]
+                count += card_count
         return count
+
+    def get_zone_card_count(self, player: int, zone: Zone) -> int:
+        return self._get_card_count_by_type(player, zone, Card)
 
     def get_action_card_count(self, player: int, zone: Zone) -> int:
         return self._get_card_count_by_type(player, zone, ActionCard)
@@ -360,13 +368,25 @@ class FullStateFeature(StateFeature):
     def get_total_coin_count(self, player: int, zone: Zone) -> int:
         coins = 0
 
-        base = self.get_zone_idx(player, zone)
-        for card_idx in range(self.num_cards):
-            offset = card_idx
-            card_class: Type[Card] = self.rev_idxs[card_idx]
-            card_count = self.feature[base + offset]
+        start = self.get_zone_idx(player, zone)
+        end = start + self.num_cards
+        for card_class, card_count in self._card_count_iterator(start, end):
             coins += card_class.get_plus_coins() * card_count
+
         return coins
+
+    def get_terminal_draw_density(self, player: int) -> float:
+        start = self.get_player_idx(player)
+        end = start + self.player_width
+
+        td_count = 0
+        count = 0
+        for card_class, card_count in self._card_count_iterator(start, end):
+            count += card_count
+            if issubclass(card_class, ActionCard) and card_class.get_plus_actions() == 0 and card_class.get_plus_cards() > 0:
+                td_count += card_count
+
+        return td_count / card_count
 
     def lookahead(self, player: int, card: Card) -> torch.tensor:
         '''
@@ -447,22 +467,6 @@ class ReducedStateFeature(FullStateFeature):
     def get_reduced_player_idx(self, player: int) -> int:
         return self.num_cards + player * self.num_cards
 
-    def shuffle(self, player: int) -> None:
-        super().shuffle(player)
-        return
-
-    def draw_card(self, player: int, card: Card) -> None:
-        super().draw_card(player, card)
-        return
-
-    def discard_card(self, player: int, card: Card, zone: Zone) -> None:
-        super().discard_card(player, card, zone)
-        return
-
-    def discard_hand(self, player: int) -> None:
-        super().discard_hand(player)
-        return
-
     def gain_card(self, player: int, card: Card, gain_zone) -> None:
         super().gain_card(player, card, gain_zone)
 
@@ -470,18 +474,6 @@ class ReducedStateFeature(FullStateFeature):
         offset = self.get_card_idx(card)
 
         dec_inc(self.reduced_feature, offset, idx + offset)
-
-    def move_card(self, player, card, src_zone, dest_zone) -> None:
-        super().move_card(player, card, src_zone, dest_zone)
-        return
-
-    def play_card(self, player, card, zone) -> None:
-        super().play_card(player, card, zone)
-        return
-
-    def update_play_area(self, player: int) -> None:
-        super().update_play_area(player)
-        return
 
     def trash_card(self, player: int, card: Card, zone: Zone) -> None:
         super().trash_card(player, card, zone)
@@ -775,6 +767,12 @@ class State:
 
     def get_total_coin_count(self, player: int, zone: Zone) -> int:
         return self.feature.get_total_coin_count(player, zone)
+
+    def get_terminal_draw_density(self, player: int) -> float:
+        return self.feature.get_terminal_draw_density(player)
+
+    def get_zone_card_count(self, player: int, zone: Zone) -> int:
+        return self.feature.get_zone_card_count(player, zone)
 
     def has_card(self, player, card_type: Type[Card]) -> bool:
         return self.feature.has_card(player, card_type)

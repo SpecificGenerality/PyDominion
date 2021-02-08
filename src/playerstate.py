@@ -2,7 +2,6 @@ import random
 from collections import Counter
 
 import utils
-from actioncard import ActionCard
 from card import Card
 from config import GameConfig
 from enums import DiscardZone, GainZone, StartingSplit, Zone
@@ -62,6 +61,7 @@ class PlayerState:
     def turns(self, val: int):
         self._turns = val
 
+    # TODO: Deprecate this, used once at the start and end of the game.
     @property
     def cards(self):
         cards = self.hand.copy()
@@ -74,9 +74,6 @@ class PlayerState:
     @property
     def num_cards(self):
         return len(self.hand) + len(self._deck) + len(self._discard) + len(self._play_area) + len(self._island)
-
-    def zone_size(self, zone: Zone):
-        return len(self._get_zone_cards(zone))
 
     def draw_card(self) -> Card:
         card = self._deck.pop()
@@ -146,17 +143,6 @@ class PlayerState:
     def get_card_counts(self) -> Counter:
         cards = self.cards
         return Counter([type(card) for card in cards])
-
-    def get_terminal_action_density(self) -> float:
-        cards = self.cards
-        return sum(1 if isinstance(card, ActionCard) and card.get_plus_actions() == 0 else 0 for card in cards) / len(cards)
-
-    def get_terminal_draw_density(self) -> float:
-        cards = self.cards
-        return sum(1 if isinstance(card, ActionCard) and card.get_plus_actions() == 0 and card.get_plus_cards() > 0 else 0 for card in cards) / len(cards)
-
-    def get_total_treasure_value(self) -> int:
-        return sum(c.get_treasure() for c in self.cards)
 
     def _get_zone_cards(self, zone: Zone):
         if zone == Zone.Hand:

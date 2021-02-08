@@ -238,7 +238,7 @@ class SentryEffect(CardEffect):
     def play_action(self, s: State):
         player: int = s.player
         p_state: PlayerState = s.player_states[player]
-        zone_size = p_state.zone_size(Zone.Deck)
+        zone_size = s.get_zone_card_count(s.player, Zone.Deck)
 
         if zone_size == 0:
             return

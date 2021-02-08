@@ -31,7 +31,7 @@ class TDEBigMoneyBuyAgenda(BuyAgenda):
         coins = s.player_states[player].coins
         cardIdx = -1
 
-        if p_state.get_terminal_draw_density() < TD_DENSITY:
+        if s.get_terminal_draw_density() < TD_DENSITY:
             card = get_max_plus_cards_card(choices)
             # print(f'TD Agenda buys {card}')
             if card and card.get_plus_cards() >= 2:
@@ -87,11 +87,10 @@ class TDEBigMoneyBuyAgenda(BuyAgenda):
 
 class TDBigMoneyBuyAgenda(BuyAgenda):
     def buy(self, s: State, player: int, choices: List[Card]):
-        p_state: PlayerState = s.player_states[player]
         coins = s.player_states[player].coins
         cardIdx = -1
 
-        if p_state.get_terminal_draw_density() < TD_DENSITY:
+        if s.get_terminal_draw_density() < TD_DENSITY:
             card = get_max_plus_cards_card(choices)
             # print(f'TD Agenda buys {card}')
             if card:

@@ -48,6 +48,11 @@ class TestFullStateFeature(unittest.TestCase):
         self.assertEqual(feature.get_total_coin_count(0, Zone.Play), 0)
         self.assertEqual(feature.get_total_coin_count(0, Zone.Discard), 0)
 
+        self.assertEqual(feature.get_zone_card_count(0, Zone.Hand), 5)
+        self.assertEqual(feature.get_zone_card_count(0, Zone.Deck), 5)
+        self.assertEqual(feature.get_zone_card_count(0, Zone.Play), 0)
+        self.assertEqual(feature.get_zone_card_count(0, Zone.Discard), 0)
+
         counts = feature.get_card_counts(0)
         for card_name, count in counts.items():
             if card_name == 'Copper':
