@@ -1,7 +1,7 @@
 from typing import List, Type
 
 from card import Card
-from constants import BASE_CARDS
+from constants import BASE_CARDS, DEFAULT_KINGDOM
 from enums import AIConstants, GameConstants, StartingSplit, FeatureType
 
 
@@ -10,13 +10,13 @@ class GameConfig:
                  prosperity: bool = False,
                  num_players: int = 2,
                  sandbox=True,
-                 must_include: List[Type[Card]] = [],
+                 must_include: List[Type[Card]] = DEFAULT_KINGDOM,
                  feature_type: FeatureType = FeatureType.ReducedFeature,
                  device: str = 'cpu'):
         self.starting_split = split
         self.prosperity = prosperity
         self.num_players = num_players
-        self.must_include = must_include
+        self.must_include = must_include if not sandbox else must_include
         self.sandbox = sandbox
         self.randomizers = BASE_CARDS
         self.kingdom_size = GameConstants.BaseKingdomSize

@@ -1,9 +1,19 @@
 import random
-from typing import Callable, List
+from typing import Callable, List, Union, Type
+
+import numpy as np
 
 from actioncard import ActionCard
 from card import Card
 from treasurecard import TreasureCard
+
+
+def sigmoid(x: float):
+    return 1 / (1 + np.exp(-x))
+
+
+def is_cantrip(card: Union[Type[Card], Card]):
+    return card.get_plus_actions() > 0 and card.get_plus_cards() > 0
 
 
 def heuristic_select_cards(choices: List[Card], k: int, scoringFunction: Callable[[Card], float]) -> List[Card]:

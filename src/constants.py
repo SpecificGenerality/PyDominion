@@ -6,6 +6,7 @@ from victorycard import Duchy, Estate, Gardens, Province
 '''List of the Base set kingdom cards'''
 
 SANDBOX_CARDS = [Copper, Silver, Gold, Estate, Duchy, Province, Curse]
+DEFAULT_KINGDOM = [Chapel, Moat, Village, Militia, Moneylender, Smithy, CouncilRoom, Laboratory, Market, Witch]
 
 BUY = 25
 

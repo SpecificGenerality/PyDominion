@@ -39,10 +39,11 @@ class TDBigMoneyBuyAgenda(BuyAgenda):
     def buy(self, s: State, player: int, choices: List[Card]):
         coins = s.player_states[player].coins
 
-        card = terminal_draw_buy(s.get_terminal_draw_density(player), choices)
+        if s.supply[Province] == 8:
+            card = terminal_draw_buy(s.get_terminal_draw_density(player), choices)
 
-        if card:
-            return card
+            if card:
+                return card
 
         return big_money_buy(coins, choices, s.supply[Province])
 
@@ -68,10 +69,11 @@ class TDEBigMoneyBuyAgenda(BuyAgenda):
         if card:
             return card
 
-        card = terminal_draw_buy(s.get_terminal_draw_density(player), choices)
+        if s.supply[Province] == 8:
+            card = terminal_draw_buy(s.get_terminal_draw_density(player), choices)
 
-        if card:
-            return card
+            if card:
+                return card
 
         return big_money_buy(coins, choices, s.supply[Province])
 
@@ -92,8 +94,8 @@ class DoubleWitchBuyAgenda(BuyAgenda):
             if card:
                 return card
 
-        num_coins = s.get_total_coin_count(player)
-        return big_money_buy(num_coins, choices, s.supply[Province])
+        coins = s.player_states[player].coins
+        return big_money_buy(coins, choices, s.supply[Province])
 
     def forceBuy(self, s: State, player: int, choices: List[Card]):
         card = self.buy(s, player, choices)

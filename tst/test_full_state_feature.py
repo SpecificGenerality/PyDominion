@@ -60,6 +60,8 @@ class TestFullStateFeature(unittest.TestCase):
         self.assertEqual(feature.get_card_count(0, Copper), 7)
         self.assertEqual(feature.get_card_count(0, Estate), 3)
 
+        self.assertEqual(feature.get_effective_deck_size(0), 10)
+
         counts = feature.get_card_counts(0)
         for card_name, count in counts.items():
             if card_name == 'Copper':

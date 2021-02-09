@@ -41,12 +41,12 @@ def big_money_buy(coins: int, choices: List[Card], remaining_provinces: int):
 def terminal_draw_buy(terminal_draw_density: float, choices: List[Card]):
     if terminal_draw_density < TD_DENSITY:
         card = get_max_plus_cards_card(choices)
-        if card and card.get_plus_cards() >= 2 and card.get_plus_actions() == 0:
+        if card and card.get_plus_cards() >= 3 and card.get_plus_actions() == 0:
             return card
 
 
 def chapel_buy(total_coins: int, has_chapel: bool, choices: List[Card]):
-    if total_coins <= 3 or has_chapel:
+    if has_chapel:
         return None
 
     return get_card(Chapel, choices)

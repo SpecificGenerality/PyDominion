@@ -392,7 +392,7 @@ class FullStateFeature(StateFeature):
 
         count = 0
         for card_class, card_count in self._card_count_iterator(start, end):
-            if card_class.get_plus_actions() >= 1 and card_class.get_plus_cards() >= 1:
+            if card_class.get_plus_actions() < 1 and card_class.get_plus_cards() < 1:
                 count += card_count
 
         return count
@@ -1242,6 +1242,7 @@ class EventLibrary(Event):
         return True
 
     def process_decision(self, s: State, response: DecisionResponse):
+        # TODO: Make this work with the state feature
         p_state: PlayerState = s.player_states[s.player]
         if response.choice == 0:
             remove_card(self.decision_card, p_state._deck)

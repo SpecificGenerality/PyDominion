@@ -1,4 +1,5 @@
 import logging
+
 from actioncard import (ActionCard, Artisan, Bureaucrat, Cellar, Chapel,
                         Harbinger, Library, Militia, Mine, Moat, Poacher,
                         ThroneRoom)
@@ -6,7 +7,7 @@ from buyagenda import BuyAgenda
 from card import Card
 from cursecard import Curse
 from heuristicsutils import (has_excess_actions, has_treasure_cards,
-                             heuristic_select_cards)
+                             heuristic_select_cards, is_cantrip)
 from playerstate import PlayerState
 from state import DecisionResponse, DecisionState, State
 from treasurecard import Copper, Gold, Silver, TreasureCard
@@ -75,23 +76,20 @@ class PlayerHeuristic:
     # plays +Action first, then card with most +Card, then randomly
     def makeGreedyActionDecision(self, s: State, response: DecisionResponse):
         d: DecisionState = s.decision
-        assert d.min_cards == 0 and d.max_cards == 1, 'Invalid decisionparameters'
+        assert d.min_cards == 0 and d.max_cards == 1, 'Invalid decision parameters'
 
         def scoringFunction(card: Card):
-            score = 0
-            if card.get_plus_actions() > 0:
-                score += 100
-            score += card.get_coin_cost()
+            '''Play all cantrips first, then greedily'''
+            cantrip_bonus = 1
+            score = min(card.get_coin_cost(), 6)
+
+            if is_cantrip(card):
+                score += cantrip_bonus
+
             return score
 
         cards = heuristic_select_cards(d.card_choices, d.min_cards, scoringFunction)
         response.cards = cards
-
-    # plays all treasures
-    def makeGreedyTreasureDecision(self, s: State, response: DecisionResponse):
-        d: DecisionState = s.decision
-        response.cards[0:0] = d.card_choices
-        print(f'{response.cards}')
 
     def makeBaseDecision(self, s: State, response: DecisionResponse):
         d: DecisionState = s.decision
@@ -104,8 +102,8 @@ class PlayerHeuristic:
                 if isinstance(c, VictoryCard) or c.get_coin_cost() < 2:
                     response.cards.append(c)
         elif isinstance(card, Chapel):
-            treasureValue = s.player_states[player].getTotalTreasureValue()
-            trashCoppers = (treasureValue >= 7)
+            treasureValue = s.get_total_coin_count(player)
+            trashCoppers = (treasureValue > 3)
             num_discarded = 0
             for c in d.card_choices:
                 if num_discarded == 4:
