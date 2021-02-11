@@ -2,30 +2,38 @@ from card import Card
 
 
 class TreasureCard(Card):
-    def get_plus_victory_points(self) -> int:
+    @classmethod
+    def get_plus_victory_points(cls) -> int:
         return 0
 
-    def get_victory_points(self) -> int:
+    @classmethod
+    def get_victory_points(cls) -> int:
         return 0
 
-    def get_plus_actions(self) -> int:
+    @classmethod
+    def get_plus_actions(cls) -> int:
         return 0
 
-    def get_plus_buys(self) -> int:
+    @classmethod
+    def get_plus_buys(cls) -> int:
         return 0
 
-    def get_plus_cards(self) -> int:
+    @classmethod
+    def get_plus_cards(cls) -> int:
         return 0
 
 
 class Copper(TreasureCard):
-    def get_coin_cost(self) -> int:
+    @classmethod
+    def get_coin_cost(cls) -> int:
         return 0
 
-    def get_plus_coins(self) -> int:
+    @classmethod
+    def get_plus_coins(cls) -> int:
         return 1
 
-    def get_treasure(self):
+    @classmethod
+    def get_treasure(cls):
         return 1
 
     def __str__(self):
@@ -33,13 +41,16 @@ class Copper(TreasureCard):
 
 
 class Silver(TreasureCard):
-    def get_coin_cost(self) -> int:
+    @classmethod
+    def get_coin_cost(cls) -> int:
         return 3
 
-    def get_plus_coins(self) -> int:
+    @classmethod
+    def get_plus_coins(cls) -> int:
         return 2
 
-    def get_treasure(self):
+    @classmethod
+    def get_treasure(cls):
         return 2
 
     def __str__(self):
@@ -47,13 +58,16 @@ class Silver(TreasureCard):
 
 
 class Gold(TreasureCard):
-    def get_coin_cost(self) -> int:
+    @classmethod
+    def get_coin_cost(cls) -> int:
         return 6
 
-    def get_plus_coins(self) -> int:
+    @classmethod
+    def get_plus_coins(cls) -> int:
         return 3
 
-    def get_treasure(self):
+    @classmethod
+    def get_treasure(cls):
         return 3
 
     def __str__(self):
@@ -61,13 +75,16 @@ class Gold(TreasureCard):
 
 
 class Platinum(TreasureCard):
-    def get_coin_cost(self) -> int:
+    @classmethod
+    def get_coin_cost(cls) -> int:
         return 9
 
-    def get_plus_coins(self) -> int:
+    @classmethod
+    def get_plus_coins(cls) -> int:
         return 5
 
-    def get_treasure(self):
+    @classmethod
+    def get_treasure(cls):
         return 5
 
     def __str__(self):

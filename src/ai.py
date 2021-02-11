@@ -94,7 +94,7 @@ class MCTS:
         if self.rollout_model == Rollout.HistoryHeuristic:
             self.rollout.update(cards=self.rollout_cards, score=score)
         elif self.rollout_model == Rollout.LinearRegression:
-            counts = self.game.state.player_states[0].get_card_counts()
+            counts = self.game.state.get_card_counts(0)
             self.rollout.update(counts=counts, score=score, i=self.iter)
 
         return self.game.get_player_scores()[0]

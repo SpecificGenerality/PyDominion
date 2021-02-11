@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Type, Union
 
 import numpy as np
 import torch
@@ -10,13 +10,13 @@ from card import Card
 ##############
 
 
-def get_first_index(card: Card, cards: List[Card]):
-    '''Return the first index of card in cards if it exists, else -1.'''
-    cardName = str(card)
-    for i, c in enumerate(cards):
-        if cardName == str(c):
-            return i
-    return -1
+def get_card(card: Union[Type[Card], Card], cards: List[Card]):
+    '''Returns the first instance of card in cards'''
+    card_type = card if isinstance(card, type) else type(card)
+    for c in cards:
+        if isinstance(c, card_type):
+            return c
+    return None
 
 
 def contains_card(card: Card, cards: List[Card]):

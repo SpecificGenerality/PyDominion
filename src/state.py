@@ -1,12 +1,12 @@
 import logging
 from abc import ABC, abstractmethod
 from collections import Counter
-from typing import Iterable, List, Union
+from typing import Dict, Iterable, List, Type, Union
 
 import numpy as np
 import torch
 
-from actioncard import ActionCard, Merchant, Moat
+from actioncard import ActionCard, Chapel, Merchant, Moat
 from card import Card
 from config import GameConfig
 from cursecard import Curse
@@ -16,7 +16,7 @@ from playerstate import PlayerState
 from supply import Supply
 from treasurecard import Copper, Silver, TreasureCard
 from utils import dec_inc, mov_zero, remove_card, remove_first_card
-from victorycard import Duchy, Estate, Province, VictoryCard
+from victorycard import VictoryCard
 
 
 class DecisionResponse:
@@ -97,7 +97,20 @@ class StateFeature(ABC):
     def __init__(self, config: GameConfig, supply: Supply):
         self.num_cards = len(supply)
         self.num_players = config.num_players
-        self.idxs = dict([(str(k()), i) for i, k in enumerate(supply.keys())])
+        self.idxs: Dict[Type[Card], int] = dict([(k, i) for i, k in enumerate(supply.keys())])
+        self.rev_idxs: Dict[int, Type[Card]] = dict([(v, k) for k, v in self.idxs.items()])
+
+    def get_card_idx(self, card: Union[Card, Type[Card]]) -> int:
+        if isinstance(card, type):
+            return self.idxs[card]
+        return self.idxs[type(card)]
+
+    def get_idx_card(self, idx: int) -> Type[Card]:
+        return self.rev_idxs[idx]
+
+    @abstractmethod
+    def inject(self, player: int, card: Union[Card, Type[Card]]):
+        pass
 
     @abstractmethod
     def shuffle(self, player: int) -> None:
@@ -136,6 +149,38 @@ class StateFeature(ABC):
         pass
 
     @abstractmethod
+    def is_degenerate(self) -> bool:
+        pass
+
+    @abstractmethod
+    def contains_card(self, player: int, card: Card, zone: Zone) -> bool:
+        pass
+
+    @abstractmethod
+    def has_card(self, player: int, card: Card) -> bool:
+        pass
+
+    @abstractmethod
+    def get_card_counts(self, player: int) -> Counter:
+        pass
+
+    @abstractmethod
+    def get_action_card_count(self, player, zone: Zone) -> int:
+        pass
+
+    @abstractmethod
+    def get_treasure_card_count(self, player, zone: Zone) -> int:
+        pass
+
+    @abstractmethod
+    def get_victory_card_count(self, player, zone: Zone) -> int:
+        pass
+
+    @abstractmethod
+    def get_coin_count(self, player, zone: Zone) -> int:
+        pass
+
+    @abstractmethod
     def lookahead(self, player: int, card: Card) -> torch.tensor:
         pass
 
@@ -146,140 +191,36 @@ class StateFeature(ABC):
     @abstractmethod
     def to_tensor(self) -> torch.tensor:
         pass
-
-
-class ReducedStateFeature(StateFeature):
-    @classmethod
-    def default_sandbox_feature(cls):
-        return torch.tensor([46, 10, 8, 8, 8, 40, 30, 7, 0, 3, 0, 0, 0, 0, 7, 0, 3, 0, 0, 0, 0], dtype=torch.float32)
-
-    def __init__(self, config: GameConfig, supply: Supply, player_states: List[PlayerState], device='cpu'):
-        super(ReducedStateFeature, self).__init__(config, supply)
-
-        self.device = device
-        # +1 for supply
-        self.feature = torch.zeros((self.num_players + 1) * self.num_cards, device=self.device)
-
-        # Fill supply card counts
-        for k, v in supply.items():
-            idx = self.idxs[str(k())]
-            self.feature[idx] = v
-
-        # Fill player card counts
-        for i, p_state in enumerate(player_states):
-            offset = self.num_cards + i * self.num_cards
-            for card, count in p_state.get_card_counts().items():
-                idx = self.idxs[str(card)]
-                self.feature[idx + offset] = count
-
-    def get_player_idx(self, player: int) -> int:
-        return self.num_cards + player * self.num_cards
-
-    # TODO: Fix this hardcode when expanding to action-victory cards
-    @classmethod
-    def outcome(cls, feature: torch.tensor, idxs: dict, agent_offset: int, opp_offset: int):
-        province_idx = idxs[str(Province())]
-        duchy_idx = idxs[str(Duchy())]
-        estate_idx = idxs[str(Estate())]
-
-        agent_base = agent_offset
-        opp_base = opp_offset
-
-        # TODO: fix magic numbers
-        agent_score = feature[agent_base + province_idx] * 6 + feature[agent_base + duchy_idx] * 3 + feature[agent_base + estate_idx]
-        opp_score = feature[opp_base + province_idx] * 6 + feature[opp_base + duchy_idx] * 3 + feature[opp_base + estate_idx]
-
-        if agent_score > opp_score:
-            return 1
-        elif agent_score == opp_score:
-            return 0
-        else:
-            return -1
-
-    def shuffle(self, player: int) -> None:
-        return
-
-    def draw_card(self, player: int, card: Card) -> None:
-        return
-
-    def discard_card(self, player: int, card: Card, zone: Zone) -> None:
-        return
-
-    def discard_hand(self, player: int) -> None:
-        return
-
-    def gain_card(self, player: int, card: Card, gain_zone) -> None:
-        idx = self.get_player_idx(player)
-        offset = self.idxs[str(card)]
-
-        dec_inc(self.feature, offset, idx + offset)
-
-    def move_card(self, player, card, src_zone, dest_zone) -> None:
-        return
-
-    def play_card(self, player, card, zone) -> None:
-        return
-
-    def update_play_area(self, player: int) -> None:
-        return
-
-    def trash_card(self, player: int, card: Card, zone: Zone) -> None:
-        offset = self.idxs[str(card)]
-        base = self.get_player_idx(player)
-
-        self.feature[base + offset] = self.feature[base + offset] - 1
-
-    def lookahead(self, player: int, card: Card) -> torch.tensor:
-        if not card:
-            return self.feature
-
-        feature = self.feature.detach().clone()
-        offset = self.idxs[str(card)]
-        base = self.get_player_idx(player)
-
-        dec_inc(feature, offset, base + offset)
-        return feature
-
-    def to_numpy(self) -> np.array:
-        if self.device == 'cpu':
-            return self.feature.detach().clone().numpy()
-        return self.feature.cpu().clone().numpy()
-
-    def to_tensor(self) -> torch.tensor:
-        return self.feature
-
-    def __len__(self) -> int:
-        return self.feature.__len__()
-
-    def __getitem__(self, item):
-        return self.feature.__getitem__(item)
 
 
 class FullStateFeature(StateFeature):
     def __init__(self, config: GameConfig, supply: Supply, player_states: List[PlayerState], device='cuda'):
-        super(FullStateFeature, self).__init__(config, supply)
-        # Hand/play, deck, discard
-        self.num_zones = 3
+        super().__init__(config, supply)
+        # Hand, play, deck, discard
+        self.num_zones = 4
 
         # Offsets within player subfeature
         self.deck_offset = 0
         self.hand_offset = 1
-        self.discard_offset = 2
+        self.play_offset = 2
+        self.discard_offset = 3
+
+        self.player_width = self.num_zones * self.num_cards
 
         self.device = device
         # +1 for supply
-        self.feature = torch.zeros((self.num_players * self.num_zones + 1) * self.num_cards, device=self.device)
+        self.feature = np.zeros((self.num_players * self.num_zones + 1) * self.num_cards, dtype=np.int32)
 
         # Fill supply card counts
         for k, v in supply.items():
-            idx = self.idxs[str(k())]
+            idx = self.get_card_idx(k)
             self.feature[idx] = v
 
         # Fill player card counts
         for i, p_state in enumerate(player_states):
             offset = self.num_cards + i * self.num_zones * self.num_cards + self.deck_offset * self.num_cards
             for card, count in p_state.get_card_counts().items():
-                idx = self.idxs[str(card)]
+                idx = self.get_card_idx(card)
                 self.feature[idx + offset] = count
 
     def get_player_idx(self, player: int) -> int:
@@ -292,19 +233,19 @@ class FullStateFeature(StateFeature):
             z_offset_idx = self.deck_offset
         elif zone == Zone.Discard or zone == GainZone.GainToDiscard:
             z_offset_idx = self.discard_offset
-        elif zone == Zone.Hand or zone == Zone.Play or zone == DiscardZone.DiscardFromHand or zone == GainZone.GainToHand:
+        elif zone == Zone.Hand or zone == DiscardZone.DiscardFromHand or zone == GainZone.GainToHand:
             z_offset_idx = self.hand_offset
+        elif zone == Zone.Play:
+            z_offset_idx = self.play_offset
         else:
             raise ValueError(f'{zone} not supported.')
 
         return p_offset + z_offset_idx * self.num_cards
 
-    def get_card_offset(self, card: Card) -> int:
-        return self.idxs[str(card)]
-
-    # TODO: Account for imperfect information
-    def get_player_feature(self, player: int) -> torch.tensor:
-        return self.feature
+    def inject(self, player: int, card: Union[Type[Card], Card]) -> None:
+        base = self.get_zone_idx(player, Zone.Hand)
+        offset = self.get_card_idx(card)
+        self.feature[base + offset] += 1
 
     def shuffle(self, player: int) -> None:
         deck_idx = self.get_zone_idx(player, Zone.Deck)
@@ -326,7 +267,7 @@ class FullStateFeature(StateFeature):
 
     def gain_card(self, player: int, card: Card, zone: GainZone) -> None:
         src_offset = self.get_zone_idx(player, zone)
-        card_idx = self.idxs[str(card)]
+        card_idx = self.get_card_idx(card)
 
         self.feature[src_offset + card_idx] = self.feature[src_offset + card_idx] + 1
         self.feature[card_idx] = self.feature[card_idx] - 1
@@ -335,15 +276,15 @@ class FullStateFeature(StateFeature):
         src_base_idx = self.get_zone_idx(player, src_zone)
         dest_base_idx = self.get_zone_idx(player, dest_zone)
 
-        card_offset = self.idxs[str(card)]
+        card_offset = self.get_card_idx(card)
 
         src_idx = src_base_idx + card_offset
         dest_idx = dest_base_idx + card_offset
 
         dec_inc(self.feature, src_idx, dest_idx)
 
-    # TODO: Update to split hand/play
     def play_card(self, player: int, card: Card, zone: Zone) -> None:
+        self.move_card(player, card, zone, Zone.Play)
         return
 
     # TODO: Update to allow duration cards
@@ -355,9 +296,117 @@ class FullStateFeature(StateFeature):
 
     def trash_card(self, player: int, card: Card, zone: Zone) -> None:
         src_offset = self.get_zone_idx(player, zone)
-        src_idx = src_offset + self.idxs[str(card)]
+        src_idx = src_offset + self.get_card_idx(card)
 
         self.feature[src_idx] = self.feature[src_idx] - 1
+
+    def contains_card(self, player: int, card: Card, zone: Zone) -> bool:
+        base = self.get_zone_idx(player, zone)
+        offset = self.get_card_idx(card)
+
+        return self.feature[base + offset] > 0
+
+    def has_card(self, player: int, card: Union[Card, Type[Card]]) -> bool:
+        offset = self.get_card_idx(card)
+        p_offset = self.get_player_idx(player)
+        for zone_idx in range(self.num_zones):
+            base = p_offset + zone_idx * self.num_cards
+            if self.feature[base + offset] > 0:
+                return True
+
+        return False
+
+    def is_degenerate(self) -> bool:
+        supply_condition = self.feature[self.idxs[Copper]] == 0 and self.feature[self.idxs[Curse]] == 0
+        player_condition = False
+
+        for player in range(self.num_players):
+            player_idx = self.get_player_idx(player)
+            player_condition = player_condition and (sum(self.feature[player_idx:player_idx + self.player_width]) == 1 and self.has_card(player, Chapel))
+        return supply_condition and player_condition
+
+    def get_card_counts(self, player: int) -> Counter:
+        base = self.get_player_idx(player)
+        counts = Counter()
+
+        for zone_idx in range(self.num_zones):
+            for card_idx in range(self.num_cards):
+                offset = zone_idx * self.num_cards + card_idx
+                card_count = self.feature[base + offset]
+                card_class = self.rev_idxs[card_idx]
+                counts[str(card_class())] += card_count
+
+        return counts
+
+    def _card_count_iterator(self, start: int, end: int, step=1):
+        for i in range(start, end, step):
+            card_class: Type[Card] = self.rev_idxs[i % self.num_cards]
+            count = self.feature[i]
+            yield card_class, count
+
+    def _get_card_count_by_type(self, player: int, zone: Zone, desired_card_class: Type) -> int:
+        start = self.get_zone_idx(player, zone)
+        end = start + self.num_cards
+
+        return sum(card_count if issubclass(card_class, desired_card_class) else 0
+                   for card_class, card_count in self._card_count_iterator(start, end))
+
+    def get_card_count(self, player: int, card: Union[Type[Card], Card]) -> int:
+        player_start = self.get_player_idx(player)
+        end = player_start + self.player_width
+        card_idx = self.get_card_idx(card)
+        start = player_start + card_idx
+        step = self.num_cards
+
+        return sum(card_count for _, card_count in self._card_count_iterator(start, end, step))
+
+    def get_zone_card_count(self, player: int, zone: Zone) -> int:
+        return self._get_card_count_by_type(player, zone, Card)
+
+    def get_action_card_count(self, player: int, zone: Zone) -> int:
+        return self._get_card_count_by_type(player, zone, ActionCard)
+
+    def get_treasure_card_count(self, player: int, zone: Zone) -> int:
+        return self._get_card_count_by_type(player, zone, TreasureCard)
+
+    def get_victory_card_count(self, player: int, zone: Zone) -> int:
+        return self._get_card_count_by_type(player, zone, VictoryCard)
+
+    def get_coin_count(self, player: int, zone: Zone) -> int:
+        start = self.get_zone_idx(player, zone)
+        end = start + self.num_cards
+
+        return sum(card_class.get_plus_coins() * card_count
+                   for card_class, card_count in self._card_count_iterator(start, end))
+
+    def get_total_coin_count(self, player: int) -> int:
+        start = self.get_player_idx(player)
+        end = start + self.player_width
+
+        return sum(card_class.get_plus_coins() * card_count
+                   for card_class, card_count in self._card_count_iterator(start, end))
+
+    def get_effective_deck_size(self, player: int) -> int:
+        start = self.get_player_idx(player)
+        end = start + self.player_width
+
+        count = 0
+        for card_class, card_count in self._card_count_iterator(start, end):
+            if card_class.get_plus_actions() < 1 and card_class.get_plus_cards() < 1:
+                count += card_count
+
+        return count
+
+    def get_terminal_draw_density(self, player: int) -> float:
+        start = self.get_player_idx(player)
+        end = start + self.player_width
+
+        td_count = 0
+        for card_class, card_count in self._card_count_iterator(start, end):
+            if issubclass(card_class, ActionCard) and card_class.get_plus_actions() == 0:
+                td_count += card_count
+
+        return td_count / self.get_effective_deck_size(player)
 
     def lookahead(self, player: int, card: Card) -> torch.tensor:
         '''
@@ -367,12 +416,12 @@ class FullStateFeature(StateFeature):
             3) If deck empty, then simulate shuffle by moving discard to deck
             4) Draw a hand in expectation
         '''
-        feature = self.feature.detach().clone()
+        feature = self.feature.copy()
 
         discard_zone_idx = self.get_zone_idx(player, Zone.Discard)
 
         if card is not None:
-            card_offset = self.get_card_offset(card)
+            card_offset = self.get_card_idx(card)
 
             # increment card count in discard
             feature[discard_zone_idx + card_offset] = feature[discard_zone_idx + card_offset] + 1
@@ -395,7 +444,7 @@ class FullStateFeature(StateFeature):
             return feature
 
         # draw a hand in expectation
-        hand_feature = feature[deck_idx:deck_idx + self.num_cards].detach().clone()
+        hand_feature = feature[deck_idx:deck_idx + self.num_cards].copy()
         hand_feature = hand_feature / hand_feature.sum() * GameConstants.HandSize
         feature[hand_idx:hand_idx + self.num_cards] = feature[hand_idx:hand_idx + self.num_cards] + hand_feature
         feature[deck_idx:deck_idx + self.num_cards] = feature[deck_idx:deck_idx + self.num_cards] - hand_feature
@@ -403,15 +452,91 @@ class FullStateFeature(StateFeature):
         return feature
 
     def to_numpy(self) -> np.array:
-        if self.device == 'cpu':
-            return self.feature.numpy()
-        return self.feature.cpu().numpy()
+        return self.feature.copy()
 
     def to_tensor(self) -> torch.tensor:
-        return self.feature
+        return torch.tensor(self.feature, device=self.device, dtype=torch.float16)
 
     def __len__(self) -> int:
         return self.feature.__len__()
+
+
+class ReducedStateFeature(FullStateFeature):
+    @classmethod
+    def default_sandbox_feature(cls):
+        return torch.tensor([46, 10, 8, 8, 8, 40, 30, 7, 0, 3, 0, 0, 0, 0, 7, 0, 3, 0, 0, 0, 0], dtype=torch.float16)
+
+    def __init__(self, config: GameConfig, supply: Supply, player_states: List[PlayerState], device='cpu'):
+        super().__init__(config, supply, player_states, device)
+
+        # +1 for supply
+        self.reduced_feature = np.zeros((self.num_players + 1) * self.num_cards)
+
+        # Fill supply card counts
+        for k, v in supply.items():
+            idx = self.get_card_idx(k)
+            self.reduced_feature[idx] = v
+
+        # Fill player card counts
+        for i, p_state in enumerate(player_states):
+            offset = self.num_cards + i * self.num_cards
+            for card, count in p_state.get_card_counts().items():
+                idx = self.get_card_idx(card)
+                self.reduced_feature[idx + offset] = count
+
+    def get_reduced_player_idx(self, player: int) -> int:
+        return self.num_cards + player * self.num_cards
+
+    def gain_card(self, player: int, card: Card, gain_zone) -> None:
+        super().gain_card(player, card, gain_zone)
+
+        idx = self.get_reduced_player_idx(player)
+        offset = self.get_card_idx(card)
+
+        dec_inc(self.reduced_feature, offset, idx + offset)
+
+    def trash_card(self, player: int, card: Card, zone: Zone) -> None:
+        super().trash_card(player, card, zone)
+
+        offset = self.get_card_idx(card)
+        base = self.get_reduced_player_idx(player)
+
+        self.reduced_feature[base + offset] = self.reduced_feature[base + offset] - 1
+
+    def has_card(self, player: int, card: Card) -> bool:
+        base = self.get_reduced_player_idx(player)
+        offset = self.get_card_idx(card)
+
+        return self.reduced_feature[base + offset] > 0
+
+    def lookahead(self, player: int, card: Card) -> torch.tensor:
+        if not card:
+            return self.reduced_feature
+
+        feature = self.reduced_feature.copy()
+        offset = self.get_card_idx(card)
+        base = self.get_reduced_player_idx(player)
+
+        dec_inc(feature, offset, base + offset)
+        return feature
+
+    def inject(self, player: int, card: Union[Card, Type[Card]]):
+        super().inject(player, card)
+        base = self.get_reduced_player_idx(player)
+        offset = self.get_card_idx(card)
+        self.reduced_feature[base + offset] += 1
+
+    def to_numpy(self) -> np.array:
+        return self.reduced_feature.copy()
+
+    def to_tensor(self) -> torch.tensor:
+        return torch.tensor(self.reduced_feature, dtype=torch.float16, device=self.device)
+
+    def __len__(self) -> int:
+        return self.reduced_feature.__len__()
+
+    def __getitem__(self, item):
+        return self.reduced_feature.__getitem__(item)
 
 
 class State:
@@ -434,7 +559,7 @@ class State:
         p: int = self.player
 
         if not lookahead:
-            return self.feature.feature
+            return self.feature.reduced_feature
 
         return self.feature.lookahead(p, lookahead_card)
 
@@ -648,13 +773,44 @@ class State:
     def is_winner(self, player: int) -> bool:
         return self.get_player_score(player) == max(self.get_player_score(p) for p in self.players)
 
-    def get_player_card_counts(self, player: int) -> Counter:
-        p_state: PlayerState = self.player_states[player]
+    def get_card_count(self, player: int, card: Union[Type[Card], Card]) -> int:
+        return self.feature.get_card_count(player, card)
 
-        return p_state.get_card_counts()
+    def get_card_counts(self, player: int) -> Counter:
+        return self.feature.get_card_counts(player)
+
+    def get_action_card_count(self, player: int, zone: Zone) -> int:
+        return self.feature.get_action_card_count(player, zone)
+
+    def get_treasure_card_count(self, player: int, zone: Zone) -> int:
+        return self.feature.get_treasure_card_count(player, zone)
+
+    def get_victory_card_count(self, player: int, zone: Zone) -> int:
+        return self.feature.get_victory_card_count(player, zone)
+
+    def get_coin_count(self, player: int, zone: Zone) -> int:
+        return self.feature.get_coin_count(player, zone)
+
+    def get_total_coin_count(self, player: int) -> int:
+        return self.feature.get_total_coin_count(player)
+
+    def get_terminal_draw_density(self, player: int) -> float:
+        return self.feature.get_terminal_draw_density(player)
+
+    def get_zone_card_count(self, player: int, zone: Zone) -> int:
+        return self.feature.get_zone_card_count(player, zone)
+
+    def has_card(self, player, card_type: Type[Card]) -> bool:
+        return self.feature.has_card(player, card_type)
+
+    def inject(self, player, card: Card) -> None:
+        self.player_states[player].hand.append(card)
+        self.feature.inject(player, card)
 
     def is_degenerate(self) -> bool:
-        return self.supply[Curse] == 0 and self.supply[Copper] == 0 and any(p_state.is_degenerate() for p_state in self.player_states)
+        if Chapel not in self.supply:
+            return False
+        return self.feature.is_degenerate()
 
     def is_game_over(self) -> bool:
         return self.supply.is_game_over()
@@ -663,7 +819,7 @@ class State:
         p_state: PlayerState = self.player_states[self.player]
         if self.phase == Phase.ActionPhase:
             logging.info('====ACTION PHASE====')
-            if p_state.actions == 0 or p_state.get_action_card_count(Zone.Hand) == 0:
+            if p_state.actions == 0 or self.feature.get_action_card_count(self.player, Zone.Hand) == 0:
                 self.phase = Phase.TreasurePhase
             else:
                 self.decision.text = 'Choose an action to play'
@@ -673,7 +829,7 @@ class State:
                         self.decision.add_unique_card(card)
         if self.phase == Phase.TreasurePhase:
             logging.info('====TREASURE PHASE====')
-            if p_state.get_treasure_card_count(Zone.Hand) == 0:
+            if self.feature.get_treasure_card_count(self.player, Zone.Hand) == 0:
                 self.phase = Phase.BuyPhase
             else:
                 self.decision.text = 'Choose a treasure to play'
@@ -1086,6 +1242,7 @@ class EventLibrary(Event):
         return True
 
     def process_decision(self, s: State, response: DecisionResponse):
+        # TODO: Make this work with the state feature
         p_state: PlayerState = s.player_states[s.player]
         if response.choice == 0:
             remove_card(self.decision_card, p_state._deck)
@@ -1165,7 +1322,7 @@ class BureaucratAttack(Event):
 
     def advance(self, s: State):
         p_state: PlayerState = s.player_states[self.player]
-        if p_state.get_victory_card_count(Zone.Hand) == 0:
+        if s.get_victory_card_count(self.player, Zone.Hand) == 0:
             logging.info(f'Player {self.player} reveals a hand with no victory cards')
         else:
             s.decision.select_cards(self.source, 1, 1)
@@ -1284,7 +1441,7 @@ class PlayActionNTimes(Event):
         p_state: PlayerState = s.player_states[s.player]
 
         if not self.target:
-            if p_state.get_action_card_count(Zone.Hand) == 0:
+            if s.get_action_card_count(s.player, Zone.Hand) == 0:
                 logging.info(f'Player {s.player} has no actions to play')
                 return True
 

@@ -176,7 +176,7 @@ class HistoryHeuristicRollout(RolloutModel):
     def select(self, choices, **kwargs):
         '''Create Gibbs distribution over choices given mast and return card choice'''
         state: State = kwargs['state']
-        num_coins = state.player_states[0].get_total_coin_count(Zone.Play)
+        num_coins = state.get_total_coin_count(0, Zone.Play)
         agent_counts, opp_counts = state.get_player_card_counts(0), state.get_player_card_counts(1)
         # n_provinces = state.supply[Province]
         num_coins = max(min(8, num_coins), 2)

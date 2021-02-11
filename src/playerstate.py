@@ -2,12 +2,11 @@ import random
 from collections import Counter
 
 import utils
-from actioncard import ActionCard, Chapel
 from card import Card
 from config import GameConfig
 from enums import DiscardZone, GainZone, StartingSplit, Zone
-from treasurecard import Copper, TreasureCard
-from victorycard import Estate, VictoryCard
+from treasurecard import Copper
+from victorycard import Estate
 
 
 class PlayerState:
@@ -23,7 +22,7 @@ class PlayerState:
         self._play_area = []
 
         if (game_config.starting_split == StartingSplit.Starting34Split):
-            self._deck = [Copper() for i in range(3)] + [Estate() for i in range(2)] + [Copper() for i in range(4)] + [Estate()]
+            self._deck = [Copper() for i in range(4)] + [Estate() for i in range(2)] + [Copper() for i in range(3)] + [Estate()]
         elif (game_config.starting_split == StartingSplit.Starting25Split):
             self._deck = [Copper() for i in range(5)] + [Estate() for i in range(3)] + [Copper() for i in range(2)]
         else:
@@ -62,6 +61,7 @@ class PlayerState:
     def turns(self, val: int):
         self._turns = val
 
+    # TODO: Deprecate this, used once at the start and end of the game.
     @property
     def cards(self):
         cards = self.hand.copy()
@@ -74,9 +74,6 @@ class PlayerState:
     @property
     def num_cards(self):
         return len(self.hand) + len(self._deck) + len(self._discard) + len(self._play_area) + len(self._island)
-
-    def zone_size(self, zone: Zone):
-        return len(self._get_zone_cards(zone))
 
     def draw_card(self) -> Card:
         card = self._deck.pop()
@@ -143,23 +140,9 @@ class PlayerState:
 
         return trashed_card
 
-    def is_degenerate(self) -> None:
-        return self.num_cards == 1 and self.has_card(Chapel)
-
     def get_card_counts(self) -> Counter:
         cards = self.cards
-        return Counter([str(card) for card in cards])
-
-    def get_terminal_action_density(self) -> float:
-        cards = self.cards
-        return sum(1 if isinstance(card, ActionCard) and card.get_plus_actions() == 0 else 0 for card in cards) / len(cards)
-
-    def get_terminal_draw_density(self) -> float:
-        cards = self.cards
-        return sum(1 if isinstance(card, ActionCard) and card.get_plus_actions() == 0 and card.get_plus_cards() > 0 else 0 for card in cards) / len(cards)
-
-    def get_total_treasure_value(self) -> int:
-        return sum(c.get_treasure() for c in self.cards)
+        return Counter([type(card) for card in cards])
 
     def _get_zone_cards(self, zone: Zone):
         if zone == Zone.Hand:
@@ -175,25 +158,6 @@ class PlayerState:
         else:
             raise ValueError(f'Playerstate does not have list corresponding to zone: {zone}.')
 
-    def get_action_card_count(self, zone: Zone) -> int:
-        cards = self._get_zone_cards(zone)
-        return sum(isinstance(card, ActionCard) for card in cards)
-
-    def get_treasure_card_count(self, zone: Zone) -> int:
-        cards = self._get_zone_cards(zone)
-        return sum(isinstance(card, TreasureCard) for card in cards)
-
-    def get_victory_card_count(self, zone: Zone) -> int:
-        cards = self._get_zone_cards(zone)
-        return sum(isinstance(card, VictoryCard) for card in cards)
-
-    def get_total_coin_count(self, zone: Zone) -> int:
-        cards = self._get_zone_cards(zone)
-        return sum(card.get_plus_coins() for card in cards)
-
     def contains_card(self, card: Card, zone: Zone) -> bool:
         cards = self._get_zone_cards(zone)
         return utils.contains_card(card, cards)
-
-    def has_card(self, card_class):
-        return any(isinstance(c, card_class) for c in self.cards)

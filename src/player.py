@@ -9,7 +9,8 @@ import torch
 from sklearn.linear_model import LogisticRegression
 
 from aiutils import load, softmax
-from buyagenda import BigMoneyBuyAgenda, BuyAgenda, TDBigMoneyBuyAgenda
+from buyagenda import (BigMoneyBuyAgenda, BuyAgenda, DoubleWitchBuyAgenda,
+                       TDBigMoneyBuyAgenda, TDEBigMoneyBuyAgenda)
 from card import Card
 from cursecard import Curse
 from enums import DecisionType, Phase
@@ -255,7 +256,7 @@ class HeuristicPlayer(Player):
 
     def makeDecision(self, s: State, response: DecisionResponse):
         d: DecisionState = s.decision
-        player = d.controlling_player
+        player: int = d.controlling_player
         if d.type != DecisionType.DecisionSelectCards and d.type != DecisionType.DecisionDiscreteChoice:
             logging.error('Invalid decision type')
         if not d.active_card:
@@ -279,8 +280,8 @@ class HeuristicPlayer(Player):
                     response.cards = heuristic_select_cards(d.card_choices, d.min_cards, scoringFunction)
                 else:
                     response.cards.append(self.heuristic.agenda.forceBuy(s, player, d.card_choices))
-            else:
-                self.heuristic.makeBaseDecision(s, response)
+        else:
+            self.heuristic.makeBaseDecision(s, response)
 
 
 class RandomPlayer(Player):
@@ -380,21 +381,24 @@ class PlayerInfo:
 def load_players(player_types: List[str], models: List[str], train=False, **kwargs) -> List[Player]:
     players = []
     for p_type in player_types:
-        if p_type == 'R':
+        p_type_lower = p_type.lower()
+        if p_type_lower == 'r':
             players.append(RandomPlayer.load(train=train))
-        elif p_type == 'BM':
+        elif p_type_lower == 'bm':
             players.append(HeuristicPlayer.load(agenda=BigMoneyBuyAgenda()))
-        elif p_type == 'TDBM':
+        elif p_type_lower == 'tdbm':
             players.append(HeuristicPlayer.load(agenda=TDBigMoneyBuyAgenda()))
-        elif p_type == 'UCT':
+        elif p_type_lower == 'tdebm':
+            players.append(HeuristicPlayer.load(agenda=TDEBigMoneyBuyAgenda()))
+        elif p_type_lower == 'uct':
             players.append(MCTSPlayer.load(tree=kwargs.pop('tree'), rollout_type=kwargs.pop('rollout_type'), rollout_path=models.pop(0)))
-        elif p_type == 'MLP':
+        elif p_type_lower == 'mlp':
             players.append(PredictorMLPPlayer.load(path=models.pop(0), **kwargs))
-        elif p_type == 'LOG':
+        elif p_type_lower == 'log':
             players.append(GreedyLogisticPlayer.load(path=models.pop(0)))
-        elif p_type == 'GMLP':
+        elif p_type_lower == 'gmlp':
             players.append(GreedyMLPPlayer.load(path=models.pop(0)))
-        elif p_type == 'H':
+        elif p_type_lower == 'h':
             players.append(HumanPlayer())
 
     if models:
@@ -407,13 +411,18 @@ def init_players(player_types: List[str], train=True, **kwargs) -> List[Player]:
     players = []
 
     for p_type in player_types:
-        if p_type == 'R':
+        p_type_lower = p_type.lower()
+        if p_type_lower == 'r':
             players.append(RandomPlayer(train=train))
-        elif p_type == 'BM':
+        elif p_type_lower == 'bm':
             players.append(HeuristicPlayer.load(agenda=BigMoneyBuyAgenda()))
-        elif p_type == 'TDBM':
+        elif p_type_lower == 'tdbm':
             players.append(HeuristicPlayer.load(agenda=TDBigMoneyBuyAgenda()))
-        elif p_type == 'UCT':
+        elif p_type_lower == 'tdebm':
+            players.append(HeuristicPlayer(agenda=TDEBigMoneyBuyAgenda()))
+        elif p_type_lower == 'dw':
+            players.append(HeuristicPlayer(agenda=DoubleWitchBuyAgenda()))
+        elif p_type_lower == 'uct':
             # there will ever only be one MCTSPlayer initialized (as opposed to loaded) since the game tree is shared
             rollout = init_rollouts(rollout_types=[kwargs.pop('rollout_type')], **kwargs)[0]
             players.append(MCTSPlayer(rollout=rollout, tree=kwargs.pop('tree')))

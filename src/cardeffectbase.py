@@ -15,7 +15,7 @@ from state import (BureaucratAttack, DecisionResponse, DiscardCard,
                    EventMine, EventSentry, GainCard, PlayActionNTimes,
                    RemodelExpand, State, TrashCard)
 from treasurecard import Copper, Gold, Silver, TreasureCard
-from utils import get_first_index, move_card
+from utils import get_card
 from victorycard import Gardens
 
 
@@ -172,7 +172,7 @@ class MineEffect(CardEffect):
 
     def play_action(self, s: State):
         p_state: PlayerState = s.player_states[s.player]
-        if p_state.get_treasure_card_count(Zone.Hand) > 0:
+        if s.get_treasure_card_count(s.player, Zone.Hand) > 0:
             s.decision.select_cards(self.c, 1, 1)
             s.decision.text = 'Select a treasure to trash:'
             for card in p_state.hand:
@@ -188,9 +188,9 @@ class MoneylenderEffect(CardEffect):
         self.c = Moneylender()
 
     def play_action(self, s: State):
-        trashIdx = get_first_index(Copper(), s.player_states[s.player].hand)
-        if trashIdx >= 0:
-            s.events.append(TrashCard(Zone.Hand, s.player, s.player_states[s.player].hand[trashIdx]))
+        trashed_card = get_card(Copper, s.player_states[s.player].hand)
+        if trashed_card:
+            s.events.append(TrashCard(Zone.Hand, s.player, trashed_card))
             s.player_states[s.player].coins += 3
         else:
             logging.info(f'Player {s.player} has no coppers to trash')
@@ -238,7 +238,7 @@ class SentryEffect(CardEffect):
     def play_action(self, s: State):
         player: int = s.player
         p_state: PlayerState = s.player_states[player]
-        zone_size = p_state.zone_size(Zone.Deck)
+        zone_size = s.get_zone_card_count(s.player, Zone.Deck)
 
         if zone_size == 0:
             return
