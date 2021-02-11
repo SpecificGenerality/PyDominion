@@ -403,7 +403,7 @@ class FullStateFeature(StateFeature):
 
         td_count = 0
         for card_class, card_count in self._card_count_iterator(start, end):
-            if issubclass(card_class, ActionCard) and card_class.get_plus_actions() == 0 and card_class.get_plus_cards() > 0:
+            if issubclass(card_class, ActionCard) and card_class.get_plus_actions() == 0:
                 td_count += card_count
 
         return td_count / self.get_effective_deck_size(player)
