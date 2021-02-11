@@ -280,8 +280,8 @@ class HeuristicPlayer(Player):
                     response.cards = heuristic_select_cards(d.card_choices, d.min_cards, scoringFunction)
                 else:
                     response.cards.append(self.heuristic.agenda.forceBuy(s, player, d.card_choices))
-            else:
-                self.heuristic.makeBaseDecision(s, response)
+        else:
+            self.heuristic.makeBaseDecision(s, response)
 
 
 class RandomPlayer(Player):
