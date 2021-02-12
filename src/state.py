@@ -511,14 +511,14 @@ class ReducedStateFeature(FullStateFeature):
 
     def lookahead(self, player: int, card: Card) -> torch.tensor:
         if not card:
-            return self.reduced_feature
+            return torch.tensor(self.reduced_feature, dtype=torch.float32, device=self.device)
 
         feature = self.reduced_feature.copy()
         offset = self.get_card_idx(card)
         base = self.get_reduced_player_idx(player)
 
         dec_inc(feature, offset, base + offset)
-        return feature
+        return torch.tensor(feature, dtype=torch.float32, device=self.device)
 
     def inject(self, player: int, card: Union[Card, Type[Card]]):
         super().inject(player, card)
