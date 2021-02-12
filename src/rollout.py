@@ -209,11 +209,12 @@ class HistoryHeuristicRollout(RolloutModel):
 
 
 class LogisticRegressionEnsembleRollout(RolloutModel):
-    def __init__(self, models=dict([(i, LogisticRegression(max_iter=10e5, penalty='none')) for i in range(9)]), train=False, tau=0.005):
+    def __init__(self, models=dict([(i, LogisticRegression(max_iter=10e5, penalty='none')) for i in range(9)]), train=False, tau=0.005, eps=0.05):
         self.models: Dict[LogisticRegression] = models
         self.buffers: DefaultDict[Buffer] = defaultdict(Buffer)
         self.train = train
         self.tau = tau
+        self.eps = eps
 
     def save(self, path: str):
         state_dict = {}
@@ -230,10 +231,10 @@ class LogisticRegressionEnsembleRollout(RolloutModel):
         idxs = data['idxs']
         # convert to win/loss reward
         rewards = list(map(lambda x: 1 if x > 0 else 0, data['rewards']))
-        state_idx = idxs[str(Province())]
+        state_idx = idxs[Province]
         for i, feature in enumerate(features):
             # get number of Provinces left in supply
-            model_idx = int(feature[state_idx].item())
+            model_idx = int(feature[state_idx])
             # allow models to share data
             if model_idx <= 7:
                 self.buffers[model_idx + 1].store(feature, rewards[i])
@@ -251,8 +252,8 @@ class LogisticRegressionEnsembleRollout(RolloutModel):
     def select(self, choices, **kwargs):
         state: State = kwargs['state']
         # Get the correct model from the ensemble
-        state_idx = state.feature.idxs[str(Province())]
-        model_idx = int(state.feature[state_idx].item())
+        state_idx = state.feature.get_card_idx(Province)
+        model_idx = int(state.feature[state_idx])
 
         model = self.models[model_idx]
 
@@ -262,7 +263,7 @@ class LogisticRegressionEnsembleRollout(RolloutModel):
         except NotFittedError:
             return np.random.choice(choices)
 
-        if not self.train or self.train and np.random.rand() > 0.01:
+        if not self.train or self.train and np.random.rand() > self.eps:
             if state.decision.controlling_player == 0:
                 card_idx = np.argmax(y[:, 1])
             else:

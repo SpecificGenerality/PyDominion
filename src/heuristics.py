@@ -108,10 +108,16 @@ class PlayerHeuristic:
             for c in d.card_choices:
                 if num_discarded == 4:
                     break
-                if isinstance(c, Copper) and trashCoppers:
+                if isinstance(c, Curse):
+                    response.cards.append(c)
+                    num_discarded += 1
+                elif isinstance(c, Copper) and trashCoppers:
                     response.cards.append(c)
                     num_discarded += 1
                 elif isinstance(c, Estate):
+                    response.cards.append(c)
+                    num_discarded += 1
+                elif isinstance(c, Chapel):
                     response.cards.append(c)
                     num_discarded += 1
         elif isinstance(card, Moat):
