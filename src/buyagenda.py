@@ -9,16 +9,25 @@ from heuristicsutils import heuristic_best_card
 from state import State
 from utils import get_card
 from victorycard import Province
+import numpy as np
 
 
 class BuyAgenda(ABC):
     @abstractmethod
-    def buy(self, s: State, player: int, choices: List[Card]):
+    def buy(self, s: State, player: int, choices: List[Card]) -> Card:
         pass
 
     @abstractmethod
-    def forceBuy(self, s: State, player: int, choices: List[Card]):
+    def forceBuy(self, s: State, player: int, choices: List[Card]) -> Card:
         pass
+
+
+class RandomBuyAgenda(BuyAgenda):
+    def buy(self, s: State, player: int, choices: List[Card]):
+        return np.random.choice(choices + [None])
+
+    def forceBuy(self, s: State, player: int, choices: List[Card]):
+        return np.random.choice(choices)
 
 
 # implements the Big Money Optimized Buy Strategy: http://wiki.dominionstrategy.com/index.php/Big_money

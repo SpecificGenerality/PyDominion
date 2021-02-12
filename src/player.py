@@ -10,7 +10,7 @@ from sklearn.linear_model import LogisticRegression
 
 from aiutils import load, softmax
 from buyagenda import (BigMoneyBuyAgenda, BuyAgenda, DoubleWitchBuyAgenda,
-                       TDBigMoneyBuyAgenda, TDEBigMoneyBuyAgenda)
+                       TDBigMoneyBuyAgenda, TDEBigMoneyBuyAgenda, RandomBuyAgenda)
 from card import Card
 from cursecard import Curse
 from enums import DecisionType, Phase
@@ -20,7 +20,7 @@ from mcts import GameTree
 from mlp import PredictorMLP
 from rollout import RandomRollout, RolloutModel, init_rollouts, load_rollout
 from state import (DecisionResponse, DecisionState, DiscardDownToN,
-                   PutOnDeckDownToN, RemodelExpand, State)
+                   PutOnDeckDownToN, RemodelExpand, State, MoatReveal)
 from utils import remove_first_card
 from victorycard import Estate, VictoryCard
 
@@ -164,6 +164,7 @@ class MCTSPlayer(Player):
     def __init__(self, rollout, tree: GameTree):
         self.tree: GameTree = tree
         self.rollout: RolloutModel = rollout
+        self.heuristic = PlayerHeuristic(RandomBuyAgenda())
 
     @classmethod
     def load(cls, **kwargs):
@@ -183,14 +184,26 @@ class MCTSPlayer(Player):
     def makeDecision(self, s: State, response: DecisionResponse):
         d: DecisionState = s.decision
         if s.phase == Phase.ActionPhase:
-            assert False, 'MCTS does not support action cards yet'
+            if not d.active_card:
+                self.heuristic.makeGreedyActionDecision(s, response)
+            elif s.events:
+                event = s.events[-1]
+                if isinstance(event, DiscardDownToN):
+                    self.heuristic.makeDiscardDownDecision(s, response)
+                elif isinstance(event, MoatReveal):
+                    self.heuristic.makeBaseDecision(s, response)
+                else:
+                    raise ValueError(f'Event {type(event)} not supported')
+            else:
+                self.heuristic.makeBaseDecision(s, response)
+
         elif s.phase == Phase.TreasurePhase:
             response.single_card = d.card_choices[0]
         else:
             choices = list(filter(lambda x: not isinstance(x, Curse), d.card_choices + [None]))
 
-            # Rollout (out-of-tree) case
-            if not self.tree.in_tree:
+            # Rollout (out-of-tree) case; tree actually isn't that good
+            if not self.tree.in_tree or not self.tree.train:
                 response.single_card = self.rollout.select(choices, state=s)
                 return
 
@@ -236,12 +249,13 @@ class RolloutPlayer(Player):
 
 
 class HeuristicPlayer(Player):
-    def __init__(self, agenda: BuyAgenda):
+    def __init__(self, agenda: BuyAgenda, train=False):
         self.heuristic = PlayerHeuristic(agenda)
+        self.train = train
 
     @classmethod
-    def load(cls, **kwargs):
-        return cls(agenda=kwargs.pop('agenda'))
+    def load(cls, train=False, **kwargs):
+        return cls(agenda=kwargs.pop('agenda'), train=train)
 
     def makePhaseDecision(self, s: State, response: DecisionResponse):
         d: DecisionState = s.decision
@@ -251,6 +265,8 @@ class HeuristicPlayer(Player):
         elif s.phase == Phase.TreasurePhase:
             response.single_card = d.card_choices[0]
         else:
+            if not self.train:
+                remove_first_card(Curse(), d.card_choices)
             response.single_card = self.heuristic.agenda.buy(s, player, d.card_choices)
         return
 
@@ -383,13 +399,13 @@ def load_players(player_types: List[str], models: List[str], train=False, **kwar
     for p_type in player_types:
         p_type_lower = p_type.lower()
         if p_type_lower == 'r':
-            players.append(RandomPlayer.load(train=train))
+            players.append(HeuristicPlayer.load(agenda=RandomBuyAgenda(), train=train))
         elif p_type_lower == 'bm':
-            players.append(HeuristicPlayer.load(agenda=BigMoneyBuyAgenda()))
+            players.append(HeuristicPlayer.load(agenda=BigMoneyBuyAgenda(), train=train))
         elif p_type_lower == 'tdbm':
-            players.append(HeuristicPlayer.load(agenda=TDBigMoneyBuyAgenda()))
+            players.append(HeuristicPlayer.load(agenda=TDBigMoneyBuyAgenda(), train=train))
         elif p_type_lower == 'tdebm':
-            players.append(HeuristicPlayer.load(agenda=TDEBigMoneyBuyAgenda()))
+            players.append(HeuristicPlayer.load(agenda=TDEBigMoneyBuyAgenda(), train=train))
         elif p_type_lower == 'uct':
             players.append(MCTSPlayer.load(tree=kwargs.pop('tree'), rollout_type=kwargs.pop('rollout_type'), rollout_path=models.pop(0)))
         elif p_type_lower == 'mlp':
@@ -413,13 +429,13 @@ def init_players(player_types: List[str], train=True, **kwargs) -> List[Player]:
     for p_type in player_types:
         p_type_lower = p_type.lower()
         if p_type_lower == 'r':
-            players.append(RandomPlayer(train=train))
+            players.append(HeuristicPlayer(agenda=RandomBuyAgenda(), train=train))
         elif p_type_lower == 'bm':
-            players.append(HeuristicPlayer.load(agenda=BigMoneyBuyAgenda()))
+            players.append(HeuristicPlayer(agenda=BigMoneyBuyAgenda(), train=train))
         elif p_type_lower == 'tdbm':
-            players.append(HeuristicPlayer.load(agenda=TDBigMoneyBuyAgenda()))
+            players.append(HeuristicPlayer(agenda=TDBigMoneyBuyAgenda(), train=train))
         elif p_type_lower == 'tdebm':
-            players.append(HeuristicPlayer(agenda=TDEBigMoneyBuyAgenda()))
+            players.append(HeuristicPlayer(agenda=TDEBigMoneyBuyAgenda(), train=train))
         elif p_type_lower == 'dw':
             players.append(HeuristicPlayer(agenda=DoubleWitchBuyAgenda()))
         elif p_type_lower == 'uct':

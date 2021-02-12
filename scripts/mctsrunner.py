@@ -12,11 +12,7 @@ from state import DecisionResponse, DecisionState, FeatureType, State
 from tqdm import tqdm
 
 
-def train_mcts(env: Environment, tree: GameTree, epochs: int, train_epochs_interval: int = 1000, **kwargs):
-    save_epochs = kwargs['save_epochs']
-    path = kwargs.pop('path')
-    rollout_path = kwargs.pop('rollout_path')
-
+def train_mcts(env: Environment, tree: GameTree, path: str, rollout_path: str, epochs: int, train_epochs_interval: int = 1000, save_epochs=1000, **kwargs):
     for epoch in tqdm(range(epochs)):
         state: State = env.reset()
         tree.reset(state)
