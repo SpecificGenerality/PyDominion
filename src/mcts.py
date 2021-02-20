@@ -25,7 +25,7 @@ class Node:
 
     # UCB1 formula
     def score(self, C):
-        return self.v / self.n + C * np.sqrt(2 * np.log(self.parent.n) / self.n) if self.n > 0 else sys.maxsize
+        return self.v / self.n + 2 * C * np.sqrt(2 * np.log(self.parent.n) / self.n) if self.n > 0 else sys.maxsize
 
     def avg_value(self):
         return self.v / self.n if self.n > 0 else -sys.maxsize
@@ -76,7 +76,7 @@ class Node:
         return acc
 
     def __str__(self):
-        return f'{self.parent.card}<--n: {self.n}, v: {self.v}, c: {self.card}-->{[str(c.card) for c in self.children]}\n'
+        return f'Parent: {self.parent.card} | n: {self.n}, v: {self.v}, v_bar: {self.avg_value():.3f} c: {self.card} | Children: {[(str(c.card), "%.3f" % c.avg_value()) for c in self.children]}\n'
 
     def __repr__(self):
         return str(self)
@@ -95,10 +95,6 @@ class GameTree:
         if not self._root.children:
             self._root.children = [Node(parent=self._root) for _ in range(GameConstants.StartingHands)]
 
-            # Second-level of children is for player two
-            for child in self._root.children:
-                child.children = [Node(parent=child) for _ in range(GameConstants.StartingHands)]
-
     @classmethod
     def load(cls, path: str, train: bool):
         root = load(path)
@@ -116,8 +112,6 @@ class GameTree:
     def reset(self, s: State):
         self._in_tree = True
         self._node = self._root.children[s.get_treasure_card_count(0, Zone.Hand) + s.get_treasure_card_count(0, Zone.Play) - 2]
-
-        self._node = self._node.children[s.get_treasure_card_count(1, Zone.Hand) + s.get_treasure_card_count(1, Zone.Play) - 2]
 
     def select(self, choices: Iterable[Card]) -> Card:
         '''Select the node that maximizes the UCB score'''

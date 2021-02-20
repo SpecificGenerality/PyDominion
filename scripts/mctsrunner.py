@@ -12,7 +12,7 @@ from state import DecisionResponse, DecisionState, FeatureType, State
 from tqdm import tqdm
 
 
-def train_mcts(env: Environment, tree: GameTree, path: str, rollout_path: str, epochs: int, train_epochs_interval: int = 1000, save_epochs=1000, **kwargs):
+def train_mcts(env: Environment, tree: GameTree, path: str, rollout_path: str, epochs: int, train_epochs_interval: int = 1000, save_epochs=1000, scoring='win_loss'):
     for epoch in tqdm(range(epochs)):
         state: State = env.reset()
         tree.reset(state)
@@ -53,8 +53,16 @@ def train_mcts(env: Environment, tree: GameTree, path: str, rollout_path: str, e
         data['rewards'].extend([reward] * (len(data['features']) - len(data['rewards'])))
         start_idx = 1 if flip else 0
 
-        p0_reward = state.get_player_score(0)
-        p1_reward = state.get_player_score(1)
+        if scoring == 'score':
+            p0_reward = state.get_player_score(0)
+            p1_reward = state.get_player_score(1)
+        elif scoring == 'win_loss':
+            if state.is_winner(0) and state.is_winner(1):
+                p0_reward, p1_reward = 1 / 2, 1 / 2
+            elif state.is_winner(0):
+                p0_reward, p1_reward = 1, 0
+            else:
+                p0_reward, p1_reward = 0, 1
 
         tree.node.backpropagate((p0_reward, p1_reward), start_idx=start_idx)
 
