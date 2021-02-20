@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import torch
+from sklearn.linear_model import LogisticRegression
 
 
 def load(checkpoint: str, **kwargs):
@@ -58,6 +59,14 @@ def classification_rate(labels: Iterable[int], sort=True, reverse=True):
         counts = Counter(labels)
     n = len(labels)
     return np.array(list(counts.keys())), np.array(list(counts.values())) / n
+
+
+def copy_logistic_model(model: LogisticRegression, max_iter=10e5, penalty='none') -> LogisticRegression:
+    copied_model = LogisticRegression(max_iter=max_iter, penalty=penalty)
+    copied_model.coef_ = model.coef_.copy()
+    copied_model.classes_ = model.classes_.copy()
+    copied_model.intercept_ = model.intercept_
+    return copied_model
 
 
 def plot_card_counts_stacked(decks: List[Counter], limit=None, skip=1, trim=None):

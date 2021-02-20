@@ -80,7 +80,7 @@ class PlayerHeuristic:
 
         def scoringFunction(card: Card):
             '''Play all cantrips first, then greedily'''
-            cantrip_bonus = 1
+            cantrip_bonus = 7
             score = min(card.get_coin_cost(), 6)
 
             if is_cantrip(card):

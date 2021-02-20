@@ -1,7 +1,7 @@
 # Experimental results
 data*
 models*
-figures*
+figures/*
 aiconfig.py
 src/runs/*
 runs/*

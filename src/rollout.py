@@ -270,12 +270,6 @@ class LogisticRegressionEnsembleRollout(RolloutModel):
                 card_idx = np.argmin(y[:, 1])
             return choices[card_idx]
 
-        # else:
-        #     if state.decision.controlling_player == 0:
-        #         D = softmax(y[:, 1], t=self.tau)
-        #     else:
-        #         D = softmax(y[:, 0], t=self.tau)
-
         return np.random.choice(choices)
 
 

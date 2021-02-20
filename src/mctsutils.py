@@ -1,9 +1,10 @@
-from collections import deque
+from collections import deque, defaultdict
 from typing import List
 
 from aiutils import update_mean, update_var
 from card import Card
 from mcts import Node
+import numpy as np
 
 
 def print_path(path: List[Node]):
@@ -75,9 +76,36 @@ def get_most_visited_paths_at_depth(root: Node, k: int, p: int):
     return paths[:p]
 
 
+def get_best_paths(root: Node, depth: int, num_paths: int) -> List[Node]:
+    visited = defaultdict(bool)
+    paths = []
+
+    def get_best_paths_helper(node: Node, level: int, curr_path: List[Node]):
+        curr_path.append(node)
+        if level == depth:
+            visited[node] = True
+            paths.append(curr_path.copy())
+        else:
+            while True and len(paths) < num_paths:
+                next_nodes = list(filter(lambda x: not visited[x] and x.n > 0, node.children))
+                if not next_nodes:
+                    paths.append(curr_path.copy())
+                    visited[node] = True
+                    curr_path.pop()
+                    return
+                scores = np.array([n.avg_value() for n in next_nodes])
+                next_node_idx = np.argmax(scores)
+                next_node = next_nodes[next_node_idx]
+                get_best_paths_helper(next_node, level + 1, curr_path)
+        curr_path.pop()
+
+    get_best_paths_helper(root, 0, [])
+    return paths
+
+
 def get_buy_sequence(path: List[Node]) -> List[Card]:
     '''Given a path, return the associated list of card buys.'''
-    return [n.card for n in path]
+    return [(n.card, n.avg_value()) for n in path]
 
 
 def get_depth(root: Node):
