@@ -161,17 +161,18 @@ class PredictorMLPPlayer(Player):
 
 # TODO: Expand MCTS to work outside of sandbox games
 class MCTSPlayer(Player):
-    def __init__(self, rollout, tree: GameTree):
+    def __init__(self, rollout, tree: GameTree, use_tree=True):
         self.tree: GameTree = tree
         self.rollout: RolloutModel = rollout
         self.heuristic = PlayerHeuristic(RandomBuyAgenda())
+        self.use_tree = use_tree
 
     @classmethod
     def load(cls, **kwargs):
         tree: GameTree = kwargs.pop('tree')
         rollout_path: str = kwargs.pop('rollout_path')
         rollout_type: str = kwargs.pop('rollout_type')
-
+        use_tree: bool = kwargs.pop('use_tree')
         # TODO: Fix this to work with other rollout models.
         try:
             rollout_model = load_rollout(rollout_type=rollout_type, model=rollout_path)
@@ -179,7 +180,7 @@ class MCTSPlayer(Player):
             logging.error(f'Failed to load rollout from {rollout_path}, defaulting to random rollouts.')
             rollout_model = RandomRollout()
 
-        return cls(rollout=rollout_model, tree=tree)
+        return cls(rollout=rollout_model, tree=tree, use_tree=use_tree)
 
     def makeDecision(self, s: State, response: DecisionResponse):
         d: DecisionState = s.decision
@@ -203,7 +204,7 @@ class MCTSPlayer(Player):
             choices = list(filter(lambda x: not isinstance(x, Curse), d.card_choices + [None]))
 
             # Rollout (out-of-tree) case; tree actually isn't that good
-            if not self.tree.in_tree or not self.tree.train:
+            if not self.tree.in_tree or not self.use_tree:
                 response.single_card = self.rollout.select(choices, state=s)
                 return
 
@@ -406,8 +407,10 @@ def load_players(player_types: List[str], models: List[str], train=False, **kwar
             players.append(HeuristicPlayer.load(agenda=TDBigMoneyBuyAgenda(), train=train))
         elif p_type_lower == 'tdebm':
             players.append(HeuristicPlayer.load(agenda=TDEBigMoneyBuyAgenda(), train=train))
+        elif p_type_lower == 'dw':
+            players.append(HeuristicPlayer.load(agenda=DoubleWitchBuyAgenda(), train=train))
         elif p_type_lower == 'uct':
-            players.append(MCTSPlayer.load(tree=kwargs.pop('tree'), rollout_type=kwargs.pop('rollout_type'), rollout_path=models.pop(0)))
+            players.append(MCTSPlayer.load(tree=kwargs.pop('tree'), rollout_type=kwargs.pop('rollout_type'), rollout_path=models.pop(0), use_tree=kwargs.pop('use_tree')))
         elif p_type_lower == 'mlp':
             players.append(PredictorMLPPlayer.load(path=models.pop(0), **kwargs))
         elif p_type_lower == 'log':
