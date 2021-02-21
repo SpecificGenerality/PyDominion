@@ -80,14 +80,8 @@ def simulate(env: Environment, n: int, tree: GameTree) -> SimulationData:
 def main(args: ArgumentParser):
     if args.debug:
         logging.basicConfig(level=logging.INFO)
-    if args.split == 0:
-        split = StartingSplit.StartingRandomSplit
-    elif args.split == 1:
-        split = StartingSplit.Starting25Split
-    else:
-        split = StartingSplit.Starting34Split
 
-    config = GameConfig(split=split, prosperity=args.prosperity, num_players=len(args.players), sandbox=args.sandbox, feature_type=args.ftype, device=args.device)
+    config = GameConfig(prosperity=args.prosperity, num_players=len(args.players), sandbox=args.sandbox, feature_type=args.ftype, device=args.device)
 
     if args.tree_path:
         tree = GameTree.load(args.tree_path, False)
@@ -114,7 +108,6 @@ if __name__ == '__main__':
     parser.add_argument('-ftype', required=True, type=lambda x: {'full': FeatureType.FullFeature, 'reduced': FeatureType.ReducedFeature}.get(x.lower()))
     parser.add_argument('--sandbox', action='store_true', help='When set, the supply is limited to the 7 basic kingdom supply cards.')
     parser.add_argument('--prosperity', action='store_true', help='Whether the Prosperity settings should be used')
-    parser.add_argument('--split', default=0, type=int, help='Starting Copper/Estate split. 0: Random, 1: 25Split, 2: 34Split')
     parser.add_argument('--tree-path', type=str, help='Path to game tree.')
     parser.add_argument('--players', nargs='+', type=str, help='Strategy of AI opponent.')
     parser.add_argument('--rollout-type', type=str, help='Type of rollout model.')
