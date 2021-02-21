@@ -14,7 +14,7 @@ from actioncard import Laboratory, Village, Smithy
 
 class TestHeuristics(unittest.TestCase):
     def setUp(self) -> None:
-        self.config = GameConfig(sandbox=False, split=StartingSplit.Starting34Split)
+        self.config = GameConfig(sandbox=False, splits=[StartingSplit.Starting34Split, StartingSplit.Starting34Split])
         self.players: List[Player] = init_players(['tdebm', 'tdebm'])
         self.game = Game(self.config, self.players)
 

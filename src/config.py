@@ -6,14 +6,14 @@ from enums import AIConstants, GameConstants, StartingSplit, FeatureType
 
 
 class GameConfig:
-    def __init__(self, split: StartingSplit = StartingSplit.StartingRandomSplit,
+    def __init__(self, splits: List[StartingSplit] = [StartingSplit.StartingRandomSplit, StartingSplit.StartingRandomSplit],
                  prosperity: bool = False,
                  num_players: int = 2,
                  sandbox=True,
                  must_include: List[Type[Card]] = DEFAULT_KINGDOM,
                  feature_type: FeatureType = FeatureType.ReducedFeature,
                  device: str = 'cpu'):
-        self.starting_split = split
+        self.starting_splits: List[StartingSplit] = splits
         self.prosperity = prosperity
         self.num_players = num_players
         self.must_include = must_include if not sandbox else must_include

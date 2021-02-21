@@ -89,7 +89,7 @@ def train_mcts(env: Environment, tree: GameTree, path: str, rollout_path: str, e
 
 
 def main(args):
-    config = GameConfig(split=StartingSplit.StartingRandomSplit, prosperity=False, num_players=2, sandbox=args.sandbox, feature_type=args.ftype, device=args.device)
+    config = GameConfig(prosperity=False, num_players=2, sandbox=args.sandbox, feature_type=args.ftype, device=args.device)
 
     tree = GameTree(train=True)
 

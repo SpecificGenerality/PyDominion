@@ -9,7 +9,7 @@ from victorycard import Province
 
 class TestSupply(unittest.TestCase):
     def setUp(self) -> None:
-        self.config = GameConfig(StartingSplit.StartingRandomSplit, prosperity=False, num_players=2, sandbox=False)
+        self.config = GameConfig(num_players=2, sandbox=False)
         self.supply = Supply(self.config)
 
     def test_supply_init(self):

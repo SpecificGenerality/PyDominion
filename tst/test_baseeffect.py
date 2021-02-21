@@ -14,7 +14,7 @@ from victorycard import Estate
 
 class TestBaseEffect(unittest.TestCase):
     def setUp(self) -> None:
-        self.config = GameConfig(StartingSplit.StartingRandomSplit, False, 2, sandbox=False, must_include=[Bandit])
+        self.config = GameConfig(sandbox=False, must_include=[Bandit])
         self.players = [Mock(), Mock()]
         self.game = Game(self.config, self.players)
 
