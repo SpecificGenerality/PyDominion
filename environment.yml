@@ -1,12 +1,17 @@
 ---
 name: dominion
+channels:
+  - conda-forge
+  - pytorch
 dependencies:
+  - python=3.8
   - tqdm
   - numpy
   - pandas
   - scikit-learn
   - matplotlib
   - rope
-  - torch
+  - pytorch
+  # - cpuonly ## enable if no cuda
   - seaborn
   - ipykernel
