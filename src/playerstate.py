@@ -10,7 +10,7 @@ from victorycard import Estate
 
 
 class PlayerState:
-    def __init__(self, game_config: GameConfig) -> None:
+    def __init__(self, game_config: GameConfig, pid: int) -> None:
         self._actions = 1
         self._buys = 1
         self._coins = 0
@@ -20,10 +20,12 @@ class PlayerState:
         self.hand = []
         self._island = []
         self._play_area = []
+        self._pid = pid
 
-        if (game_config.starting_split == StartingSplit.Starting34Split):
+        split = game_config.starting_splits[pid]
+        if (split == StartingSplit.Starting34Split):
             self._deck = [Copper() for i in range(4)] + [Estate() for i in range(2)] + [Copper() for i in range(3)] + [Estate()]
-        elif (game_config.starting_split == StartingSplit.Starting25Split):
+        elif (split == StartingSplit.Starting25Split):
             self._deck = [Copper() for i in range(5)] + [Estate() for i in range(3)] + [Copper() for i in range(2)]
         else:
             self._deck = [Copper() for i in range(7)] + [Estate() for i in range(3)]

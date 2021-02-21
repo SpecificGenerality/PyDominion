@@ -542,7 +542,7 @@ class ReducedStateFeature(FullStateFeature):
 class State:
     def __init__(self, config: GameConfig):
         self.players = [i for i in range(config.num_players)]
-        self.player_states = [PlayerState(config) for i in range(config.num_players)]
+        self.player_states = [PlayerState(config, pid=i) for i in range(config.num_players)]
         self.phase = Phase.ActionPhase
         self.decision = DecisionState()
         self.player = 0

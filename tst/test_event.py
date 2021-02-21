@@ -11,7 +11,7 @@ from state import DecisionResponse, ReorderCards
 
 class TestEvent(unittest.TestCase):
     def setUp(self) -> None:
-        self.config = GameConfig(StartingSplit.StartingRandomSplit, prosperity=False, num_players=2, sandbox=False, must_include=[Sentry, Moat, Militia])
+        self.config = GameConfig(sandbox=False, must_include=[Sentry, Moat, Militia])
         self.players = [Mock(), Mock()]
         self.game = Game(self.config, self.players)
 

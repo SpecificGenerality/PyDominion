@@ -13,7 +13,7 @@ from victorycard import Estate
 
 class TestActionCard(unittest.TestCase):
     def setUp(self) -> None:
-        self.config = GameConfig(StartingSplit.StartingRandomSplit, sandbox=False, num_players=2, must_include=[Merchant])
+        self.config = GameConfig(sandbox=False, num_players=2, must_include=[Merchant])
         self.players = [Mock(), Mock()]
         self.game = Game(self.config, self.players)
 

@@ -12,7 +12,7 @@ from victorycard import Estate
 
 class TestFullStateFeature(unittest.TestCase):
     def setUp(self) -> None:
-        self.config = GameConfig(sandbox=False, split=StartingSplit.Starting25Split, feature_type=FeatureType.FullFeature)
+        self.config = GameConfig(sandbox=False, splits=[StartingSplit.Starting25Split, StartingSplit.Starting25Split], feature_type=FeatureType.FullFeature)
         self.supply = Supply(self.config)
         self.players = [Mock(), Mock()]
         self.game = Game(self.config, self.players)

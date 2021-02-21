@@ -10,7 +10,7 @@ from supply import Supply
 
 class TestReducedStateFeature(unittest.TestCase):
     def setUp(self) -> None:
-        self.config = GameConfig(sandbox=False, split=StartingSplit.Starting25Split, feature_type=FeatureType.ReducedFeature)
+        self.config = GameConfig(sandbox=False, splits=[StartingSplit.Starting25Split, StartingSplit.Starting25Split], feature_type=FeatureType.ReducedFeature)
         self.supply = Supply(self.config)
         self.players = [Mock(), Mock()]
         self.game = Game(self.config, self.players)

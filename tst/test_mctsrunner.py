@@ -12,7 +12,7 @@ from player import init_players
 
 class TestMCTSRunner(unittest.TestCase):
     def setUp(self) -> None:
-        self.config = GameConfig(split=StartingSplit.StartingRandomSplit, sandbox=False, num_players=2, must_include=DEFAULT_KINGDOM)
+        self.config = GameConfig(sandbox=False, num_players=2, must_include=DEFAULT_KINGDOM)
         self.tree = GameTree(train=True)
         self.player = init_players(['UCT'], tree=self.tree, rollout_type='mlog')[0]
         self.players = [self.player, self.player]
