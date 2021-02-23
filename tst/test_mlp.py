@@ -2,7 +2,7 @@ import unittest
 
 import numpy as np
 import torch
-from src.mlp import SandboxPerceptron
+from mlp import SandboxPerceptron
 
 
 class TestPerceptron(unittest.TestCase):

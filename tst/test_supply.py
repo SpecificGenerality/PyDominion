@@ -1,7 +1,6 @@
 import unittest
 
 from config import GameConfig
-from enums import StartingSplit
 from supply import Supply
 from treasurecard import Gold
 from victorycard import Province
