@@ -3,7 +3,6 @@ from unittest.mock import Mock
 
 from actioncard import Merchant
 from config import GameConfig
-from enums import StartingSplit
 from game import Game
 from playerstate import PlayerState
 from state import DecisionResponse

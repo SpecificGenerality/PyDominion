@@ -3,7 +3,6 @@ import unittest
 
 from config import GameConfig
 from constants import DEFAULT_KINGDOM
-from enums import StartingSplit
 from env import DefaultEnvironment
 from mcts import GameTree
 from mctsrunner import train_mcts
@@ -26,4 +25,4 @@ class TestMCTSRunner(unittest.TestCase):
         self.rollout_path = os.path.join(self.model_dir, self.rollout_name)
 
     def test_rollout_train(self) -> None:
-        train_mcts(self.env, tree=self.tree, path=self.tree_path, rollout_path=self.rollout_path, epochs=101, train_epochs_interval=100)
+        train_mcts(self.env, tree=self.tree, path=self.tree_path, rollout_path=self.rollout_path, epochs=10, train_epochs_interval=11)
