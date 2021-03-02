@@ -3,7 +3,6 @@ from argparse import ArgumentParser
 
 from aiutils import save
 from config import GameConfig
-from enums import StartingSplit
 from env import DefaultEnvironment, Environment
 from mcts import GameTree
 from player import MCTSPlayer, Player

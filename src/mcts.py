@@ -76,7 +76,7 @@ class Node:
         return acc
 
     def __str__(self):
-        return f'Parent: {self.parent.card} | n: {self.n}, v: {self.v}, v_bar: {self.avg_value():.3f} c: {self.card} | Children: {[(str(c.card), "%.3f" % c.avg_value()) for c in self.children]}\n'
+        return f'Parent: {self.parent.card} << (n: {self.n}, v: {self.v}, Q: {self.avg_value():.3f} c: {self.card}) >> Children: {[(i, str(c.card), "%d" % c.n, "%.3f" % c.avg_value()) for i, c in enumerate(self.children)]}\n'
 
     def __repr__(self):
         return str(self)
