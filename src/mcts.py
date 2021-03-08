@@ -106,13 +106,15 @@ class Node:
 
 
 class GameTree:
-    def __init__(self, root: Node = Node(), train: bool = False, C: Callable[[int], float] = lambda x: max(1, min(25, 25 / np.sqrt(x))), selection='ucb1'):
+    def __init__(self, root: Node = Node(), train: bool = False, C: Callable[[int], float] = lambda x: max(1, min(25, 25 / np.sqrt(x))), selection='ucb1', skip_level=False):
         self._root: Node = root
         self._node: Node = root
         self.train: bool = train
         self._in_tree: bool = True
         self.C = C
         self.selection = selection
+        self.skip_level = skip_level
+        self.original_skip_level = skip_level
 
         if selection not in UCT_SELECTION:
             raise ValueError(f'Unsupported UCT selection type: {selection}. Valid choices: {UCT_SELECTION}')
@@ -123,10 +125,10 @@ class GameTree:
             self._root.children = [Node(parent=self._root) for _ in range(GameConstants.StartingHands)]
 
     @classmethod
-    def load(cls, path: str, train: bool):
+    def load(cls, path: str, train: bool, skip_level=False):
         root = load(path)
         assert isinstance(root, Node)
-        return cls(root, train)
+        return cls(root, train, skip_level=skip_level)
 
     @property
     def node(self):
@@ -140,8 +142,13 @@ class GameTree:
         self._in_tree = True
         self._node = self._root.children[s.get_treasure_card_count(0, Zone.Hand) + s.get_treasure_card_count(0, Zone.Play) - 2]
 
+        self.skip_level = self.original_skip_level
+
     def select(self, choices: Iterable[Card]) -> Card:
         '''Select the node that maximizes the UCB score'''
+        if self.skip_level:
+            raise ValueError('Skip level flag set. Skipping selection.')
+
         C = self.C(self.node.n)
         max_score = -sys.maxsize
         card: Card = None
@@ -168,6 +175,10 @@ class GameTree:
 
     def advance(self, action: Card):
         '''Transitions to the next node, if it exists'''
+        if self.skip_level:
+            self.skip_level = False
+            return True
+
         for child in self.node.children:
             if str(child.card) == str(action):
                 self._node = child
