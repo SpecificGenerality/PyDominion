@@ -7,7 +7,7 @@ from victorycard import Duchy, Estate, Gardens, Province
 
 SANDBOX_CARDS = [Copper, Silver, Gold, Estate, Duchy, Province, Curse]
 DEFAULT_KINGDOM = [Chapel, Moat, Village, Militia, Moneylender, Smithy, CouncilRoom, Laboratory, Market, Witch]
-UCT_SELECTION = ['ucb1', 'ucb1_tuned']
+UCT_SELECTION = ['ucb1', 'ucb1_tuned', 'robust', 'max']
 
 BUY = 25
 

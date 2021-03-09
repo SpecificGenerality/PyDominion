@@ -125,10 +125,10 @@ class GameTree:
             self._root.children = [Node(parent=self._root) for _ in range(GameConstants.StartingHands)]
 
     @classmethod
-    def load(cls, path: str, train: bool, skip_level=False):
+    def load(cls, path: str, train: bool, selection='ucb1', skip_level=False):
         root = load(path)
         assert isinstance(root, Node)
-        return cls(root, train, skip_level=skip_level)
+        return cls(root, train, selection=selection, skip_level=skip_level)
 
     @property
     def node(self):
@@ -157,13 +157,14 @@ class GameTree:
             for node in self.node.children:
                 if str(node.card) == str(c):
                     found = True
-                    if self.train:
-                        if self.selection == 'ucb1':
-                            val = node.ucb1(C)
-                        elif self.selection == 'ucb1_tuned':
-                            val = node.ucb1_tuned(C)
-                    else:
+                    if self.selection == 'ucb1':
+                        val = node.ucb1(C)
+                    elif self.selection == 'ucb1_tuned':
+                        val = node.ucb1_tuned(C)
+                    elif self.selection == 'max':
                         val = node.avg_value()
+                    elif self.selection == 'robust':
+                        val = node.n
                     if val > max_score:
                         max_score = val
                         card = node.card
