@@ -10,8 +10,10 @@ from sklearn.linear_model import LogisticRegression
 
 from aiutils import load, softmax
 from buyagenda import (BigMoneyBuyAgenda, BuyAgenda, DoubleWitchBuyAgenda,
-                       TDBigMoneyBuyAgenda, TDEBigMoneyBuyAgenda, RandomBuyAgenda)
+                       RandomBuyAgenda, TDBigMoneyBuyAgenda,
+                       TDEBigMoneyBuyAgenda)
 from card import Card
+from constants import BUY
 from cursecard import Curse
 from enums import DecisionType, Phase
 from heuristics import PlayerHeuristic
@@ -19,8 +21,8 @@ from heuristicsutils import heuristic_select_cards
 from mcts import GameTree
 from mlp import PredictorMLP
 from rollout import RandomRollout, RolloutModel, init_rollouts, load_rollout
-from state import (DecisionResponse, DecisionState, DiscardDownToN,
-                   PutOnDeckDownToN, RemodelExpand, State, MoatReveal)
+from state import (DecisionResponse, DecisionState, DiscardDownToN, MoatReveal,
+                   PutOnDeckDownToN, RemodelExpand, State)
 from utils import remove_first_card
 from victorycard import Estate, VictoryCard
 
@@ -205,11 +207,13 @@ class MCTSPlayer(Player):
 
             # Rollout (out-of-tree) case; tree actually isn't that good
             if not self.tree.in_tree or not self.use_tree:
+                logging.log(level=BUY, msg='Rollout')
                 response.single_card = self.rollout.select(choices, state=s)
                 return
 
             # the next node in the tree is the one that maximizes the UCB1 score
             try:
+                logging.log(level=BUY, msg='Selection')
                 card = self.tree.select(choices)
             except ValueError:
                 card = self.rollout.select(choices, state=s)

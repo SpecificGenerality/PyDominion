@@ -3,8 +3,9 @@ from typing import Callable, Iterable, List, Tuple
 
 import numpy as np
 
-from aiutils import load
+from aiutils import load, update_mean, update_var
 from card import Card
+from constants import UCT_SELECTION
 from cursecard import Curse
 from enums import GameConstants, Zone
 from state import State
@@ -21,18 +22,40 @@ class Node:
         self.n = n
         # node value
         self.v = v
+        # sample mean
+        self.sample_mean = 0
+        # sample variance
+        self.sample_variance = 0
+
         self.children = []
 
-    # UCB1 formula
-    def score(self, C):
-        return self.v / self.n + 2 * C * np.sqrt(2 * np.log(self.parent.n) / self.n) if self.n > 0 else sys.maxsize
+    # UCB1 formula [https://link.springer.com/content/pdf/10.1007/11871842_29.pdf]
+    def ucb1(self, C):
+        if self.n <= 0:
+            return sys.maxsize
+
+        s, t = self.n, self.parent.n
+        return self.sample_mean + 2 * C * np.sqrt(2 * np.log(t) / s)
+
+    # UCB1-Tuned formula [https://link.springer.com/content/pdf/10.1023/A:1013689704352.pdf]
+    def ucb1_tuned(self, C=1):
+        if self.n <= 0:
+            return sys.maxsize
+
+        s, t = self.n, self.parent.n
+        variance_bound = self.sample_variance + np.sqrt(2 * np.log(t) / s)
+        upper_confidence_bound = np.sqrt(np.log(t) / s * min(1 / 4, variance_bound))
+        return self.sample_mean + C * upper_confidence_bound
 
     def avg_value(self):
-        return self.v / self.n if self.n > 0 else -sys.maxsize
+        return self.sample_mean if self.n > 0 else -sys.maxsize
 
     def update(self, delta: int):
         self.v += delta
         self.n += 1
+        prev_mean = self.sample_mean
+        self.sample_mean = update_mean(self.n, self.sample_mean, delta)
+        self.sample_variance = update_var(self.n, self.sample_variance, prev_mean, delta)
 
     def backpropagate(self, rewards: Tuple, start_idx: int = 0):
         n = len(rewards)
@@ -76,19 +99,25 @@ class Node:
         return acc
 
     def __str__(self):
-        return f'Parent: {self.parent.card} | n: {self.n}, v: {self.v}, v_bar: {self.avg_value():.3f} c: {self.card} | Children: {[(str(c.card), "%.3f" % c.avg_value()) for c in self.children]}\n'
+        return f'Parent: {self.parent.card} << (n: {self.n}, v: {self.v}, Q: {self.avg_value():.3f} c: {self.card}) >> Children: {[(i, str(c.card), "%d" % c.n, "%.3f" % c.avg_value()) for i, c in enumerate(self.children)]}\n'
 
     def __repr__(self):
         return str(self)
 
 
 class GameTree:
-    def __init__(self, root: Node = Node(), train: bool = False, C: Callable[[int], float] = lambda x: max(1, min(25, 25 / np.sqrt(x)))):
+    def __init__(self, root: Node = Node(), train: bool = False, C: Callable[[int], float] = lambda x: max(1, min(25, 25 / np.sqrt(x))), selection='ucb1', skip_level=False):
         self._root: Node = root
         self._node: Node = root
         self.train: bool = train
         self._in_tree: bool = True
         self.C = C
+        self._selection = selection
+        self.skip_level = skip_level
+        self.original_skip_level = skip_level
+
+        if selection not in UCT_SELECTION:
+            raise ValueError(f'Unsupported UCT selection type: {selection}. Valid choices: {UCT_SELECTION}')
 
         self._root.parent = self._root
         # To prevent clobbering trees loaded from file
@@ -96,10 +125,10 @@ class GameTree:
             self._root.children = [Node(parent=self._root) for _ in range(GameConstants.StartingHands)]
 
     @classmethod
-    def load(cls, path: str, train: bool):
+    def load(cls, path: str, train: bool, selection='ucb1', skip_level=False):
         root = load(path)
         assert isinstance(root, Node)
-        return cls(root, train)
+        return cls(root, train, selection=selection, skip_level=skip_level)
 
     @property
     def node(self):
@@ -109,12 +138,27 @@ class GameTree:
     def in_tree(self):
         return self._in_tree
 
+    @property
+    def selection(self):
+        return self._selection
+
+    @selection.setter
+    def selection(self, val):
+        if val not in UCT_SELECTION:
+            raise ValueError(f'Unsupported UCT selection type: {val}. Valid choices: {UCT_SELECTION}')
+        self._selection = val
+
     def reset(self, s: State):
         self._in_tree = True
         self._node = self._root.children[s.get_treasure_card_count(0, Zone.Hand) + s.get_treasure_card_count(0, Zone.Play) - 2]
 
+        self.skip_level = self.original_skip_level
+
     def select(self, choices: Iterable[Card]) -> Card:
         '''Select the node that maximizes the UCB score'''
+        if self.skip_level:
+            raise ValueError('Skip level flag set. Skipping selection.')
+
         C = self.C(self.node.n)
         max_score = -sys.maxsize
         card: Card = None
@@ -123,10 +167,14 @@ class GameTree:
             for node in self.node.children:
                 if str(node.card) == str(c):
                     found = True
-                    if self.train:
-                        val = node.score(C)
-                    else:
+                    if self._selection == 'ucb1':
+                        val = node.ucb1(C)
+                    elif self._selection == 'ucb1_tuned':
+                        val = node.ucb1_tuned(C)
+                    elif self._selection == 'max':
                         val = node.avg_value()
+                    elif self._selection == 'robust':
+                        val = node.n
                     if val > max_score:
                         max_score = val
                         card = node.card
@@ -138,6 +186,10 @@ class GameTree:
 
     def advance(self, action: Card):
         '''Transitions to the next node, if it exists'''
+        if self.skip_level:
+            self.skip_level = False
+            return True
+
         for child in self.node.children:
             if str(child.card) == str(action):
                 self._node = child

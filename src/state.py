@@ -555,6 +555,16 @@ class State:
         elif config.feature_type == FeatureType.ReducedFeature:
             self.feature = ReducedStateFeature(config, self.supply, self.player_states, device=config.device)
 
+    def cleanup(self):
+        p_state = self.player_states[self.player]
+        self.update_play_area(self.player)
+        self.discard_hand(self.player)
+        self.draw_hand(self.player)
+        p_state.turns += 1
+        p_state.actions = 1
+        p_state.buys = 1
+        p_state.coins = 0
+
     def featurize(self, lookahead=False, lookahead_card: Card = None) -> torch.Tensor:
         p: int = self.player
 
@@ -860,11 +870,8 @@ class State:
                     logging.info(f'Player {self.player} cannot afford to buy any cards')
         if self.phase == Phase.CleanupPhase:
             logging.debug('====CLEANUP PHASE====')
-            self.update_play_area(self.player)
-            self.discard_hand(self.player)
-            self.draw_hand(self.player)
-
             logging.info(f'Player {self.player} ends turn {p_state.turns}')
+            self.cleanup()
 
             if self.is_game_over() or self.is_degenerate():
                 self.decision.type = DecisionType.DecisionGameOver
@@ -872,11 +879,6 @@ class State:
 
             self.player = (self.player + 1) % len(self.player_states)
             self.phase = Phase.ActionPhase
-            p_state: PlayerState = self.player_states[self.player]
-            p_state.actions = 1
-            p_state.buys = 1
-            p_state.coins = 0
-            p_state._turns += 1
 
     def advance_next_decision(self):
         if self.decision.type == DecisionType.DecisionGameOver:

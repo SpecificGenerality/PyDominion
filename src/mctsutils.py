@@ -105,7 +105,7 @@ def get_best_paths(root: Node, depth: int, num_paths: int) -> List[Node]:
 
 def get_buy_sequence(path: List[Node]) -> List[Card]:
     '''Given a path, return the associated list of card buys.'''
-    return [(n.card, n.avg_value()) for n in path]
+    return [(n.card, n.avg_value(), n.n) for n in path]
 
 
 def get_depth(root: Node):
