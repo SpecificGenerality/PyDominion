@@ -112,7 +112,7 @@ class GameTree:
         self.train: bool = train
         self._in_tree: bool = True
         self.C = C
-        self.selection = selection
+        self._selection = selection
         self.skip_level = skip_level
         self.original_skip_level = skip_level
 
@@ -138,6 +138,16 @@ class GameTree:
     def in_tree(self):
         return self._in_tree
 
+    @property
+    def selection(self):
+        return self._selection
+
+    @selection.setter
+    def selection(self, val):
+        if val not in UCT_SELECTION:
+            raise ValueError(f'Unsupported UCT selection type: {val}. Valid choices: {UCT_SELECTION}')
+        self._selection = val
+
     def reset(self, s: State):
         self._in_tree = True
         self._node = self._root.children[s.get_treasure_card_count(0, Zone.Hand) + s.get_treasure_card_count(0, Zone.Play) - 2]
@@ -157,13 +167,13 @@ class GameTree:
             for node in self.node.children:
                 if str(node.card) == str(c):
                     found = True
-                    if self.selection == 'ucb1':
+                    if self._selection == 'ucb1':
                         val = node.ucb1(C)
-                    elif self.selection == 'ucb1_tuned':
+                    elif self._selection == 'ucb1_tuned':
                         val = node.ucb1_tuned(C)
-                    elif self.selection == 'max':
+                    elif self._selection == 'max':
                         val = node.avg_value()
-                    elif self.selection == 'robust':
+                    elif self._selection == 'robust':
                         val = node.n
                     if val > max_score:
                         max_score = val
