@@ -39,7 +39,7 @@ class SimulationData:
             sim_stats['Player'] = i
             sim_stats['Score'] = scores[i]
             sim_stats['Won'] = scores[i] >= winning_score
-            sim_stats['Iter'] = len(self.game_data)
+            sim_stats['Iter'] = len(self.game_data) - 1
             self.player_data.append(sim_stats)
 
     def finalize(self, G: Game):
