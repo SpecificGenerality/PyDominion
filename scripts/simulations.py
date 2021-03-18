@@ -10,7 +10,7 @@ from aiconfig import data_dir
 from aiutils import save
 from config import GameConfig
 from constants import BUY
-from enums import Rollout, StartingSplit
+from enums import Rollout
 from env import DefaultEnvironment, Environment
 from mcts import GameTree
 from player import MCTSPlayer, load_players
@@ -66,7 +66,7 @@ def simulate(env: Environment, n: int, tree: GameTree, turn_log=True) -> Simulat
             obs, reward, done, _ = env.step(action)
 
             if turn_log:
-                sim_data.update_turn(i, pid, turn, state.get_player_score(pid), action.single_card)
+                sim_data.update_turn(i, pid, turn, state.get_player_score(pid), action.single_card, state.get_coin_density(pid))
             # TODO: Is there a better way of incorporating the tree?
             if tree:
                 tree.advance(action.single_card)

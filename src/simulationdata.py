@@ -15,8 +15,8 @@ class SimulationData:
         self.turn_df = None
         self.summary = {}
 
-    def update_turn(self, n: int, player: int, turn: int, score: int, card: Card):
-        turn_stats = {'Iter': n, 'Player': player, 'Score': score, 'Card': str(card), 'Turn': turn}
+    def update_turn(self, n: int, player: int, turn: int, score: int, card: Card, money_density: float):
+        turn_stats = {'Iter': n, 'Player': player, 'Score': score, 'Card': str(card), 'Turn': turn, 'Density': money_density}
         self.turn_data.append(turn_stats)
 
     def update(self, G: Game, time):

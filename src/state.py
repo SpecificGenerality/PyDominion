@@ -185,6 +185,18 @@ class StateFeature(ABC):
         pass
 
     @abstractmethod
+    def get_total_coin_count(self, player) -> int:
+        pass
+
+    @abstractmethod
+    def get_terminal_draw_density(self, player) -> int:
+        pass
+
+    @abstractmethod
+    def get_coin_density(self, player) -> int:
+        pass
+
+    @abstractmethod
     def get_player_score(self, player) -> int:
         pass
 
@@ -235,7 +247,7 @@ class FullStateFeature(StateFeature):
         start = self.get_player_idx(player)
         end = start + self.player_width
 
-        return sum(self.feature[start:end])
+        return np.sum(self.feature[start:end])
 
     def get_player_idx(self, player: int) -> int:
         return self.num_cards + player * self.num_zones * self.num_cards
@@ -421,6 +433,10 @@ class FullStateFeature(StateFeature):
                 td_count += card_count
 
         return td_count / self.get_effective_deck_size(player)
+
+    def get_coin_density(self, player):
+        coins = self.get_total_coin_count(player)
+        return coins / self.get_num_cards(player)
 
     def get_player_score(self, player: int) -> int:
         start = self.get_player_idx(player)
@@ -796,18 +812,6 @@ class State:
 
     def get_player_score(self, player: int) -> int:
         return self.feature.get_player_score(player)
-        # import cardeffectbase
-        # p_state: PlayerState = self.player_states[player]
-        # score = 0
-        # allCards = p_state.cards
-
-        # for card in allCards:
-        #     score += card.get_victory_points()
-        #     effect = cardeffectbase.get_card_effect(card)
-        #     if isinstance(card, VictoryCard) and effect:
-        #         score += effect.victory_points(self, player)
-
-        # return score
 
     def is_winner(self, player: int) -> bool:
         return self.get_player_score(player) == max(self.get_player_score(p) for p in self.players)
@@ -835,6 +839,9 @@ class State:
 
     def get_terminal_draw_density(self, player: int) -> float:
         return self.feature.get_terminal_draw_density(player)
+
+    def get_coin_density(self, player: int) -> float:
+        return self.feature.get_coin_density(player)
 
     def get_zone_card_count(self, player: int, zone: Zone) -> int:
         return self.feature.get_zone_card_count(player, zone)
