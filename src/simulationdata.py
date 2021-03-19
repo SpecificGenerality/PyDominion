@@ -27,6 +27,7 @@ class SimulationData:
         game_stats['ProvinceWin'] = G.state.supply[Province] == 0
         game_stats['TimeElapsed'] = time
         game_stats['Tie'] = sum(1 if s == winning_score else 0 for s in scores) > 1
+        game_stats['Turns'] = G.state.player_states[0].turns
 
         if Colony in G.state.supply:
             game_stats['ColonyWin'] = G.state.supply[Colony] == 0

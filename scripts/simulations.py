@@ -61,12 +61,11 @@ def simulate(env: Environment, n: int, tree: GameTree, turn_log=True) -> Simulat
             pid: int = d.controlling_player
             player = env.players[pid]
             player.makeDecision(state, action)
-            turn = state.player_states[pid].turns
 
             obs, reward, done, _ = env.step(action)
 
             if turn_log:
-                sim_data.update_turn(i, pid, turn, state.get_player_score(pid), action.single_card, state.get_coin_density(pid))
+                sim_data.update_turn(i, pid, state.player_states[pid].turns, state.get_player_score(pid), action.single_card, state.get_coin_density(pid))
             # TODO: Is there a better way of incorporating the tree?
             if tree:
                 tree.advance(action.single_card)
