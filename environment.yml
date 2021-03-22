@@ -12,6 +12,7 @@ dependencies:
   - matplotlib
   - rope
   - pytorch
+  - tensorboard
   # - cpuonly ## enable if no cuda
   - seaborn
   - ipykernel

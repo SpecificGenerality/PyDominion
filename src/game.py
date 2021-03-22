@@ -1,4 +1,5 @@
 import logging
+from collections import Counter
 from typing import List
 
 import numpy as np
@@ -18,24 +19,34 @@ class Game:
     def done(self):
         return self.state.decision.type == DecisionType.DecisionGameOver
 
-    def new_game(self):
+    def new_game(self) -> None:
         self.state = State(self.config)
         self.state.new_game()
 
-    def get_supply_card_types(self):
+    def get_supply_card_types(self) -> List[str]:
         return [str(c()) for c in self.state.supply.keys()]
 
-    def get_winning_players(self):
-        scores = [self.state.get_player_score(pInfo.id) for pInfo in self.players]
-        m = max(scores)
-        return [i for i, j in enumerate(scores) if j == m]
-
-    def get_player_scores(self):
-        scores = np.zeros(len(self.players))
+    def get_player_scores(self) -> np.array:
+        scores = np.zeros(len(self.players), dtype=int)
         for i, pInfo in enumerate(self.players):
             scores[i] = self.state.get_player_score(pInfo.id)
 
         return scores
+
+    def is_winner(self, player: int) -> bool:
+        scores = self.get_player_scores()
+        max_score = max(scores)
+        counts = Counter(scores)
+        turns = [p_state.turns for p_state in self.state.player_states]
+        min_turns = min(turns)
+
+        if scores[player] < max_score:
+            return False
+        elif counts[max_score] == 1:
+            return True
+        elif turns[player] == min_turns:
+            return True
+        return False
 
     def run(self, T=None):
         d = self.state.decision

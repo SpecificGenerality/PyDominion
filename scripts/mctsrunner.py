@@ -11,7 +11,7 @@ from state import DecisionResponse, DecisionState, FeatureType, State
 from tqdm import tqdm
 
 
-def train_mcts(env: Environment, tree: GameTree, path: str, rollout_path: str, epochs: int, train_epochs_interval: int = 1000, save_epochs=1000, scoring='win_loss'):
+def train_mcts(env: Environment, tree: GameTree, path: str, rollout_path: str, epochs: int, train_epochs_interval: int = 1000, train_epochs_cap=10000, save_epochs=1000, scoring='win_loss'):
     for epoch in tqdm(range(epochs)):
         state: State = env.reset()
         tree.reset(state)
@@ -51,17 +51,24 @@ def train_mcts(env: Environment, tree: GameTree, path: str, rollout_path: str, e
 
         data['rewards'].extend([reward] * (len(data['features']) - len(data['rewards'])))
         start_idx = 1 if flip else 0
-
+        p0_score, p1_score = state.get_player_score(0), state.get_player_score(1)
         if scoring == 'score':
-            p0_reward = state.get_player_score(0)
-            p1_reward = state.get_player_score(1)
+            p0_reward, p1_reward = p0_score, p1_score
         elif scoring == 'win_loss':
-            if state.is_winner(0) and state.is_winner(1):
+            if reward == 0:
                 p0_reward, p1_reward = 1 / 2, 1 / 2
-            elif state.is_winner(0):
+            elif reward == 1:
                 p0_reward, p1_reward = 1, 0
             else:
                 p0_reward, p1_reward = 0, 1
+        elif scoring == 'score_ratio':
+            min_score = min(p0_score, p1_score)
+            p0_score_nonneg, p1_score_nonneg = p0_score + min_score, p1_score + min_score
+            if p0_score_nonneg == 0 and p1_score_nonneg == 0:
+                p0_reward, p1_reward = 0, 0
+            else:
+                total_score = p0_score_nonneg + p1_score_nonneg
+                p0_reward, p1_reward = p0_score / total_score, p1_score / total_score
 
         tree.node.backpropagate((p0_reward, p1_reward), start_idx=start_idx)
 
@@ -77,7 +84,7 @@ def train_mcts(env: Environment, tree: GameTree, path: str, rollout_path: str, e
         for player in env.players:
             if isinstance(player, MCTSPlayer):
                 player.rollout.update(**data)
-                if (epoch + 1) % train_epochs_interval == 0:
+                if (epoch + 1) % train_epochs_interval == 0 and (epoch + 1) < train_epochs_cap:
                     player.rollout.learn()
 
     for player in env.players:
@@ -88,7 +95,7 @@ def train_mcts(env: Environment, tree: GameTree, path: str, rollout_path: str, e
 
 
 def main(args):
-    config = GameConfig(prosperity=False, num_players=2, sandbox=args.sandbox, feature_type=args.ftype, device=args.device)
+    config = GameConfig(num_players=2, sandbox=args.sandbox, feature_type=args.ftype, device=args.device)
 
     tree = GameTree(train=True)
 

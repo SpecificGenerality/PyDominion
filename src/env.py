@@ -85,9 +85,11 @@ class DefaultEnvironment(Environment):
 
         reward = 0
         if self._done:
-            if s.is_winner(0) and s.is_winner(1):
+            p0win = self.game.is_winner(0)
+            p1win = self.game.is_winner(1)
+            if p0win and p1win:
                 reward = 0
-            elif s.is_winner(0):
+            elif p0win:
                 reward = 1
             else:
                 reward = -1

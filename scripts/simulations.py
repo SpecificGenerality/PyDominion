@@ -10,7 +10,7 @@ from aiconfig import data_dir
 from aiutils import save
 from config import GameConfig
 from constants import BUY
-from enums import Rollout, StartingSplit
+from enums import Rollout
 from env import DefaultEnvironment, Environment
 from mcts import GameTree
 from player import MCTSPlayer, load_players
@@ -46,7 +46,7 @@ def test_C(trials=10, iters=500):
     save(os.path.join(data_dir, 'C-lr'), agent.data)
 
 
-def simulate(env: Environment, n: int, tree: GameTree) -> SimulationData:
+def simulate(env: Environment, n: int, tree: GameTree, turn_log=True) -> SimulationData:
     sim_data = SimulationData()
 
     for i in tqdm(range(n)):
@@ -58,10 +58,14 @@ def simulate(env: Environment, n: int, tree: GameTree) -> SimulationData:
         while not done:
             action: DecisionResponse = DecisionResponse([])
             d: DecisionState = state.decision
-            player = env.players[d.controlling_player]
+            pid: int = d.controlling_player
+            player = env.players[pid]
             player.makeDecision(state, action)
 
             obs, reward, done, _ = env.step(action)
+
+            if turn_log:
+                sim_data.update_turn(i, pid, state.player_states[pid].turns, state.get_player_score(pid), action.single_card, state.get_coin_density(pid))
             # TODO: Is there a better way of incorporating the tree?
             if tree:
                 tree.advance(action.single_card)

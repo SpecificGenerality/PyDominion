@@ -30,7 +30,7 @@ class VictoryCard(Card):
         return 0
 
     @classmethod
-    def get_treasure(self):
+    def get_treasure(cls):
         return 0
 
 

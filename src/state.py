@@ -16,7 +16,7 @@ from playerstate import PlayerState
 from supply import Supply
 from treasurecard import Copper, Silver, TreasureCard
 from utils import dec_inc, mov_zero, remove_card, remove_first_card
-from victorycard import VictoryCard
+from victorycard import Gardens, VictoryCard
 
 
 class DecisionResponse:
@@ -109,6 +109,10 @@ class StateFeature(ABC):
         return self.rev_idxs[idx]
 
     @abstractmethod
+    def get_num_cards(self, player: int) -> int:
+        pass
+
+    @abstractmethod
     def inject(self, player: int, card: Union[Card, Type[Card]]):
         pass
 
@@ -181,6 +185,22 @@ class StateFeature(ABC):
         pass
 
     @abstractmethod
+    def get_total_coin_count(self, player) -> int:
+        pass
+
+    @abstractmethod
+    def get_terminal_draw_density(self, player) -> int:
+        pass
+
+    @abstractmethod
+    def get_coin_density(self, player) -> int:
+        pass
+
+    @abstractmethod
+    def get_player_score(self, player) -> int:
+        pass
+
+    @abstractmethod
     def lookahead(self, player: int, card: Card) -> torch.tensor:
         pass
 
@@ -222,6 +242,12 @@ class FullStateFeature(StateFeature):
             for card, count in p_state.get_card_counts().items():
                 idx = self.get_card_idx(card)
                 self.feature[idx + offset] = count
+
+    def get_num_cards(self, player: int):
+        start = self.get_player_idx(player)
+        end = start + self.player_width
+
+        return np.sum(self.feature[start:end])
 
     def get_player_idx(self, player: int) -> int:
         return self.num_cards + player * self.num_zones * self.num_cards
@@ -407,6 +433,24 @@ class FullStateFeature(StateFeature):
                 td_count += card_count
 
         return td_count / self.get_effective_deck_size(player)
+
+    def get_coin_density(self, player):
+        coins = self.get_total_coin_count(player)
+        return coins / self.get_num_cards(player)
+
+    def get_player_score(self, player: int) -> int:
+        start = self.get_player_idx(player)
+        end = start + self.player_width
+
+        score = 0
+        num_cards = self.get_num_cards(player)
+        for card_class, card_count in self._card_count_iterator(start, end):
+            score += card_class.get_victory_points() * card_count
+
+            if issubclass(card_class, Gardens):
+                score += (num_cards // 10) * card_count
+
+        return score
 
     def lookahead(self, player: int, card: Card) -> torch.tensor:
         '''
@@ -767,21 +811,7 @@ class State:
         return card.get_coin_cost()
 
     def get_player_score(self, player: int) -> int:
-        import cardeffectbase
-        p_state: PlayerState = self.player_states[player]
-        score = 0
-        allCards = p_state.cards
-
-        for card in allCards:
-            score += card.get_victory_points()
-            effect = cardeffectbase.get_card_effect(card)
-            if isinstance(card, VictoryCard) and effect:
-                score += effect.victory_points(self, player)
-
-        return score
-
-    def is_winner(self, player: int) -> bool:
-        return self.get_player_score(player) == max(self.get_player_score(p) for p in self.players)
+        return self.feature.get_player_score(player)
 
     def get_card_count(self, player: int, card: Union[Type[Card], Card]) -> int:
         return self.feature.get_card_count(player, card)
@@ -806,6 +836,9 @@ class State:
 
     def get_terminal_draw_density(self, player: int) -> float:
         return self.feature.get_terminal_draw_density(player)
+
+    def get_coin_density(self, player: int) -> float:
+        return self.feature.get_coin_density(player)
 
     def get_zone_card_count(self, player: int, zone: Zone) -> int:
         return self.feature.get_zone_card_count(player, zone)
