@@ -11,7 +11,7 @@ from state import DecisionResponse, DecisionState, FeatureType, State
 from tqdm import tqdm
 
 
-def train_mcts(env: Environment, tree: GameTree, path: str, rollout_path: str, epochs: int, train_epochs_interval: int = 1000, save_epochs=1000, scoring='win_loss'):
+def train_mcts(env: Environment, tree: GameTree, path: str, rollout_path: str, epochs: int, train_epochs_interval: int = 1000, train_epochs_cap=10000, save_epochs=1000, scoring='win_loss'):
     for epoch in tqdm(range(epochs)):
         state: State = env.reset()
         tree.reset(state)
@@ -84,7 +84,7 @@ def train_mcts(env: Environment, tree: GameTree, path: str, rollout_path: str, e
         for player in env.players:
             if isinstance(player, MCTSPlayer):
                 player.rollout.update(**data)
-                if (epoch + 1) % train_epochs_interval == 0:
+                if (epoch + 1) % train_epochs_interval == 0 and (epoch + 1) < train_epochs_cap:
                     player.rollout.learn()
 
     for player in env.players:
@@ -95,7 +95,7 @@ def train_mcts(env: Environment, tree: GameTree, path: str, rollout_path: str, e
 
 
 def main(args):
-    config = GameConfig(prosperity=False, num_players=2, sandbox=args.sandbox, feature_type=args.ftype, device=args.device)
+    config = GameConfig(num_players=2, sandbox=args.sandbox, feature_type=args.ftype, device=args.device)
 
     tree = GameTree(train=True)
 

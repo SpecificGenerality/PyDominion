@@ -243,6 +243,8 @@ class LogisticRegressionEnsembleRollout(RolloutModel):
 
     def learn(self):
         for i, buf in self.buffers.items():
+            if i == 8:
+                continue
             X, y = buf.unzip()
             try:
                 self.models[i] = self.models[i].fit(X, np.array(y, dtype=int))
