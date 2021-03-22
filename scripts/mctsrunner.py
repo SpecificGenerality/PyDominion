@@ -55,9 +55,9 @@ def train_mcts(env: Environment, tree: GameTree, path: str, rollout_path: str, e
         if scoring == 'score':
             p0_reward, p1_reward = p0_score, p1_score
         elif scoring == 'win_loss':
-            if state.is_winner(0) and state.is_winner(1):
+            if reward == 0:
                 p0_reward, p1_reward = 1 / 2, 1 / 2
-            elif state.is_winner(0):
+            elif reward == 1:
                 p0_reward, p1_reward = 1, 0
             else:
                 p0_reward, p1_reward = 0, 1

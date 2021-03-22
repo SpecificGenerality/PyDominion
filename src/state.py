@@ -813,9 +813,6 @@ class State:
     def get_player_score(self, player: int) -> int:
         return self.feature.get_player_score(player)
 
-    def is_winner(self, player: int) -> bool:
-        return self.get_player_score(player) == max(self.get_player_score(p) for p in self.players)
-
     def get_card_count(self, player: int, card: Union[Type[Card], Card]) -> int:
         return self.feature.get_card_count(player, card)
 
