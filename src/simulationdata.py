@@ -21,12 +21,11 @@ class SimulationData:
 
     def update(self, G: Game, time):
         scores = G.get_player_scores()
-        winning_score = max(scores)
         game_stats = dict()
-        game_stats['MaxScore'] = winning_score
+        game_stats['MaxScore'] = max(scores)
         game_stats['ProvinceWin'] = G.state.supply[Province] == 0
         game_stats['TimeElapsed'] = time
-        game_stats['Tie'] = sum(1 if s == winning_score else 0 for s in scores) > 1
+        game_stats['Tie'] = G.is_winner(0) and G.is_winner(1)
         game_stats['Turns'] = G.state.player_states[0].turns
 
         if Colony in G.state.supply:
@@ -39,7 +38,7 @@ class SimulationData:
             sim_stats['Turns'] = G.state.player_states[i].turns
             sim_stats['Player'] = i
             sim_stats['Score'] = scores[i]
-            sim_stats['Won'] = scores[i] >= winning_score
+            sim_stats['Won'] = G.is_winner(i)
             sim_stats['Iter'] = len(self.game_data) - 1
             self.player_data.append(sim_stats)
 
@@ -49,7 +48,7 @@ class SimulationData:
         self.turn_df = pd.DataFrame(self.turn_data)
 
         for i in range(G.config.num_players):
-            self.summary[i] = self.player_df.loc[self.player_df['Player'] == i]['Won'].sum()
+            self.summary[i] = self.player_df[self.player_df['Player'] == i]['Won'].sum()
 
         self.summary['ProvinceWins'] = self.game_df['ProvinceWin'].sum()
         self.summary['Ties'] = self.game_df['Tie'].sum()
