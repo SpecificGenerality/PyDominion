@@ -436,7 +436,7 @@ class FullStateFeature(StateFeature):
 
     def get_coin_density(self, player):
         coins = self.get_total_coin_count(player)
-        return coins / self.get_num_cards(player)
+        return coins / self.get_num_cards(player) * GameConstants.HandSize
 
     def get_player_score(self, player: int) -> int:
         start = self.get_player_idx(player)
