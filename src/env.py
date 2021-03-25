@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Iterable, Tuple
 
 from config import GameConfig
-from constants import BUY
+from constants import ACTION, BUY
 from enums import Phase
 from game import Game
 from player import HumanPlayer, Player
@@ -17,6 +17,7 @@ class Environment(ABC):
         self.game = Game(config, players)
         self.logger = logger
 
+        logging.addLevelName(ACTION, 'ACTION')
         logging.addLevelName(BUY, 'BUY')
 
         if any(isinstance(player, HumanPlayer) for player in players):
@@ -38,9 +39,44 @@ class Environment(ABC):
         pass
 
 
+class FullEnvironment(Environment):
+    def __init__(self, config: GameConfig, players: Iterable[Player], logger=logging.getLogger()):
+        super().__init__(config, players, logger)
+
+    def reset(self, **kwargs):
+        self.game = Game(self.config, self.players)
+        self.game.new_game()
+        self.game.state.advance_next_decision()
+
+        return self.game.state
+
+    def step(self, action: DecisionResponse) -> Tuple[State, int, bool, Any]:
+        s: State = self.game.state
+
+        s.process_decision(action)
+        s.advance_next_decision()
+
+        reward = 0
+        if self._done:
+            p0win = self.game.is_winner(0)
+            p1win = self.game.is_winner(1)
+            if p0win and p1win:
+                reward = 0
+            elif p0win:
+                reward = 1
+            else:
+                reward = -1
+
+        return s, reward, self._done, None
+
+    @property
+    def _done(self) -> bool:
+        return self.game.done
+
+
 class DefaultEnvironment(Environment):
     def __init__(self, config: GameConfig, players: Iterable[Player], logger=logging.getLogger()):
-        super(DefaultEnvironment, self).__init__(config, players, logger)
+        super().__init__(config, players, logger)
 
     def reset(self, **kwargs) -> State:
         self.game = Game(self.config, self.players)
@@ -67,9 +103,6 @@ class DefaultEnvironment(Environment):
             raise ValueError('Cannot step from any phase other than Buy Phase.')
 
         p: Player = self.game.players[d.controlling_player].controller
-        p_idx: int = d.controlling_player
-
-        self.logger.log(level=BUY, msg=f'Player {p_idx}, Turn {s.player_states[p_idx].turns}: {action.single_card}')
 
         s.process_decision(action)
 

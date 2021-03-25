@@ -10,14 +10,20 @@ class SimulationData:
         self.player_data = []
         self.game_data = []
         self.turn_data = []
+        self.action_data = []
         self.player_df = None
         self.game_df = None
         self.turn_df = None
+        self.action_df = None
         self.summary = {}
 
-    def update_turn(self, n: int, player: int, turn: int, score: int, card: Card, money_density: float):
+    def update_turn(self, n: int, player: int, turn: int, score: int, card: Card, money_density: float) -> None:
         turn_stats = {'Iter': n, 'Player': player, 'Score': score, 'Card': str(card), 'Turn': turn, 'Density': money_density}
         self.turn_data.append(turn_stats)
+
+    def update_action(self, n: int, player: int, turn: int, card: Card) -> None:
+        action_stats = {'Iter': n, 'Player': player, 'Card': str(card), 'Turn': turn}
+        self.action_data.append(action_stats)
 
     def update(self, G: Game, time):
         scores = G.get_player_scores()
@@ -46,6 +52,7 @@ class SimulationData:
         self.player_df = pd.DataFrame(self.player_data)
         self.game_df = pd.DataFrame(self.game_data)
         self.turn_df = pd.DataFrame(self.turn_data)
+        self.action_df = pd.DataFrame(self.action_data)
 
         for i in range(G.config.num_players):
             self.summary[i] = self.player_df[self.player_df['Player'] == i]['Won'].sum()

@@ -10,7 +10,7 @@ from aiconfig import data_dir
 from aiutils import save
 from config import GameConfig
 from constants import BUY
-from enums import Rollout
+from enums import Rollout, Phase
 from env import DefaultEnvironment, Environment
 from mcts import GameTree
 from player import MCTSPlayer, load_players
@@ -46,7 +46,7 @@ def test_C(trials=10, iters=500):
     save(os.path.join(data_dir, 'C-lr'), agent.data)
 
 
-def simulate(env: Environment, n: int, tree: GameTree, turn_log=True) -> SimulationData:
+def simulate(env: Environment, n: int, tree: GameTree, turn_log=False, action_log=False) -> SimulationData:
     sim_data = SimulationData()
 
     for i in tqdm(range(n)):
@@ -55,6 +55,7 @@ def simulate(env: Environment, n: int, tree: GameTree, turn_log=True) -> Simulat
             tree.reset(state)
         done = False
         t_start = time.time()
+        starting_player_buy = None
         while not done:
             action: DecisionResponse = DecisionResponse([])
             d: DecisionState = state.decision
@@ -62,13 +63,26 @@ def simulate(env: Environment, n: int, tree: GameTree, turn_log=True) -> Simulat
             player = env.players[pid]
             player.makeDecision(state, action)
 
+            if state.phase == Phase.ActionPhase:
+                # +1 to turns to get current turn
+                sim_data.update_action(i, pid, state.player_states[pid].turns + 1, action.cards[0])
+
+            if state.phase == Phase.BuyPhase and tree:
+                tree.advance(action.single_card)
+
+            log_buy = (state.phase == Phase.BuyPhase)
+
             obs, reward, done, _ = env.step(action)
 
-            if turn_log:
-                sim_data.update_turn(i, pid, state.player_states[pid].turns, state.get_player_score(pid), action.single_card, state.get_coin_density(pid))
-            # TODO: Is there a better way of incorporating the tree?
-            if tree:
-                tree.advance(action.single_card)
+            if turn_log and log_buy:
+                if pid == 0:
+                    starting_player_buy = action.single_card
+                else:
+                    sim_data.update_turn(i, 0, state.player_states[0].turns, state.get_player_score(0), starting_player_buy, state.get_coin_density(0))
+                    sim_data.update_turn(i, 1, state.player_states[1].turns, state.get_player_score(1), action.single_card, state.get_coin_density(1))
+
+        if state.player_states[0].turns > state.player_states[1].turns:
+            sim_data.update_turn(i, 0, state.player_states[0].turns, state.get_player_score(0), starting_player_buy, state.get_coin_density(0))
 
         t_end = time.time()
         sim_data.update(env.game, t_end - t_start)

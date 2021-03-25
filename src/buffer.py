@@ -27,6 +27,12 @@ class Buffer:
     def store(self, x: np.array, D: np.array):
         self.buf.append([x, D])
 
+    def safe_store(self, x: np.array, D: np.array):
+        if len(self.buf) == self.capacity:
+            return
+
+        self.store(x, D)
+
     def batch_store(self, X: List[np.array], D: List[np.array]):
         if len(X) != len(D):
             raise ValueError('Length mismatch between data and labels.')

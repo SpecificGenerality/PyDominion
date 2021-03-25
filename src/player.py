@@ -203,7 +203,8 @@ class MCTSPlayer(Player):
         elif s.phase == Phase.TreasurePhase:
             response.single_card = d.card_choices[0]
         else:
-            choices = list(filter(lambda x: not isinstance(x, Curse), d.card_choices + [None]))
+            # choices = list(filter(lambda x: not isinstance(x, Curse), d.card_choices + [None]))
+            choices = d.card_choices + [None]
 
             # Rollout (out-of-tree) case; tree actually isn't that good
             if not self.tree.in_tree or not self.use_tree:

@@ -9,6 +9,7 @@ import torch
 from actioncard import ActionCard, Chapel, Merchant, Moat
 from card import Card
 from config import GameConfig
+from constants import ACTION, BUY
 from cursecard import Curse
 from enums import (DecisionType, DiscardZone, FeatureType, GainZone,
                    GameConstants, Phase, TriggerState, Zone)
@@ -772,10 +773,10 @@ class State:
         if not self.decision.active_card:
             if self.phase == Phase.ActionPhase:
                 if single_card is None:
-                    logging.info(f'Player {self.player} chooses not to play an action')
+                    logging.log(level=ACTION, msg=f'Player {self.player}, Turn: {p.turns}: {single_card}')
                     self.phase = Phase.TreasurePhase
                 else:
-                    logging.info(f'Playing {single_card}')
+                    logging.log(level=ACTION, msg=f'Player {self.player}, Turn: {p.turns}: {single_card}')
                     self.play_card(self.player, single_card)
                     p.actions -= 1
                     self.process_action(single_card)
@@ -788,9 +789,10 @@ class State:
                     self.process_treasure(single_card)
             elif self.phase == Phase.BuyPhase:
                 if single_card is None:
-                    logging.info(f'Player {self.player} chooses not to buy a card')
+                    logging.log(level=BUY, msg=f'Player {self.player}, Turn: {p.turns}: {single_card}')
                     self.phase = Phase.CleanupPhase
                 else:
+                    logging.log(level=BUY, msg=f'Player {self.player}, Turn: {p.turns}: {single_card}')
                     self.events.append(GainCard(GainZone.GainToDiscard, self.player, single_card, True, False))
         else:
             import cardeffectbase
@@ -903,8 +905,8 @@ class State:
                     logging.info(f'Player {self.player} cannot afford to buy any cards')
         if self.phase == Phase.CleanupPhase:
             logging.debug('====CLEANUP PHASE====')
-            logging.info(f'Player {self.player} ends turn {p_state.turns}')
             self.cleanup()
+            logging.info(f'Player {self.player} ends turn {p_state.turns}')
 
             if self.is_game_over() or self.is_degenerate():
                 self.decision.type = DecisionType.DecisionGameOver
