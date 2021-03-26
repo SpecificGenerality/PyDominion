@@ -237,14 +237,9 @@ class LogisticRegressionEnsembleRollout(RolloutModel):
             model_idx = int(feature[state_idx])
             # allow models to share data
             buf = self.buffers[model_idx]
-            if model_idx < 7:
+            if model_idx <= 7:
                 self.buffers[model_idx + 1].store(feature, rewards[i])
-                buf.store(feature, rewards[i])
-            elif model_idx == 7:
-                self.buffers[8].safe_store(feature, rewards[i])
-                buf.store(feature, rewards[i])
-            else:
-                buf.safe_store(feature, rewards[i])
+            buf.store(feature, rewards[i])
 
     def learn(self):
         for i, buf in self.buffers.items():
@@ -265,7 +260,7 @@ class LogisticRegressionEnsembleRollout(RolloutModel):
         X = state.lookahead_batch_featurize(choices).cpu()
         try:
             y = model.predict_proba(X)
-        except NotFittedError:
+        except (NotFittedError, AttributeError):
             return np.random.choice(choices)
 
         if not self.train or self.train and np.random.rand() > self.eps:

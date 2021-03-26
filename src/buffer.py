@@ -1,37 +1,23 @@
 from collections import deque
-from typing import Iterable, List, Mapping, Tuple
+from typing import List, Tuple
 
 import numpy as np
 
-from card import Card
-
 
 class Buffer:
-    @classmethod
-    def to_distribution(cls, cards: Iterable[Card], idxs: Mapping[str, int], vals: List[float]) -> np.array:
-        # TODO: Fix this hardcode None option
-        x = np.zeros(len(idxs) + 1)
-        for i, card in enumerate(cards):
-            if card is None:
-                x[len(idxs)] = vals[i]
-            else:
-                j = idxs[str(card)]
-                x[j] = vals[i]
-
-        return x
-
-    def __init__(self, capacity=20000):
+    def __init__(self, capacity=20000, locked_capacity=0):
         self.buf = deque(maxlen=capacity)
+        self.locked_buf = deque(maxlen=locked_capacity)
         self.capacity = capacity
+        self.i = locked_capacity
 
     def store(self, x: np.array, D: np.array):
         self.buf.append([x, D])
 
-    def safe_store(self, x: np.array, D: np.array):
-        if len(self.buf) == self.capacity:
+    def locked_store(self, x: np.array, D: np.array):
+        if len(self.locked_buf) == self.locked_buf.maxlen:
             return
-
-        self.store(x, D)
+        self.locked_buf.append([x, D])
 
     def batch_store(self, X: List[np.array], D: List[np.array]):
         if len(X) != len(D):
@@ -42,7 +28,8 @@ class Buffer:
             self.store(X[i], D[i])
 
     def unzip(self) -> Tuple[List[np.array], List[np.array]]:
-        return zip(*self.buf)
+        buf = self.buf + self.locked_buf
+        return zip(*buf)
 
     def __len__(self):
-        return len(self.buf)
+        return len(self.buf) + len(self.locked_buf)
