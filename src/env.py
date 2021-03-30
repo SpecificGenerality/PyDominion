@@ -11,7 +11,7 @@ from state import DecisionResponse, DecisionState, State
 
 
 class Environment(ABC):
-    def __init__(self, config: GameConfig, players: Iterable[Player], logger):
+    def __init__(self, config: GameConfig, players: Iterable[Player], logger, log_file):
         self.config = config
         self.players = players
         self.game = Game(config, players)
@@ -20,10 +20,13 @@ class Environment(ABC):
         logging.addLevelName(ACTION, 'ACTION')
         logging.addLevelName(BUY, 'BUY')
 
-        if any(isinstance(player, HumanPlayer) for player in players):
-            logging.basicConfig(format='%(message)s', level=logging.INFO)
+        if log_file:
+            logging.basicConfig(filename=log_file, filemode='w', format='%(levelname)s:%(message)s', level=ACTION)
         else:
-            logging.basicConfig(format='%(levelname)s:%(message)s')
+            if any(isinstance(player, HumanPlayer) for player in players):
+                logging.basicConfig(format='%(message)s', level=logging.INFO)
+            else:
+                logging.basicConfig(format='%(levelname)s:%(message)s')
 
     @abstractmethod
     def reset(self) -> State:
@@ -40,8 +43,8 @@ class Environment(ABC):
 
 
 class FullEnvironment(Environment):
-    def __init__(self, config: GameConfig, players: Iterable[Player], logger=logging.getLogger()):
-        super().__init__(config, players, logger)
+    def __init__(self, config: GameConfig, players: Iterable[Player], logger=logging.getLogger(), log_file=None):
+        super().__init__(config, players, logger, log_file)
 
     def reset(self, **kwargs):
         self.game = Game(self.config, self.players)
@@ -75,8 +78,8 @@ class FullEnvironment(Environment):
 
 
 class DefaultEnvironment(Environment):
-    def __init__(self, config: GameConfig, players: Iterable[Player], logger=logging.getLogger()):
-        super().__init__(config, players, logger)
+    def __init__(self, config: GameConfig, players: Iterable[Player], logger=logging.getLogger(), log_file=None):
+        super().__init__(config, players, logger, log_file)
 
     def reset(self, **kwargs) -> State:
         self.game = Game(self.config, self.players)

@@ -61,6 +61,7 @@ class StartingSplit(Enum):
     Starting25Split = auto()
     Starting34Split = auto()
     StartingRandomSplit = auto()
+    UniformRandomSplit = auto()
 
 
 class DecisionType(Enum):

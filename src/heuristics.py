@@ -106,6 +106,7 @@ class PlayerHeuristic:
             trashCoppers = (treasureValue > 3)
             num_discarded = 0
             for c in d.card_choices:
+                trashCoppers = (treasureValue > 3)
                 if num_discarded == 4:
                     break
                 if isinstance(c, Curse):
@@ -114,6 +115,7 @@ class PlayerHeuristic:
                 elif isinstance(c, Copper) and trashCoppers:
                     response.cards.append(c)
                     num_discarded += 1
+                    treasureValue -= 1
                 elif isinstance(c, Estate):
                     response.cards.append(c)
                     num_discarded += 1

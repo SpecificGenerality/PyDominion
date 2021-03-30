@@ -10,13 +10,14 @@ from aiconfig import data_dir
 from aiutils import save
 from config import GameConfig
 from constants import BUY
-from enums import Rollout, Phase
+from enums import Phase, Rollout
 from env import DefaultEnvironment, Environment
 from mcts import GameTree
 from player import MCTSPlayer, load_players
 from rollout import LinearRegressionRollout
 from simulationdata import SimulationData
 from state import DecisionResponse, DecisionState, FeatureType, State
+from supply import Supply
 from tqdm import tqdm
 
 
@@ -46,8 +47,9 @@ def test_C(trials=10, iters=500):
     save(os.path.join(data_dir, 'C-lr'), agent.data)
 
 
-def simulate(env: Environment, n: int, tree: GameTree, turn_log=False, action_log=False) -> SimulationData:
-    sim_data = SimulationData()
+def simulate(env: Environment, n: int, tree: GameTree, turn_log=False, action_log=False, card_log=False) -> SimulationData:
+    # TODO: Fix this shit
+    sim_data = SimulationData(Supply(env.config).get_supply_card_types())
 
     for i in tqdm(range(n)):
         state: State = env.reset()
@@ -80,8 +82,13 @@ def simulate(env: Environment, n: int, tree: GameTree, turn_log=False, action_lo
                 else:
                     sim_data.update_turn(i, 0, state.player_states[0].turns, state.get_player_score(0), starting_player_buy, state.get_coin_density(0))
                     sim_data.update_turn(i, 1, state.player_states[1].turns, state.get_player_score(1), action.single_card, state.get_coin_density(1))
+            if card_log and log_buy:
+                if pid == 1:
+                    sim_data.update_card(i, 0, state.player_states[0].turns, state.get_card_counts(0))
+                    sim_data.update_card(i, 1, state.player_states[1].turns, state.get_card_counts(1))
 
         if state.player_states[0].turns > state.player_states[1].turns:
+            sim_data.update_card(i, 0, state.player_states[0].turns, state.get_card_counts(0))
             sim_data.update_turn(i, 0, state.player_states[0].turns, state.get_player_score(0), starting_player_buy, state.get_coin_density(0))
 
         t_end = time.time()

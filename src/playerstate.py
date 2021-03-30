@@ -1,6 +1,6 @@
-import random
 from collections import Counter
 
+import numpy as np
 import utils
 from card import Card
 from config import GameConfig
@@ -23,13 +23,37 @@ class PlayerState:
         self._pid = pid
 
         split = game_config.starting_splits[pid]
-        if (split == StartingSplit.Starting34Split):
-            self._deck = [Copper() for i in range(4)] + [Estate() for i in range(2)] + [Copper() for i in range(3)] + [Estate()]
-        elif (split == StartingSplit.Starting25Split):
-            self._deck = [Copper() for i in range(5)] + [Estate() for i in range(3)] + [Copper() for i in range(2)]
-        else:
+        rng = np.random.default_rng()
+
+        if split == StartingSplit.StartingRandomSplit:
             self._deck = [Copper() for i in range(7)] + [Estate() for i in range(3)]
-            random.shuffle(self._deck)
+            np.random.shuffle(self._deck)
+        else:
+            if split == StartingSplit.Starting34Split:
+                if rng.integers(0, 2) == 1:
+                    bottom_coppers = 3
+                else:
+                    bottom_coppers = 4
+            elif split == StartingSplit.Starting25Split:
+                if rng.integers(0, 2) == 1:
+                    bottom_coppers = 2
+                else:
+                    bottom_coppers = 5
+            elif split == StartingSplit.UniformRandomSplit:
+                sample = rng.random()
+                if sample < 1 / 4:
+                    bottom_coppers = 2
+                elif sample < 1 / 2:
+                    bottom_coppers = 3
+                elif sample < 3 / 4:
+                    bottom_coppers = 4
+                else:
+                    bottom_coppers = 5
+            else:
+                raise ValueError('Invalid starting split.')
+            self._deck = [Copper() for i in range(bottom_coppers)] + [Estate() for i in range(3)] + [Copper() for i in range(7 - bottom_coppers)]
+
+
 
     @property
     def actions(self):
@@ -125,7 +149,7 @@ class PlayerState:
         self._play_area = new_play_area
 
     def shuffle(self) -> None:
-        random.shuffle(self._discard)
+        np.random.shuffle(self._discard)
         self._deck = self._deck + self._discard
         self._discard = []
 
