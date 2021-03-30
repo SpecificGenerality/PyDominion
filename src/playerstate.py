@@ -53,8 +53,6 @@ class PlayerState:
                 raise ValueError('Invalid starting split.')
             self._deck = [Copper() for i in range(bottom_coppers)] + [Estate() for i in range(3)] + [Copper() for i in range(7 - bottom_coppers)]
 
-
-
     @property
     def actions(self):
         return self._actions
