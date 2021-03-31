@@ -40,8 +40,10 @@ class TestHeuristics(unittest.TestCase):
         # Process TrashCard events
         self.game.state.advance_next_decision()
 
-        self.assertEqual(state.get_card_count(0, Copper), 4)
-        self.assertEqual(state.get_card_count(0, Estate), 2)
+        n_copper = state.get_card_count(0, Copper)
+        n_estate = state.get_card_count(0, Estate)
+        self.assertTrue(n_copper == 3 or n_copper == 4)
+        self.assertEqual(n_copper + n_estate, 6)
 
     def testGreedyActionHeuristic(self) -> None:
         self.game.new_game()

@@ -35,7 +35,8 @@ class TestFullStateFeature(unittest.TestCase):
         self.assertEqual(feature.get_action_card_count(0, Zone.Play), 0)
         self.assertEqual(feature.get_action_card_count(0, Zone.Discard), 0)
 
-        self.assertEqual(feature.get_treasure_card_count(0, Zone.Hand), 2)
+        hand_coins = feature.get_treasure_card_count(0, Zone.Hand)
+        self.assertTrue((hand_coins == 2) or (hand_coins == 5))
         self.assertEqual(feature.get_treasure_card_count(0, Zone.Deck), 5)
         self.assertEqual(feature.get_treasure_card_count(0, Zone.Play), 0)
         self.assertEqual(feature.get_treasure_card_count(0, Zone.Discard), 0)
