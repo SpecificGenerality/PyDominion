@@ -213,8 +213,8 @@ class MCTSPlayer(Player):
 
             # the next node in the tree is the one that maximizes the UCB1 score
             try:
-                logging.log(level=BUY, msg='Selection')
                 card = self.tree.select(choices)
+                logging.log(level=BUY, msg=f'Selection: {self.tree.node.n}')
             except ValueError:
                 card = self.rollout.select(choices, state=s)
 

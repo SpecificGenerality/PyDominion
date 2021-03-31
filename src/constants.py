@@ -10,6 +10,7 @@ DEFAULT_KINGDOM = [Chapel, Moat, Village, Militia, Moneylender, Smithy, CouncilR
 UCT_SELECTION = ['ucb1', 'ucb1_tuned', 'robust', 'max', 'secure']
 
 BUY = 25
+ACTION = 24
 
 BASE_CARD_NAME = {
         'Artisan': Artisan,

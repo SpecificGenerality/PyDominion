@@ -1,7 +1,7 @@
 import logging
 from collections.abc import MutableMapping
 from random import shuffle
-from typing import Dict
+from typing import Dict, List
 
 from card import Card
 from config import GameConfig
@@ -68,7 +68,7 @@ class Supply(MutableMapping):
             return True
         return False
 
-    def get_supply_card_types(self):
+    def get_supply_card_types(self) -> List[str]:
         return [str(c()) for c in self._supply.keys()]
 
     def __getitem__(self, key):

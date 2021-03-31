@@ -90,7 +90,7 @@ class Node:
                 return child
 
     def is_leaf(self) -> bool:
-        if not self.children:
+        if (not self.children):
             return True
         for c in self.children:
             if c.n > 0:
@@ -132,10 +132,10 @@ class GameTree:
             self._root.children = [Node(parent=self._root) for _ in range(GameConstants.StartingHands)]
 
     @classmethod
-    def load(cls, path: str, train: bool, selection='ucb1', _skip_level=False):
+    def load(cls, path: str, train: bool, selection='ucb1', _skip_level=False, C=lambda x: max(1 / np.sqrt(2 + x), 0.1)):
         root = load(path)
         assert isinstance(root, Node)
-        return cls(root, train, selection=selection, _skip_level=_skip_level)
+        return cls(root, train, selection=selection, _skip_level=_skip_level, C=C)
 
     @property
     def node(self):

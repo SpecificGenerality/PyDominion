@@ -236,15 +236,13 @@ class LogisticRegressionEnsembleRollout(RolloutModel):
             # get number of Provinces left in supply
             model_idx = int(feature[state_idx])
             # allow models to share data
+            buf = self.buffers[model_idx]
             if model_idx <= 7:
                 self.buffers[model_idx + 1].store(feature, rewards[i])
-            buf = self.buffers[model_idx]
             buf.store(feature, rewards[i])
 
     def learn(self):
         for i, buf in self.buffers.items():
-            if i == 8:
-                continue
             X, y = buf.unzip()
             try:
                 self.models[i] = self.models[i].fit(X, np.array(y, dtype=int))
@@ -262,7 +260,7 @@ class LogisticRegressionEnsembleRollout(RolloutModel):
         X = state.lookahead_batch_featurize(choices).cpu()
         try:
             y = model.predict_proba(X)
-        except NotFittedError:
+        except (NotFittedError, AttributeError):
             return np.random.choice(choices)
 
         if not self.train or self.train and np.random.rand() > self.eps:

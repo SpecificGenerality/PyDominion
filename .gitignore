@@ -6,6 +6,7 @@ aiconfig.py
 src/runs/*
 runs/*
 temp/
+logs*
 notebooks/DominionFigures.ipynb
 
 # Byte-compiled / optimized / DLL files

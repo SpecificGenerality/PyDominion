@@ -1,10 +1,11 @@
-from collections import deque, defaultdict
-from typing import List
+from collections import defaultdict, deque
+from typing import List, Tuple
+
+import numpy as np
 
 from aiutils import update_mean, update_var
 from card import Card
 from mcts import Node
-import numpy as np
 
 
 def print_path(path: List[Node]):
@@ -42,6 +43,42 @@ def get_branching_factor_stats(root: Node) -> List[int]:
             Q = Q + deque(list(filter(lambda x: not x.is_leaf(), n.children)))
             k += 1
     return mean, var
+
+
+def get_level_branching_factors(root: Node) -> List[Tuple[int, int]]:
+    '''Return a list of (level, branching factor) for each node in the tree'''
+    Q = deque([root])
+    res = []
+
+    # bfs
+    level = 0
+    while Q:
+        N = len(Q)
+        for i in range(N):
+            n: Node = Q.popleft()
+            x = len(n.children)
+            if x > 0:
+                res.append((level, x))
+            Q = Q + deque(list(filter(lambda x: not x.is_leaf(), n.children)))
+        level += 1
+    return res
+
+
+def get_level_visits(root: Node) -> List[Tuple[int, int]]:
+    ''' Return a list of (level, visits) for each node in the tree'''
+    Q = deque([root])
+    res = []
+
+    # bfs
+    level = 0
+    while Q:
+        N = len(Q)
+        for i in range(N):
+            n: Node = Q.popleft()
+            res.append((level, n.n))
+            Q = Q + deque(list(filter(lambda x: not x.is_leaf(), n.children)))
+        level += 1
+    return res
 
 
 def get_path(root: Node, leaf: Node):
