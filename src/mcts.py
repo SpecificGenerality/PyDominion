@@ -90,19 +90,17 @@ class Node:
                 return child
 
     def is_leaf(self) -> bool:
-        if (not self.children):
+        if self.n == 0:
             return True
-        for c in self.children:
-            if c.n > 0:
-                return False
-        return True
+        return False
 
     # size of the subtree rooted at the current node
     def size(self):
         acc = 1
+        if self.n == 0 and not self.parent == self:
+            return 0
         for child in self.children:
-            if not child.is_leaf():
-                acc += child.size()
+            acc += child.size()
         return acc
 
     def __str__(self):
