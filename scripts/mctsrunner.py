@@ -63,7 +63,10 @@ def train_mcts(env: Environment, tree: GameTree, path: str, rollout_path: str, e
                 p0_reward, p1_reward = 0, 1
         elif scoring == 'score_ratio':
             min_score = min(p0_score, p1_score)
-            p0_score_nonneg, p1_score_nonneg = p0_score + min_score, p1_score + min_score
+            if min_score < 0:
+                p0_score_nonneg, p1_score_nonneg = p0_score + abs(min_score), p1_score + abs(min_score)
+            else:
+                p0_score_nonneg, p1_score_nonneg = p0_score, p1_score
             if p0_score_nonneg == 0 and p1_score_nonneg == 0:
                 p0_reward, p1_reward = 0, 0
             else:
