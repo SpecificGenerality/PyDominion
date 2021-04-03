@@ -1,14 +1,14 @@
 ---
-name: dominion
+name: pydominion
 channels:
   - conda-forge
   - pytorch
 dependencies:
-  - python=3.8
+  - python=3.8.8
   - tqdm
   - numpy
   - pandas
-  - scikit-learn
+  - scikit-learn=0.23.2
   - matplotlib
   - rope
   - pytorch
