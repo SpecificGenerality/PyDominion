@@ -23,6 +23,7 @@ from mlp import PredictorMLP
 from rollout import RandomRollout, RolloutModel, init_rollouts, load_rollout
 from state import (DecisionResponse, DecisionState, DiscardDownToN, MoatReveal,
                    PutOnDeckDownToN, RemodelExpand, State)
+from treasurecard import Copper
 from utils import remove_first_card
 from victorycard import Estate, VictoryCard
 
@@ -203,6 +204,7 @@ class MCTSPlayer(Player):
         elif s.phase == Phase.TreasurePhase:
             response.single_card = d.card_choices[0]
         else:
+            # Remove Curse
             choices = list(filter(lambda x: not isinstance(x, Curse), d.card_choices + [None]))
 
             # Rollout (out-of-tree) case; tree actually isn't that good
@@ -213,7 +215,9 @@ class MCTSPlayer(Player):
 
             # the next node in the tree is the one that maximizes the UCB1 score
             try:
-                card = self.tree.select(choices)
+                # Remove Copper and Victory cards -- tree never gets that deep anyways
+                tree_choices =  list(filter(lambda x: not isinstance(x, Copper) and not issubclass(type(x), VictoryCard), choices))
+                card = self.tree.select(tree_choices)
                 logging.log(level=BUY, msg=f'Selection: {self.tree.node.n}')
             except ValueError:
                 card = self.rollout.select(choices, state=s)
@@ -312,9 +316,6 @@ class RandomPlayer(Player):
     @classmethod
     def load(cls, **kwargs):
         return cls(train=kwargs['train'])
-
-    def train(self):
-        self.train = True
 
     def makeDecision(self, s: State, response: DecisionResponse):
         d: DecisionState = s.decision

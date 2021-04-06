@@ -2,6 +2,8 @@ import logging
 from abc import ABC, abstractmethod
 from typing import Any, Iterable, Tuple
 
+import numpy as np
+
 from config import GameConfig
 from constants import ACTION, BUY
 from enums import Phase
@@ -11,11 +13,15 @@ from state import DecisionResponse, DecisionState, State
 
 
 class Environment(ABC):
-    def __init__(self, config: GameConfig, players: Iterable[Player], logger, log_file):
+    def __init__(self, config: GameConfig, players: Iterable[Player], logger, log_file, randomize_player_order=False):
         self.config = config
         self.players = players
         self.game = Game(config, players)
         self.logger = logger
+        self.randomize_player_order = randomize_player_order
+
+        if randomize_player_order:
+            np.random.shuffle(self.players)
 
         logging.addLevelName(ACTION, 'ACTION')
         logging.addLevelName(BUY, 'BUY')
@@ -43,10 +49,12 @@ class Environment(ABC):
 
 
 class FullEnvironment(Environment):
-    def __init__(self, config: GameConfig, players: Iterable[Player], logger=logging.getLogger(), log_file=None):
-        super().__init__(config, players, logger, log_file)
+    def __init__(self, config: GameConfig, players: Iterable[Player], logger=logging.getLogger(), log_file=None, randomize_player_order=False):
+        super().__init__(config, players, logger, log_file, randomize_player_order)
 
     def reset(self, **kwargs):
+        if self.randomize_player_order:
+            np.random.shuffle(self.players)
         self.game = Game(self.config, self.players)
         self.game.new_game()
         self.game.state.advance_next_decision()
@@ -78,10 +86,12 @@ class FullEnvironment(Environment):
 
 
 class DefaultEnvironment(Environment):
-    def __init__(self, config: GameConfig, players: Iterable[Player], logger=logging.getLogger(), log_file=None):
-        super().__init__(config, players, logger, log_file)
+    def __init__(self, config: GameConfig, players: Iterable[Player], logger=logging.getLogger(), log_file=None, randomize_player_order=False):
+        super().__init__(config, players, logger, log_file, randomize_player_order)
 
     def reset(self, **kwargs) -> State:
+        if self.randomize_player_order:
+            np.random.shuffle(self.players)
         self.game = Game(self.config, self.players)
         self.game.new_game()
         self.game.state.advance_next_decision()

@@ -1,7 +1,9 @@
 import sys
+from collections import deque
 from typing import Callable, Iterable, List, Tuple
 
 import numpy as np
+import pandas as pd
 
 from aiutils import load, update_mean, update_var
 from card import Card
@@ -20,8 +22,6 @@ class Node:
         self.card = card
         # number of times visited
         self.n = n
-        # node value
-        self.v = v
         # sample mean
         self.sample_mean = 0
         # sample variance
@@ -58,7 +58,6 @@ class Node:
         return self.sample_mean if self.n > 0 else -sys.maxsize
 
     def update(self, delta: int):
-        self.v += delta
         self.n += 1
         prev_mean = self.sample_mean
         self.sample_mean = update_mean(self.n, self.sample_mean, delta)
@@ -90,23 +89,21 @@ class Node:
                 return child
 
     def is_leaf(self) -> bool:
-        if (not self.children):
+        if self.n == 0:
             return True
-        for c in self.children:
-            if c.n > 0:
-                return False
-        return True
+        return False
 
     # size of the subtree rooted at the current node
     def size(self):
         acc = 1
+        if self.n == 0 and not self.parent == self:
+            return 0
         for child in self.children:
-            if not child.is_leaf():
-                acc += child.size()
+            acc += child.size()
         return acc
 
     def __str__(self):
-        return f'Parent: {self.parent.card} << (n: {self.n}, v: {self.v}, Q: {self.avg_value():.3f} c: {self.card}) >> Children: {[(i, str(c.card), "%d" % c.n, "%.3f" % c.avg_value()) for i, c in enumerate(self.children)]}\n'
+        return f'Parent: {self.parent.card} << (n: {self.n}, Q: {self.avg_value():.3f} c: {self.card}) >> Children: {[(i, str(c.card), "%d" % c.n, "%.3f" % c.avg_value()) for i, c in enumerate(self.children)]}\n'
 
     def __repr__(self):
         return str(self)
@@ -220,3 +217,20 @@ class GameTree:
                 return True
         self._in_tree = False
         return False
+
+    def to_df(self) -> pd.DataFrame:
+        Q = deque([self._root])
+        res = []
+
+        level = 0
+        while Q:
+            N = len(Q)
+            for i in range(N):
+                node: Node = Q.popleft()
+                if level >= 2:
+                    node_dict = {'Level': level, 'Visits': node.n, 'Mean': node.sample_mean, 'Variance': node.sample_variance, 'Card': str(node.card)}
+                    res.append(node_dict)
+                Q = Q + deque(list(filter(lambda x: not x.is_leaf(), node.children)))
+            level += 1
+
+        return pd.DataFrame(res)

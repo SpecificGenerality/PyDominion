@@ -22,7 +22,7 @@ def path_helper(curr: Node, acc: List[Node], key):
 def best_path(root: Node) -> List[Node]:
     '''Return the max-valued path from root to leaf'''
     path = [root]
-    path_helper(root, path, lambda x: x.v)
+    path_helper(root, path, lambda x: x.avg_value())
     return path
 
 
@@ -56,7 +56,7 @@ def get_level_branching_factors(root: Node) -> List[Tuple[int, int]]:
         N = len(Q)
         for i in range(N):
             n: Node = Q.popleft()
-            x = len(n.children)
+            x = sum(1 if not x.is_leaf() else 0 for x in n.children)
             if x > 0:
                 res.append((level, x))
             Q = Q + deque(list(filter(lambda x: not x.is_leaf(), n.children)))
