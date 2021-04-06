@@ -22,7 +22,7 @@ def path_helper(curr: Node, acc: List[Node], key):
 def best_path(root: Node) -> List[Node]:
     '''Return the max-valued path from root to leaf'''
     path = [root]
-    path_helper(root, path, lambda x: x.v)
+    path_helper(root, path, lambda x: x.avg_value())
     return path
 
 
