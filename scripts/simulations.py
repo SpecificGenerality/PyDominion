@@ -1,37 +1,40 @@
 import logging
-import os
 import time
 from argparse import ArgumentParser
 from typing import List
 
-import numpy as np
-from ai import MCTS
-from aiconfig import data_dir
 from aiutils import save
 from config import GameConfig
 from constants import BUY
-from enums import Phase, Rollout
+from enums import Phase
 from env import DefaultEnvironment, Environment
 from mcts import GameTree
-from player import MCTSPlayer, load_players
-from rollout import LinearRegressionRollout
+from player import load_players
 from simulationdata import SimulationData
 from state import DecisionResponse, DecisionState, FeatureType, State
 from supply import Supply
 from tqdm import tqdm
 
 
-def simulate(env: Environment, n: int, tree: GameTree, turn_log=False, action_log=False, card_log=False) -> SimulationData:
+def simulate(env: Environment, n: int, trees: List[GameTree], turn_log=False, action_log=False, card_log=False) -> SimulationData:
     # TODO: Fix this shit
     sim_data = SimulationData(Supply(env.config).get_supply_card_types())
 
     for i in tqdm(range(n)):
         state: State = env.reset()
-        if tree:
+        for tree in trees:
             tree.reset(state)
         done = False
         t_start = time.time()
         starting_player_buy = None
+
+        if card_log:
+            sim_data.update_card(i, 0, 0, state.get_card_counts(0))
+            sim_data.update_card(i, 1, 0, state.get_card_counts(1))
+        if turn_log:
+            sim_data.update_turn(i, 0, 0, state.get_player_score(0), None, state.get_coin_density(0))
+            sim_data.update_turn(i, 1, 0, state.get_player_score(1), None, state.get_coin_density(1))
+
         while not done:
             action: DecisionResponse = DecisionResponse([])
             d: DecisionState = state.decision
@@ -43,8 +46,9 @@ def simulate(env: Environment, n: int, tree: GameTree, turn_log=False, action_lo
                 # +1 to turns to get current turn
                 sim_data.update_action(i, pid, state.player_states[pid].turns + 1, action.cards[0])
 
-            if state.phase == Phase.BuyPhase and tree:
-                tree.advance(action.single_card)
+            if state.phase == Phase.BuyPhase and trees:
+                for tree in trees:
+                    tree.advance(action.single_card)
 
             log_buy = (state.phase == Phase.BuyPhase)
 

@@ -164,14 +164,15 @@ class PredictorMLPPlayer(Player):
 
 # TODO: Expand MCTS to work outside of sandbox games
 class MCTSPlayer(Player):
-    def __init__(self, rollout, tree: GameTree, use_tree=True):
+    def __init__(self, rollout, tree: GameTree, use_tree=True, train=False):
         self.tree: GameTree = tree
         self.rollout: RolloutModel = rollout
         self.heuristic = PlayerHeuristic(RandomBuyAgenda())
         self.use_tree = use_tree
+        self.train = train
 
     @classmethod
-    def load(cls, **kwargs):
+    def load(cls, train, **kwargs):
         tree: GameTree = kwargs.pop('tree')
         rollout_path: str = kwargs.pop('rollout_path')
         rollout_type: str = kwargs.pop('rollout_type')
@@ -183,7 +184,7 @@ class MCTSPlayer(Player):
             logging.error(f'Failed to load rollout from {rollout_path}, defaulting to random rollouts.')
             rollout_model = RandomRollout()
 
-        return cls(rollout=rollout_model, tree=tree, use_tree=use_tree)
+        return cls(rollout=rollout_model, tree=tree, use_tree=use_tree, train=train)
 
     def makeDecision(self, s: State, response: DecisionResponse):
         d: DecisionState = s.decision
@@ -216,10 +217,14 @@ class MCTSPlayer(Player):
             # the next node in the tree is the one that maximizes the UCB1 score
             try:
                 # Remove Copper and Victory cards -- tree never gets that deep anyways
-                tree_choices =  list(filter(lambda x: not isinstance(x, Copper) and not issubclass(type(x), VictoryCard), choices))
+                if self.train:
+                    tree_choices = list(filter(lambda x: not isinstance(x, Copper) and not issubclass(type(x), VictoryCard), choices))
+                else:
+                    tree_choices = choices
                 card = self.tree.select(tree_choices)
                 logging.log(level=BUY, msg=f'Selection: {self.tree.node.n}')
-            except ValueError:
+            except ValueError as e:
+                logging.warning(e)
                 card = self.rollout.select(choices, state=s)
 
             response.single_card = card
@@ -415,7 +420,7 @@ def load_players(player_types: List[str], models: List[str], train=False, **kwar
         elif p_type_lower == 'dw':
             players.append(HeuristicPlayer.load(agenda=DoubleWitchBuyAgenda(), train=train))
         elif p_type_lower == 'uct':
-            players.append(MCTSPlayer.load(tree=kwargs.pop('tree'), rollout_type=kwargs.pop('rollout_type'), rollout_path=models.pop(0), use_tree=kwargs.pop('use_tree')))
+            players.append(MCTSPlayer.load(train=train, tree=kwargs.pop('tree'), rollout_type=kwargs.pop('rollout_type'), rollout_path=models.pop(0), use_tree=kwargs.pop('use_tree')))
         elif p_type_lower == 'mlp':
             players.append(PredictorMLPPlayer.load(path=models.pop(0), **kwargs))
         elif p_type_lower == 'log':
